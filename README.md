@@ -27,11 +27,11 @@ src/app/
 │   └── register/
 │       └── page.tsx        # 회원가입 페이지 (/register)
 ├── (projects)/             # 프로젝트 관련 라우팅 그룹
+│   ├── layout.tsx         # 통합 프로젝트 레이아웃 (모든 프로젝트 페이지에 적용)
 │   ├── components/         # 프로젝트 관련 컴포넌트
 │   ├── hooks/             # 프로젝트 관련 훅
 │   ├── types/             # 프로젝트 관련 타입
 │   ├── [project_id]/      # 동적 라우팅: 프로젝트 상세
-│   │   ├── layout.tsx     # 프로젝트 상세 레이아웃
 │   │   ├── page.tsx       # 프로젝트 상세 페이지 (/[project_id])
 │   │   ├── settings/      # 프로젝트 설정
 │   │   │   └── page.tsx   # 설정 페이지 (/[project_id]/settings)
@@ -43,7 +43,6 @@ src/app/
 │   │       └── [channel_id]/
 │   │           └── page.tsx   # 채널 페이지 (/[project_id]/channels/[channel_id])
 │   └── projects/
-│       ├── layout.tsx     # 프로젝트 목록 레이아웃
 │       └── create/
 │           └── page.tsx   # 프로젝트 생성 페이지 (/projects/create)
 └── (server-setup)/        # 서버 설정 관련 라우팅 그룹

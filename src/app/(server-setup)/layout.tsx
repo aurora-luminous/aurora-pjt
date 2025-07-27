@@ -1,19 +1,12 @@
-'use client'
+"use client";
 
-import React from 'react'
-import { motion } from 'framer-motion'
+import React from "react";
+import { motion } from "framer-motion";
+import Image from "next/image";
 
 const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div 
-      className="min-h-screen flex relative"
-      style={{
-        backgroundImage: "url('/background/Background 8.png')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      }}
-    >
+    <div className="min-h-screen flex relative bg-aurora-blue-gradient-diagonal">
       {/* Left Panel - 사라지는 애니메이션 */}
       <motion.div
         initial={{ width: "50%", opacity: 1 }}
@@ -29,24 +22,24 @@ const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
           className="text-center"
         >
           <div className="mb-6">
-          <img 
-              src="/background/logo.png" 
-              alt="Aurora Logo" 
+            <Image
+              src="/background/logo.png"
+              alt="Aurora Logo"
               className="w-auto h-24 mx-auto"
+              width={100}
+              height={100}
             />
-            <h1 className="text-4xl font-bold text-white tracking-wide">Aurora</h1>
           </div>
         </motion.div>
       </motion.div>
 
       {/* Right Panel - 확장되는 애니메이션 */}
-      <motion.div 
+      <motion.div
         initial={{ width: "50%" }}
         animate={{ width: "100%" }}
         transition={{ duration: 0.8, ease: "easeInOut" }}
         className="relative overflow-hidden"
       >
-
         {/* Logo - 좌상단에 새로 나타남 */}
         <motion.div
           initial={{ opacity: 0, x: -50, y: -50 }}
@@ -54,21 +47,21 @@ const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
           transition={{ duration: 0.8, ease: "easeInOut", delay: 0.4 }}
           className="absolute top-0 left-0 z-20"
         >
-          <div className="flex items-center gap-3">
-            <img 
-              src="/background/logo.png" 
-              alt="Aurora Logo" 
-              className="w-auto h-10 mx-auto"
-            />
-            <h1 className="text-4xl font-bold text-white tracking-wide">Aurora</h1>
-          </div>
+          <Image
+            src="/background/logo.png"
+            alt="Aurora Logo"
+            className="w-auto h-10 mx-auto"
+            width={100}
+            height={100}
+          />
+          <h1 className="text-xl font-bold text-white tracking-wide">Aurora</h1>
         </motion.div>
-        
+
         {/* Content Container */}
         <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
           <motion.div
             initial={{ maxWidth: "28rem" }}
-            animate={{ maxWidth: "56rem" }}
+            animate={{ maxWidth: "32rem" }}
             transition={{ duration: 0.8, ease: "easeInOut", delay: 0.3 }}
             className="w-full"
           >
@@ -84,7 +77,7 @@ const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
       </motion.div>
     </div>
-  )
-}
+  );
+};
 
-export default ServerSetupLayout
+export default ServerSetupLayout;

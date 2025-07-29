@@ -25,7 +25,7 @@ export interface DirectMessage {
 export interface Channel {
   id: string;
   name: string;
-  type: "text" | "voice";
+  type: "text" | "voice" | "notice";
 }
 
 // 상태 관련 타입
@@ -69,7 +69,10 @@ export interface ChatUser {
   status: "online" | "away" | "busy" | "offline";
 }
 
-// 프로젝트 이름 매핑 타입
+// 매핑 타입들
 export type ServerNameMap = { [key: string]: string };
 export type ProjectNameMap = { [key: string]: string };
 export type ChannelNameMap = { [key: string]: string };
+
+// Voice Channel 타입들
+export * from "./voiceChannelTypes";

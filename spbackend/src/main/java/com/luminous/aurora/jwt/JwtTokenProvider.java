@@ -23,7 +23,7 @@ public class JwtTokenProvider {
 	@Value("${jwt.access-token-validity}")
 	private Long accessTokenValidity;
 
-	@Value("@{jwt.refresh-token-validity}")
+	@Value("${jwt.refresh-token-validity}")
 	private Long refreshTokenValidity;
 
 	// 문자열 형태의 비밀키를 jwt 서명에 사용할 수 있는 secertkey 객체로 변환하는 역할

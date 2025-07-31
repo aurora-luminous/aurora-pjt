@@ -1,15 +1,14 @@
-package com.luminous.aurora.user.entity;
+package com.luminous.aurora.auth.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table
@@ -27,6 +26,13 @@ public class User {
 	private String password;
 	private Boolean isDeleted;
 	private String profileImagePath;
+
+	@CreationTimestamp
+	@Column(updatable = false)
+	private LocalDateTime createdAt;
+
+	@UpdateTimestamp
+	private LocalDateTime updatedAt;
 
 	@PrePersist //실행 시점: 엔티티가 데이터베이스에 저장되기 직전 -> 저장전 필요한 초기화 작업 수행
 	protected void onCreate() {

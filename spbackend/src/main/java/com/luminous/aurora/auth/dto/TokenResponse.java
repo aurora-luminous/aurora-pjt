@@ -1,4 +1,4 @@
-package com.luminous.aurora.user.dto;
+package com.luminous.aurora.auth.dto;
 
 
 import lombok.*;

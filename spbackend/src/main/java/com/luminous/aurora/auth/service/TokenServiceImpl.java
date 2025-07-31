@@ -1,12 +1,11 @@
-package com.luminous.aurora.user.service;
+package com.luminous.aurora.auth.service;
 
 
 import com.luminous.aurora.jwt.JwtTokenProvider;
-import com.luminous.aurora.user.dto.TokenResponse;
-import com.luminous.aurora.user.repository.TokenRedisRepository;
+import com.luminous.aurora.auth.dto.TokenResponse;
+import com.luminous.aurora.auth.repository.TokenRedisRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.antlr.v4.runtime.Token;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 

@@ -1,7 +1,7 @@
-package com.luminous.aurora.user.service;
+package com.luminous.aurora.auth.service;
 
 
-import com.luminous.aurora.user.dto.TokenResponse;
+import com.luminous.aurora.auth.dto.TokenResponse;
 
 public interface TokenService {
 

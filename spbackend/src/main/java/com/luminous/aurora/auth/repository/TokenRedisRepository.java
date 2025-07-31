@@ -1,4 +1,4 @@
-package com.luminous.aurora.user.repository;
+package com.luminous.aurora.auth.repository;
 
 
 import org.springframework.data.redis.core.RedisTemplate;

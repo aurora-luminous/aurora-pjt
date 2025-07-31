@@ -29,6 +29,7 @@ public class JwtTokenProvider {
     // 문자열 형태의 비밀키를 jwt 서명에 사용할 수 있는 secertkey 객체로 변환하는 역할
     private SecretKey getSigningKey() { // SecretKey -> Java의 암호화 키 인터페이스
         // hmac-sha256 알고리즘으로 서명키 생성
+        log.info("JWT Secret: {}", jwtSecret); // 디버깅용 로그 추가
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
         // Keys.hmacShaKeyFor -> jjwt 라이브러리 메서드, 문자열을 HMAC키로 변환
         // jwtSecret.getBytes() -> 문자열을 바이트 배열로 변환
@@ -69,6 +70,7 @@ public class JwtTokenProvider {
     // 토큰 유효성 검증
     public boolean validateToken(String token) {
         try {
+            log.info("Validating token: {}", token.substring(0, Math.min(50, token.length())) + "..."); // 토큰 일부 로그
             Jwts.parser()
                     .verifyWith(getSigningKey())
                     .build()

@@ -4,7 +4,7 @@ package com.luminous.aurora.auth.service;
 import com.luminous.aurora.auth.dto.LoginRequest;
 import com.luminous.aurora.auth.dto.SignUpRequest;
 import com.luminous.aurora.auth.dto.TokenResponse;
-import com.luminous.aurora.auth.entity.User;
+import com.luminous.aurora.auth.entity.Users;
 import com.luminous.aurora.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,18 +25,18 @@ public class AuthServiceImpl implements AuthService {
     public TokenResponse login(LoginRequest request) {
 
         // userEmail로 사용자 조회
-        User user = userRepository.findByUserEmail(request.getUserEmail())
+        Users users = userRepository.findByUserEmail(request.getUserEmail())
                 .orElseThrow(() -> new RuntimeException("존재하지 않는 사용자 입니다."));
 
         // 비밀번호 검증
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(request.getPassword(), users.getPassword())) {
             throw new RuntimeException("비밀번호가 일치하지 않습니다.");
         }
 
         // userEmail로 토큰 생성
-        TokenResponse tokens = tokenService.generateTokens(user.getUserEmail());
+        TokenResponse tokens = tokenService.generateTokens(users.getUserEmail());
 
-        log.info("로그인 성공: userEmail ={}", user.getUserEmail());
+        log.info("로그인 성공: userEmail ={}", users.getUserEmail());
 
         return tokens;
     }
@@ -55,16 +55,16 @@ public class AuthServiceImpl implements AuthService {
 
         // 사용자 생성
 
-        User user = User.builder()
+        Users users = Users.builder()
                 .userEmail(request.getUserEmail())
                 .userName(request.getUserName())
                 .password(encodedPassword)
                 .isDeleted(false)
                 .build();
 
-        userRepository.save(user);
+        userRepository.save(users);
 
-        log.info("회원가입 성공: userEmail = {}", user.getUserEmail());
+        log.info("회원가입 성공: userEmail = {}", users.getUserEmail());
     }
 
     @Override

@@ -57,7 +57,7 @@ public class JwtTokenProvider {
 	}
 
 	// 토큰에서 userId 추출
-	private String getUserIdFromToken(String token) {
+    String getUserIdFromToken(String token) {
 		return Jwts.parser()
 			.verifyWith(getSigningKey())
 			.build()

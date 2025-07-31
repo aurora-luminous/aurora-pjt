@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class TokenServiceImpl implements TokenService{
+public class TokenServiceImpl implements TokenService {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final TokenRedisRepository tokenRedisRepository;
@@ -24,18 +24,18 @@ public class TokenServiceImpl implements TokenService{
     private long refreshTokenValidity;
 
     @Override
-    public TokenResponse generateTokens(String userId) {
+    public TokenResponse generateTokens(String userEmail) {
         // Access Token 생성
-        String accessToken = jwtTokenProvider.generateAccessToken(userId);
+        String accessToken = jwtTokenProvider.generateAccessToken(userEmail);
 
         // refreshToken 생성
-        String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(userEmail);
 
         // Redis에 토큰 저장
-        tokenRedisRepository.saveToken(userId, accessToken, accessTokenValidity);
-        tokenRedisRepository.saveToken(userId+ ":refresh", refreshToken, refreshTokenValidity);
+        tokenRedisRepository.saveToken(userEmail, accessToken, accessTokenValidity);
+        tokenRedisRepository.saveToken(userEmail + ":refresh", refreshToken, refreshTokenValidity);
 
-        log.info("토큰 생성 완료: userId = {}", userId);
+        log.info("토큰 생성 완료: userEmail = {}", userEmail);
 
         return TokenResponse.builder()
                 .accessToken(accessToken)
@@ -44,35 +44,35 @@ public class TokenServiceImpl implements TokenService{
     }
 
     @Override
-    public boolean validateToken(String userId, String token) {
+    public boolean validateToken(String userEmail, String token) {
 
         // JWT 토큰 자체의 유효성 검증
-        if (!jwtTokenProvider.validateToken(token)){
+        if (!jwtTokenProvider.validateToken(token)) {
             return false;
         }
 
         // Redis에 토큰이 존재하는지 확인 (로그아웃 체크)
-        return tokenRedisRepository.hasToken(userId);
+        return tokenRedisRepository.hasToken(userEmail);
     }
 
     @Override
-    public void logout(String userId) {
+    public void logout(String userEmail) {
 
-        tokenRedisRepository.deleteToken(userId);
-        tokenRedisRepository.deleteToken(userId + ":refresh");
-        log.info("로그아웃 완료 : userId = {}",userId);
+        tokenRedisRepository.deleteToken(userEmail);
+        tokenRedisRepository.deleteToken(userEmail + ":refresh");
+        log.info("로그아웃 완료 : userEmail = {}", userEmail);
     }
 
     @Override
     public TokenResponse refreshToken(String refreshToken) {
-        String userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
+        String userEmail = jwtTokenProvider.getUserEmailFromToken(refreshToken);
 
         // refresh token이 redis에 있는지 확인
-        if (!tokenRedisRepository.hasToken(userId + ":refresh")) {
-            throw new RuntimeException("유효하지 않은 Refresh Token입니다.");
+        if (!tokenRedisRepository.hasToken(userEmail + ":refresh")) {
+            throw new RuntimeException("유효하지 않은 Refresh Token 입니다.");
         }
         // 있다면 새로운 토큰 생성
-        return generateTokens(userId);
+        return generateTokens(userEmail);
     }
 
 }

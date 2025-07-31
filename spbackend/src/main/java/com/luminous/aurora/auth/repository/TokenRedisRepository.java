@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit;
 // Redis 토큰 저장소
 @Repository
 public class TokenRedisRepository {
-    private  final RedisTemplate<String, String> redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
 
     public TokenRedisRepository(RedisTemplate<String, String> redisTemplate) {
         this.redisTemplate = redisTemplate;
@@ -19,7 +19,7 @@ public class TokenRedisRepository {
     public void saveToken(String userId, String token, long expirationTime) {
         String key = "token:" + userId;
         redisTemplate.opsForValue().set(key, token, expirationTime, TimeUnit.MILLISECONDS);
-                                    // 키 : 유저id, 밸류 : 토큰, 만료시간, 시간단위
+        // 키 : 유저id, 밸류 : 토큰, 만료시간, 시간단위
     }
 
     // 토큰 조회

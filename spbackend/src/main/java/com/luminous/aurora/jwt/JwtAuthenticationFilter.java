@@ -41,14 +41,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 1. HTTP 요청에서 토큰 추출
         String token = getTokenFromRequest(request);
 
-        // 2. JwtTokenProvider로 토큰 검증 + userId 추출, 토큰이 존재하고 유효한 경우에만 인증 처리
+        // 2. JwtTokenProvider로 토큰 검증 + userEmail 추출, 토큰이 존재하고 유효한 경우에만 인증 처리
         if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
 
             // 3. 토큰에서 사용자 ID 추출 (JwtTokenProvider 사용)
-            String userId = jwtTokenProvider.getUserIdFromToken(token);
+            String userEmail = jwtTokenProvider.getUserEmailFromToken(token);
 
             // 4. 사용자 ID로 데이터베이스에서 사용자 정보 조회
-            userRepository.findByUserId(userId)
+            userRepository.findByUserEmail(userEmail)
                     // 5. Spring Security 인증 토큰 생성
                     // - principal: 인증된 사용자 정보 (User 엔티티)
                     // - credentials: 인증 증명서 (JWT 토큰이므로 null)

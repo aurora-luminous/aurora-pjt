@@ -28,7 +28,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
             {projects.map((project, index) => (
               <Link
                 key={project.id}
-                href={`/${serverId}/projects/${project.id}`}
+                href={`/${serverId}/projects/${project.id}/channels/general`}
                 className={`block mb-2 ${
                   index === 0
                     ? "rounded-tr-lg rounded-br-lg rounded-bl-lg"

@@ -29,7 +29,7 @@ export const projects: Project[] = [
 // 채널 목록 (프로젝트 내에서 일관되게 표시)
 export const channels: Channel[] = [
   { id: "general", name: "일반", type: "text" },
-  { id: "announcements", name: "공지사항", type: "text" },
+  { id: "announcements", name: "공지사항", type: "notice" },
   { id: "dev-talk", name: "개발 이야기", type: "text" },
   { id: "voice-general", name: "일반", type: "voice" },
   { id: "voice-meeting", name: "회의실", type: "voice" },

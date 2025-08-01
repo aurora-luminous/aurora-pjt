@@ -28,7 +28,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
             {projects.map((project, index) => (
               <Link
                 key={project.id}
-                href={`/${serverId}/projects/${project.id}`}
+                href={`/${serverId}/projects/${project.id}/channels/general`}
                 className={`block mb-2 ${
                   index === 0
                     ? "rounded-tr-lg rounded-br-lg rounded-bl-lg"
@@ -111,10 +111,10 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                 </button>
               </div>
 
-              {/* 텍스트 채널 */}
+              {/* 공지 채널 */}
               <div className="mb-4">
                 {channels
-                  .filter((c) => c.type === "text")
+                  .filter((c) => c.type === "notice")
                   .map((channel) => (
                     <Link
                       key={channel.id}
@@ -150,18 +150,27 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                 </button>
               </div>
 
-              {/* 음성 채널 */}
+              {/* 채팅 채널 */}
               <div className="mb-4">
                 {channels
-                  .filter((c) => c.type === "voice")
+                  .filter((c) => c.type === "text")
                   .map((channel) => (
-                    <div
+                    <Link
                       key={channel.id}
-                      className="flex items-center px-2 py-1 rounded cursor-pointer mb-1 text-gray-300 hover:bg-gray-600 hover:text-white transition-colors"
+                      href={`/${serverId}/projects/${projectId}/channels/${channel.id}`}
                     >
-                      <span className="mr-2 text-gray-400">🔊</span>
-                      <span className="text-sm">{channel.name}</span>
-                    </div>
+                      <div
+                        key={channel.id}
+                        className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 text-gray-300 hover:bg-gray-600 hover:text-white transition-colors ${
+                          channelId === channel.id
+                            ? "bg-gray-600 text-white"
+                            : "text-gray-300 hover:bg-gray-600 hover:text-white"
+                        }`}
+                      >
+                        <span className="mr-2 text-gray-400">🔊</span>
+                        <span className="text-sm">{channel.name}</span>
+                      </div>
+                    </Link>
                   ))}
               </div>
 
@@ -183,25 +192,27 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                   </svg>
                 </button>
               </div>
-
-              {/* 음성 채널 4개 */}
-              <div className="space-y-1">
-                <div className="flex items-center px-2 py-1 rounded cursor-pointer text-gray-300 hover:bg-gray-600 hover:text-white transition-colors">
-                  <span className="mr-2 text-gray-400">🔊</span>
-                  <span className="text-sm">음성 채널 1</span>
-                </div>
-                <div className="flex items-center px-2 py-1 rounded cursor-pointer text-gray-300 hover:bg-gray-600 hover:text-white transition-colors">
-                  <span className="mr-2 text-gray-400">🔊</span>
-                  <span className="text-sm">음성 채널 2</span>
-                </div>
-                <div className="flex items-center px-2 py-1 rounded cursor-pointer text-gray-300 hover:bg-gray-600 hover:text-white transition-colors">
-                  <span className="mr-2 text-gray-400">🔊</span>
-                  <span className="text-sm">음성 채널 3</span>
-                </div>
-                <div className="flex items-center px-2 py-1 rounded cursor-pointer text-gray-300 hover:bg-gray-600 hover:text-white transition-colors">
-                  <span className="mr-2 text-gray-400">🔊</span>
-                  <span className="text-sm">음성 채널 4</span>
-                </div>
+              <div className="mb-4">
+                {channels
+                  .filter((c) => c.type === "voice")
+                  .map((channel) => (
+                    <Link
+                      key={channel.id}
+                      href={`/${serverId}/projects/${projectId}/voice_channels/${channel.id}`}
+                    >
+                      <div
+                        key={channel.id}
+                        className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 text-gray-300 hover:bg-gray-600 hover:text-white transition-colors ${
+                          channelId === channel.id
+                            ? "bg-gray-600 text-white"
+                            : "text-gray-300 hover:bg-gray-600 hover:text-white"
+                        }`}
+                      >
+                        <span className="mr-2 text-gray-400">🔊</span>
+                        <span className="text-sm">{channel.name}</span>
+                      </div>
+                    </Link>
+                  ))}
               </div>
             </div>
           </div>

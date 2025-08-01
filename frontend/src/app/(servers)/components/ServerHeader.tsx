@@ -61,7 +61,7 @@ export const ServerHeader: React.FC<ServerHeaderProps> = ({
         <input
           type="text"
           placeholder="검색하기"
-          className="bg-blue-500 text-white placeholder-blue-200 px-3 py-1 rounded text-sm w-48 focus:outline-none focus:bg-blue-400"
+          className="bg-white text-gray-500 placeholder-gray-500 px-3 py-1 rounded text-sm w-48 focus:outline-none focus:bg-blue-400"
         />
         {/* 사이드바 토글 버튼 */}
         <button

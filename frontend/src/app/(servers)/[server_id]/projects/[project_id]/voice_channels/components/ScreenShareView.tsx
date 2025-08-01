@@ -3,9 +3,15 @@ import { VoiceParticipant } from "../../../../../types/voiceChannelTypes";
 
 interface ScreenShareViewProps {
   participants: { [userId: string]: VoiceParticipant };
+  currentUserId?: string; // 현재 사용자 ID
+  cameraStream?: MediaStream | null; // 카메라 스트림
 }
 
-export const ScreenShareView = ({ participants }: ScreenShareViewProps) => {
+export const ScreenShareView = ({
+  participants,
+  currentUserId,
+  cameraStream,
+}: ScreenShareViewProps) => {
   return (
     <div className="w-full h-3/4 flex flex-col gap-4">
       {/* 메인 화면 공유 영역 */}
@@ -22,7 +28,15 @@ export const ScreenShareView = ({ participants }: ScreenShareViewProps) => {
       <div className="h-32 flex gap-3 overflow-x-auto pb-2">
         {Object.entries(participants).map(([userId, participant]) => (
           <div key={userId} className="flex-shrink-0 w-48">
-            <VoiceParticipantCard participant={participant} isCompact={true} />
+            <VoiceParticipantCard
+              participant={participant}
+              isCompact={true}
+              videoStream={
+                userId === currentUserId && participant.isVideoOn
+                  ? cameraStream || undefined
+                  : undefined
+              }
+            />
           </div>
         ))}
       </div>

@@ -48,7 +48,7 @@ const VoiceChannelPage = () => {
   );
 
   return (
-    <div className="h-screen bg-aurora-voice text-white flex flex-col relative">
+    <div className="h-full bg-aurora-voice text-white flex flex-col relative">
       {/* 상단 헤더 */}
       <VoiceHeader channelName={getChannelName(channelId)} />
 

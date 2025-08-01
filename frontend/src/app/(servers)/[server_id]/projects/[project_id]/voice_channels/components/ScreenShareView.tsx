@@ -7,7 +7,7 @@ interface ScreenShareViewProps {
 
 export const ScreenShareView = ({ participants }: ScreenShareViewProps) => {
   return (
-    <div className="w-full h-full flex gap-4">
+    <div className="w-full h-3/4 flex flex-col gap-4">
       {/* 메인 화면 공유 영역 */}
       <div className="flex-1 bg-gray-800 rounded-lg flex items-center justify-center">
         <div className="text-center">
@@ -18,14 +18,12 @@ export const ScreenShareView = ({ participants }: ScreenShareViewProps) => {
         </div>
       </div>
 
-      {/* 사이드바에 참여자들 */}
-      <div className="w-72 flex flex-col gap-3">
+      {/* 하단에 참여자들 */}
+      <div className="h-32 flex gap-3 overflow-x-auto pb-2">
         {Object.entries(participants).map(([userId, participant]) => (
-          <VoiceParticipantCard
-            key={userId}
-            participant={participant}
-            isCompact={true}
-          />
+          <div key={userId} className="flex-shrink-0 w-48">
+            <VoiceParticipantCard participant={participant} isCompact={true} />
+          </div>
         ))}
       </div>
     </div>

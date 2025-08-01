@@ -1,98 +1,117 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Messenger Structure API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Discord + Mattermost 스타일 메신저의 서버-프로젝트-채널 구조 관리 API
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 🏗 시스템 아키텍처
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ npm install
+```
+┌─────────────────────┐         ┌─────────────────────┐
+│   NestJS 서버       │   API   │   Spring 서버       │
+│  (구조 관리)        │ ←────→  │  (실시간 채팅)      │
+└─────────────────────┘         └─────────────────────┘
+        │                               │
+        └────────── PostgreSQL ─────────┘
 ```
 
-## Compile and run the project
+### 서비스 분담
+- **NestJS**: 서버/프로젝트/채널 구조 관리, JWT 토큰 검증, 음성/화상 기능(추후)
+- **Spring**: 실시간 채팅 메시징, STOMP WebSocket, JWT 토큰 발급, 사용자 인증
 
+## 🛠 기술 스택
+
+- **Runtime**: Node.js 18+
+- **Framework**: NestJS 10.x
+- **Database**: PostgreSQL 14+
+- **Language**: TypeScript
+
+## 🚀 실행 방법
+
+### 필수 요구사항
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+Node.js 18+
+PostgreSQL 14+
+npm 8+
 ```
 
-## Run tests
-
+### 설치 및 실행
 ```bash
-# unit tests
-$ npm run test
+# 의존성 설치
+npm install
 
-# e2e tests
-$ npm run test:e2e
+# 환경 변수 설정
+cp .env.example .env
+# .env 파일에서 DB 정보 및 API 키 설정
 
-# test coverage
-$ npm run test:cov
+# 데이터베이스 생성
+createdb messenger_db
+
+# 서버 실행
+npm run start:dev
 ```
 
-## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## 🗄 데이터베이스
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### PostgreSQL 설정
+```sql
+-- 데이터베이스 생성
+CREATE DATABASE aurora;
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+### 주요 테이블
+- `users` - 사용자 정보
+- `server` - 서버 정보  
+- `project` - 프로젝트 정보
+- `channel` - 채널 정보
+- `event` - 프로젝트 일정
+- `*member` - 각 레벨별 멤버십 및 권한
+
+## 📄 환경 변수
+
+### 필수 환경 변수
+```env
+# 데이터베이스
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=postgres
+DB_PASSWORD=your_db_password
+DB_DATABASE=aurora
+
+# JWT (Spring 서버)
+JWT_SECRET=shared_secret_key
+
+# Spring 서버 연동
+SPRING_CHAT_SERVER_URL=http://localhost:8080
+SPRING_CHAT_API_KEY=api_key_from_spring_team
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### 선택 환경 변수
+```env
+NODE_ENV=development
+PORT=3000
+```
 
-## Resources
 
-Check out a few resources that may come in handy when working with NestJS:
+### 의존성
+- PostgreSQL 데이터베이스 연결 필요
+- Spring 서버와 HTTP 통신 (채널 생성/삭제 알림용)
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
 
-## Support
+## 🔗 외부 연동
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Spring 서버 연동
+- 채널 생성/삭제 시 Spring 서버에 HTTP 요청
+- JWT 토큰 검증을 위해 동일한 시크릿 키 사용
 
-## Stay in touch
+### 향후 확장
+- 음성/화상 기능 추가 예정 (WebRTC)
+- Redis 캐싱 추가 가능성
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## 📦 빌드 및 배포
 
-## License
+```bash
+# 프로덕션 빌드
+npm run build
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+# 프로덕션 실행
+npm run start:prod
+```

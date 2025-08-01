@@ -1,3 +1,5 @@
+import { useCamera } from "../../../../../hooks/useCamera";
+
 interface VoiceControlBarProps {
   isMicOn: boolean;
   isVideoOn: boolean;
@@ -13,16 +15,24 @@ export const VoiceControlBar = ({
   isVideoOn,
   isScreenSharing,
   onToggleMic,
-  onToggleVideo,
   onToggleScreenShare,
   onEndCall,
 }: VoiceControlBarProps) => {
+  const { cameraStream, toggleCamera } = useCamera();
   const handleEndCall = () => {
     if (onEndCall) {
       onEndCall();
     } else {
       // 기본 동작: 뒤로가기
       window.history.back();
+    }
+  };
+
+  const handleToggleCamera = () => {
+    if (cameraStream) {
+      toggleCamera();
+    } else {
+      toggleCamera();
     }
   };
 
@@ -60,7 +70,7 @@ export const VoiceControlBar = ({
 
         {/* 비디오 */}
         <button
-          onClick={onToggleVideo}
+          onClick={handleToggleCamera}
           className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
             isVideoOn
               ? "bg-gray-600 hover:bg-gray-500"

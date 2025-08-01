@@ -1,14 +1,27 @@
 import { VoiceParticipant } from "../../../../../types/voiceChannelTypes";
+import { useEffect, useRef } from "react";
 
 interface VoiceParticipantCardProps {
   participant: VoiceParticipant;
   isCompact?: boolean; // 화면 공유 모드일 때 작은 크기
+  videoStream?: MediaStream; // 비디오 스트림
 }
 
 export const VoiceParticipantCard = ({
   participant,
   isCompact = false,
+  videoStream,
 }: VoiceParticipantCardProps) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // 비디오 스트림 연결
+  useEffect(() => {
+    if (videoRef.current && videoStream) {
+      console.log("📺 Setting video srcObject for:", participant.username);
+      videoRef.current.srcObject = videoStream;
+    }
+  }, [videoStream, participant.isVideoOn, participant.username]);
+
   const avatarSize = isCompact ? "w-12 h-12" : "w-24 h-24";
   const textSize = isCompact ? "text-xs" : "text-sm";
   const iconSize = isCompact ? "w-4 h-4" : "w-8 h-8";
@@ -22,14 +35,24 @@ export const VoiceParticipantCard = ({
         participant.isSpeaking ? "ring-2 ring-green-400" : ""
       }`}
     >
-      {/* 사용자 아바타 */}
-      <div
-        className={`${avatarSize} bg-gray-600 rounded-full flex items-center justify-center ${
-          isCompact ? "text-xl mb-2" : "text-3xl mb-4"
-        }`}
-      >
-        {participant.username[0]}
-      </div>
+      {/* 사용자 비디오 또는 아바타 */}
+      {participant.isVideoOn && videoStream ? (
+        <video
+          ref={videoRef}
+          autoPlay
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover rounded-lg"
+        />
+      ) : (
+        <div
+          className={`${avatarSize} bg-gray-600 rounded-full flex items-center justify-center ${
+            isCompact ? "text-xl mb-2" : "text-3xl mb-4"
+          }`}
+        >
+          {participant.username[0]}
+        </div>
+      )}
 
       {/* 이름과 상태 아이콘 컨테이너 */}
       <div className={`absolute ${namePosition} flex items-center gap-2`}>

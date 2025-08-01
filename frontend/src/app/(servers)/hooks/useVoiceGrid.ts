@@ -49,8 +49,6 @@ export const useVoiceGrid = (
     ]
   );
 
-  // 개발 모드에서만 콘솔 로그
-
   return {
     gridLayout: getGridLayout,
     gridRows: getGridRows,

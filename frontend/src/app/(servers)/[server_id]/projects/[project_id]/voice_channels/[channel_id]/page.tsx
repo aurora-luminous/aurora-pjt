@@ -2,6 +2,7 @@
 
 import { useVoiceChannelPage } from "../../../../../hooks/useVoiceChannelPage";
 import { useVoiceGrid } from "../../../../../hooks/useVoiceGrid";
+import { useMediaControl } from "../../../../../hooks/useMediaControl";
 import dynamic from "next/dynamic";
 import {
   VoiceHeader,
@@ -24,6 +25,7 @@ const VoiceChannelPage = () => {
   const {
     channelId,
     getChannelName,
+    currentUserId,
     isMicOn,
     isFullScreen,
     isVideoOn,
@@ -32,10 +34,12 @@ const VoiceChannelPage = () => {
     participants,
     participantCount,
     toggleMic,
-    toggleVideo,
     toggleFullScreen,
     toggleScreenShare,
   } = useVoiceChannelPage();
+
+  // 미디어 제어 (카메라 포함)
+  const { cameraStream, handleToggleVideo } = useMediaControl();
 
   // 참여자 수에 따른 그리드 레이아웃 계산
   const { gridLayout, gridRows } = useVoiceGrid(
@@ -56,13 +60,19 @@ const VoiceChannelPage = () => {
       <div className="flex-1 p-8 flex items-center justify-center">
         {isScreenShareActive ? (
           /* 화면 공유 모드 */
-          <ScreenShareView participants={participants} />
+          <ScreenShareView
+            participants={participants}
+            currentUserId={currentUserId}
+            cameraStream={cameraStream}
+          />
         ) : (
           /* 일반 화상회의 모드 */
           <VoiceGrid
             participants={participants}
             gridLayout={gridLayout}
             gridRows={gridRows}
+            currentUserId={currentUserId}
+            cameraStream={cameraStream}
           />
         )}
       </div>
@@ -73,7 +83,7 @@ const VoiceChannelPage = () => {
         isVideoOn={isVideoOn}
         isScreenSharing={isScreenSharing}
         onToggleMic={toggleMic}
-        onToggleVideo={toggleVideo}
+        onToggleVideo={handleToggleVideo}
         onToggleScreenShare={toggleScreenShare}
       />
 

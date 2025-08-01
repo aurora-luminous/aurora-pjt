@@ -19,7 +19,7 @@ async function startApp() {
       'http://localhost:5173',
       'http://localhost:8080',
     ],
-    credential: true,
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });
@@ -53,7 +53,7 @@ async function startApp() {
     .addTag('users', '사용자 관리 API')
     .addTag('events', '이벤트 관리 API')
     .addTag('servers', '서버 관리 API')
-    .addTag('projects', '프로젝트 관리 APi')
+    .addTag('projects', '프로젝트 관리 API')
     .addTag('channels', '채널 관리 API')
     .build();
 

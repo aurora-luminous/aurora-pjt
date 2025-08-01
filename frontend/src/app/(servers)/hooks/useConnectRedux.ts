@@ -117,6 +117,9 @@ export const useConnectRedux = (channelId: string) => {
     isSpeakerOn: voiceChannelState.currentUser.isSpeakerOn,
     isScreenShareOpen: voiceChannelState.currentUser.isScreenShareOpen,
 
+    // 현재 사용자 정보
+    currentUserId,
+
     // 현재 사용자 상태
     isMicOn: currentParticipant?.isMicOn || false,
     isVideoOn: currentParticipant?.isVideoOn || false,

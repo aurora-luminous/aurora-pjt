@@ -25,6 +25,9 @@ export const useVoiceChannelPage = () => {
     channelId: params.channelId,
     getChannelName: params.getChannelName,
 
+    // 사용자 ID
+    currentUserId: reduxData.currentUserId,
+
     // 상태 (Redux에서 직접)
     isMicOn: reduxData.isMicOn,
     isSpeakerOn: reduxData.isSpeakerOn,

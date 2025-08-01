@@ -22,7 +22,7 @@ export const useVoiceChannelInit = ({
     // 현재 사용자를 참여자로 추가
     const currentUser: VoiceParticipant = {
       userId: "current-user", // 실제로는 auth에서 가져와야 함
-      username: "심근원", // 실제로는 auth에서 가져와야 함
+      username: "김병년", // 실제로는 auth에서 가져와야 함
       isMicOn: true,
       isVideoOn: false,
       isAudioOn: true,
@@ -33,7 +33,7 @@ export const useVoiceChannelInit = ({
     const testParticipants: VoiceParticipant[] = [
       {
         userId: "user-2",
-        username: "김병년",
+        username: "심근원",
         isMicOn: false,
         isVideoOn: true,
         isAudioOn: true,
@@ -41,7 +41,7 @@ export const useVoiceChannelInit = ({
       },
       {
         userId: "user-3",
-        username: "박준혁",
+        username: "이용재",
         isMicOn: true,
         isVideoOn: false,
         isAudioOn: true,
@@ -49,7 +49,7 @@ export const useVoiceChannelInit = ({
       },
       {
         userId: "user-4",
-        username: "이수진",
+        username: "김세현",
         isMicOn: true,
         isVideoOn: true,
         isAudioOn: true,

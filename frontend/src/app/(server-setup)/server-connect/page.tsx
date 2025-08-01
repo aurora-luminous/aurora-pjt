@@ -49,7 +49,7 @@ const ServerConnectPage = () => {
       // 서버 연결 성공 시 서버 대시보드로 이동 (프로젝트 목록 표시)
       const serverId = getProjectIdFromServerName(serverName);
       console.log("서버 이름:", serverName, "→ 서버 ID:", serverId);
-      router.push(`/${serverId}/projects/general`);
+      router.push(`/${serverId}/projects/general/channels/general`);
     } catch (error) {
       console.error("서버 연결 실패:", error);
       alert("서버 연결에 실패했습니다. 다시 시도해주세요.");

@@ -17,7 +17,6 @@ export const VoiceParticipantCard = ({
   // 비디오 스트림 연결
   useEffect(() => {
     if (videoRef.current && videoStream) {
-      console.log("📺 Setting video srcObject for:", participant.username);
       videoRef.current.srcObject = videoStream;
     }
   }, [videoStream, participant.isVideoOn, participant.username]);
@@ -67,16 +66,12 @@ export const VoiceParticipantCard = ({
         <div className={`flex gap-${isCompact ? "1" : "2"}`}>
           {!participant.isMicOn && (
             <div
-              className={`${iconSize} bg-red-500 rounded-full flex items-center justify-center`}
+              className={`${iconSize} bg-gray-500 rounded-full flex items-center justify-center`}
             >
-              <svg
-                className={`${isCompact ? "w-3 h-3" : "w-4 h-4"}`}
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  d="M2.293 2.293a1 1 0 011.414 0L7 5.586V4a3 3 0 116 0v4c0 .57-.16 1.104-.44 1.563l1.828 1.828A6.966 6.966 0 0015 8a1 1 0 012 0 8.94 8.94 0 01-1.22 4.522l1.927 1.927a1 1 0 01-1.414 1.414L3.707 3.707a1 1 0 010-1.414zM10 11.414L7.586 9A3.001 3.001 0 007 8v3a3 3 0 003 .414z"
                   clipRule="evenodd"
                 />
               </svg>

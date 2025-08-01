@@ -9,9 +9,9 @@ export const VoiceParticipantCard = ({
   participant,
   isCompact = false,
 }: VoiceParticipantCardProps) => {
-  const avatarSize = isCompact ? "w-16 h-16" : "w-24 h-24";
+  const avatarSize = isCompact ? "w-12 h-12" : "w-24 h-24";
   const textSize = isCompact ? "text-xs" : "text-sm";
-  const iconSize = isCompact ? "w-6 h-6" : "w-8 h-8";
+  const iconSize = isCompact ? "w-4 h-4" : "w-8 h-8";
   const namePosition = isCompact ? "bottom-2 left-2" : "bottom-4 left-4";
 
   return (
@@ -25,7 +25,7 @@ export const VoiceParticipantCard = ({
       {/* 사용자 아바타 */}
       <div
         className={`${avatarSize} bg-gray-600 rounded-full flex items-center justify-center ${
-          isCompact ? "text-2xl mb-2" : "text-3xl mb-4"
+          isCompact ? "text-xl mb-2" : "text-3xl mb-4"
         }`}
       >
         {participant.username[0]}

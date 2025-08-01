@@ -18,7 +18,7 @@ export const VoiceGrid = ({
 }: VoiceGridProps) => {
   return (
     <div
-      className={`grid ${gridLayout} ${gridRows} gap-4 w-full h-full max-w-6xl`}
+      className={`grid ${gridLayout} ${gridRows} gap-4 w-full h-3/4 max-w-6xl`}
     >
       {Object.entries(participants).map(([userId, participant]) => (
         <VoiceParticipantCard

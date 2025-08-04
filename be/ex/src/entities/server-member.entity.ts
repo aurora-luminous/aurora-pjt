@@ -27,7 +27,7 @@ export class ServerMember {
 
   @ApiProperty({ 
     description: '멤버 상태', 
-    enum: ['Pending', 'Approved', 'Rejected'], 
+    enum: ['Pending', 'Approved', 'Rejected', 'Banned'], 
     default: 'Pending' 
   })
   @Column({ 
@@ -35,7 +35,7 @@ export class ServerMember {
     length: 20, 
     default: 'Pending' 
   })
-  status: 'Pending' | 'Approved' | 'Rejected';
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Banned';
 
   @ApiProperty({ 
     description: '서버 역할', 

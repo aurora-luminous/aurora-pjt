@@ -15,15 +15,15 @@ import { ChannelMember } from './channel-member.entity';
 export class User {
     @ApiProperty({ description: '사용자 기본키' })
     @PrimaryGeneratedColumn()
-    userPK: number;
+    userPk: number;
 
     @ApiProperty({ description: '사용자 이메일', maxLength: 50})
     @Column({ type: 'varchar', length: 50, unique: true })
-    user_email: string;
+    userEmail: string;
 
     @ApiProperty({ description: '사용자 이름', maxLength: 10})
     @Column({ type: 'varchar', length: 10 })
-    user_name: string;
+    userName: string;
 
     @ApiProperty({ description: '비밀번호', maxLength: 20})
     @Column({ type: 'varchar', length: 20 })
@@ -31,11 +31,11 @@ export class User {
 
     @ApiProperty({ description: '삭제 여부', default: false})
     @Column({ type: 'boolean', default: false })
-    user_is_deleted: boolean;
+    userIsDeleted: boolean;
 
     @ApiProperty({ description: '프로필 이미지 경로', required: false})
     @Column({ type: 'text', nullable: true })
-    profile_image_path: string;
+    profileImagePath: string;
 
     // 관계 설정
     @OneToOne(() => Option, option => option.user)

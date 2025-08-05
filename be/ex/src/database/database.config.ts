@@ -1,5 +1,6 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
+import { SnakeNamingStrategy } from '../config/snake-naming.strategy';
 
 export const getDatabaseConfig = (ConfigService: ConfigService): TypeOrmModuleOptions => ({
     type: 'postgres',
@@ -11,4 +12,5 @@ export const getDatabaseConfig = (ConfigService: ConfigService): TypeOrmModuleOp
     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
     synchronize: ConfigService.get('NODE_ENV') === 'development',
     logging: ConfigService.get('NODE_ENV') === 'development',
+    namingStrategy: new SnakeNamingStrategy(),
 });

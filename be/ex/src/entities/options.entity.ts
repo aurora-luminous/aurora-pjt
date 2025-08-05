@@ -28,6 +28,6 @@ export class Option {
 
   // 관계 설정
   @OneToOne(() => User, user => user.option)
-  @JoinColumn({ name: 'userPk' })
+  @JoinColumn({ name: 'user_pk' })
   user: User;
 }

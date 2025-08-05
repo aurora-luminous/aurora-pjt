@@ -42,7 +42,7 @@ export class Channel {
 
   // 관계 설정
   @ManyToOne(() => Project, project => project.channels)
-  @JoinColumn({ name: 'projectPk' })
+  @JoinColumn({ name: 'project_pk' })
   project: Project;
 
   @OneToMany(() => ChannelMember, channelMember => channelMember.channel)

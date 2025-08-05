@@ -47,11 +47,11 @@ export class ChannelMember {
 
   // 관계 설정
   @ManyToOne(() => Channel, channel => channel.channelMembers)
-  @JoinColumn({ name: 'channelPk' })
+  @JoinColumn({ name: 'channel_pk' })
   channel: Channel;
 
   @ManyToOne(() => User, user => user.channelMembers)
-  @JoinColumn({ name: 'userPk' })
+  @JoinColumn({ name: 'user_pk' })
   user: User;
 
 }

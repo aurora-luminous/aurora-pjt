@@ -51,10 +51,10 @@ export class ServerMember {
 
   // 관계 설정
   @ManyToOne(() => User, user => user.serverMembers)
-  @JoinColumn({ name: 'userPk' })
+  @JoinColumn({ name: 'user_pk' })
   user: User;
 
   @ManyToOne(() => Server, server => server.serverMembers)
-  @JoinColumn({ name: 'serverPk' })
+  @JoinColumn({ name: 'server_pk' })
   server: Server;
 }

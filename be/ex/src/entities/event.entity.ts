@@ -33,6 +33,6 @@ export class Event {
 
   // 관계 설정
   @ManyToOne(() => Project, project => project.events)
-  @JoinColumn({ name: 'projectPk' })
+  @JoinColumn({ name: 'project_pk' })
   project: Project;
 }

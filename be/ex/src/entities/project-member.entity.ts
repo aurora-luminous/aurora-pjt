@@ -48,14 +48,14 @@ export class ProjectMember {
 
   // 관계 설정
   @ManyToOne(() => Project, project => project.projectMembers)
-  @JoinColumn({ name: 'projectPk' })
+  @JoinColumn({ name: 'project_pk' })
   project: Project;
 
   @ManyToOne(() => User, user => user.projectMembers)
-  @JoinColumn({ name: 'userPk' })
+  @JoinColumn({ name: 'user_pk' })
   user: User;
 
   @ManyToOne(() => Channel, { nullable: true })
-  @JoinColumn({ name: 'lastConnectedChannel' })
+  @JoinColumn({ name: 'last_connected_channel' })
   lastConnectedChannelRef: Channel;
 }

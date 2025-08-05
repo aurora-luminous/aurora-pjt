@@ -32,7 +32,7 @@ export class Project {
 
   // 관계 설정
   @ManyToOne(() => Server, server => server.projects)
-  @JoinColumn({ name: 'serverPk' })
+  @JoinColumn({ name: 'server_pk' })
   server: Server;
 
   @OneToMany(() => ProjectMember, projectMember => projectMember.project)

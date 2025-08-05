@@ -5,6 +5,13 @@ import { HttpModule } from '@nestjs/axios';
 import { getDatabaseConfig } from './database/database.config';
 import { AppController } from './app.controller';
 
+// 도메인 모듈들 import
+import { UserManagementModule } from './domain/user_management/user-management.module';
+import { AuthModule } from './domain/auth/auth.module';
+import { WorkspaceManagementModule } from './domain/workspace_management/workspace-management.module';
+import { MediaCommunicationModule } from './domain/media_communication/media-communication.module';
+import { PermissionManagementModule } from './domain/permission_management/permission-management.module';
+
 @Module({
   imports: [
     // 환경 설정
@@ -26,6 +33,12 @@ import { AppController } from './app.controller';
       maxRedirects: 5,
     }),
 
+    // 도메인 모듈들
+    UserManagementModule,
+    AuthModule,
+    WorkspaceManagementModule,
+    MediaCommunicationModule,
+    PermissionManagementModule,
   ],
   controllers: [AppController],
   providers: [],

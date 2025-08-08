@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import com.luminous.aurora.auth.entity.Users;
 
 @Repository
-public interface UserRepository extends JpaRepository<Users, Long> {
+public interface UserRepository extends JpaRepository<Users, Integer> {
 
     // 로그인 시 사용할 메서드
     Optional<Users> findByUserEmail(String userEmail);

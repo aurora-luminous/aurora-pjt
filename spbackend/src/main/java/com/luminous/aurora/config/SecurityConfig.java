@@ -33,6 +33,7 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 사용 안함 -> jwt 로그인 방식이기 때문
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/").permitAll() // 루트경로 허용
                         .requestMatchers("/api/login","/api/signup","/api/refresh").permitAll() // 인증관련 api 전부 허용
                         .anyRequest().authenticated()
                 )

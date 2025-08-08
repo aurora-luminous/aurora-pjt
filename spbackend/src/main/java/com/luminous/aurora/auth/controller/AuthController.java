@@ -70,6 +70,11 @@ public class AuthController {
     public ResponseEntity<String> logout(@CookieValue("access_token") String token) {
         log.info("로그아웃 요청");
 
+        if (token == null) {
+            return ResponseEntity.badRequest().body("토큰이 없습니다.");
+        }
+
+        try {
         // 토큰에서 userEmail 추출
         String userEmail = jwtTokenProvider.getUserEmailFromToken(token);
         authService.logout(userEmail);
@@ -95,12 +100,23 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                 .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
                 .body("로그아웃이 완료되었습니다.");
+        } catch (Exception e) {
+            log.error("로그아웃 중 에러 발생 : {}", e.getMessage());
+            return ResponseEntity.badRequest().body("유효하지 않은 토큰입니다.");
+        }
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<TokenResponse> refreshToken(@CookieValue("refresh_token") String refreshToken) {
         log.info("토큰 갱신 요청");
+        if (refreshToken == null ){
+            return ResponseEntity.badRequest().body(TokenResponse.builder()
+                    .accessToken("")
+                    .refreshToken("")
+                    .build());
+        }
 
+        try {
         TokenResponse tokens = tokenService.refreshToken(refreshToken);
 
         // 새로운 accesstoken 쿠키 설정
@@ -115,6 +131,13 @@ public class AuthController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
                 .body(tokens);
+        } catch (Exception e) {
+            log.error("토큰 갱신 중 에러 발생 : {}", e.getMessage());
+            return ResponseEntity.badRequest().body(TokenResponse.builder()
+                    .accessToken("")
+                    .refreshToken("")
+                    .build());
+        }
     }
 
 }

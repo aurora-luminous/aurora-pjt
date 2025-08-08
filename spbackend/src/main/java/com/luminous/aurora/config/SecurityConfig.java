@@ -47,9 +47,9 @@ public class SecurityConfig {
 
         // localhost와 프론트엔드 도메인만 허용
         configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:3000",      // React 개발 서버
+                "http://localhost:3000",      // Express 개발 서버
                 "http://localhost:8080",      // Spring Boot 개발 서버
-                "http://localhost:5173",      // Vite 개발 서버
+                "http://localhost:5173",      // React 개발 서버
                 "https://t1329.p.ssafy.io"    // 프로덕션 서버
 
         ));

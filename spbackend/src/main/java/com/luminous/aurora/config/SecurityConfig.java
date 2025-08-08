@@ -49,7 +49,9 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",      // React 개발 서버
                 "http://localhost:8080",      // Spring Boot 개발 서버
-                "http://localhost:5173"       // Vite 개발 서버
+                "http://localhost:5173",      // Vite 개발 서버
+                "https://t1329.p.ssafy.io"    // 프로덕션 서버
+
         ));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));

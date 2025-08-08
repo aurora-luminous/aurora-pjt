@@ -26,6 +26,8 @@ public class Message {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    private String messageType;  // "TEXT", "FILE", "IMAGE" 등
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

@@ -2,15 +2,14 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule } from '@nestjs/axios';
+import { RouterModule } from '@nestjs/core';
 import { getDatabaseConfig } from './database/database.config';
 import { AppController } from './app.controller';
 
 // 도메인 모듈들 import
-import { UserManagementModule } from './domain/user_management/user-management.module';
-import { AuthModule } from './domain/auth/auth.module';
-import { WorkspaceManagementModule } from './domain/workspace_management/workspace-management.module';
-import { MediaCommunicationModule } from './domain/media_communication/media-communication.module';
-import { PermissionManagementModule } from './domain/permission_management/permission-management.module';
+import { ServerModule } from './domain/server/server.module';
+import { ProjectModule } from './domain/project/project.module';
+import { TextChannelModule } from './domain/text-channel/text-channel.module';
 
 @Module({
   imports: [
@@ -33,14 +32,30 @@ import { PermissionManagementModule } from './domain/permission_management/permi
       maxRedirects: 5,
     }),
 
-    // 도메인 모듈들
-    UserManagementModule,
-    AuthModule,
-    WorkspaceManagementModule,
-    MediaCommunicationModule,
-    PermissionManagementModule,
+    // Workspace 도메인 모듈들 (RouterModule으로 계층적 라우팅)
+    ServerModule,
+    ProjectModule,
+    TextChannelModule,
+
+    // Workspace 도메인 라우터 설정
+    RouterModule.register([
+      {
+        path: 'servers',
+        module: ServerModule,
+      },
+      {
+        path: 'servers/:serverPk/projects',
+        module: ProjectModule,
+      },
+      {
+        path: 'servers/:serverPk/projects/:projectPk/channels',
+        module: TextChannelModule,
+      },
+    ]),
   ],
-  controllers: [AppController],
+  controllers: [
+    AppController,
+  ],
   providers: [],
 })
 

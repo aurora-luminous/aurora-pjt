@@ -25,9 +25,18 @@ export class ChannelMember {
   @Column()
   userPk: number;
 
-  @ApiProperty({ description: 'C 상태' })
-  @Column({ type: 'varchar', length: 20, name: 'c_status' })
-  cStatus: string;
+  @ApiProperty({ 
+    description: '채널 상태',
+    enum: ['Active', 'Inactive', 'Banned'],
+    default: 'Active'
+  })
+  @Column({ 
+    type: 'varchar', 
+    length: 20, 
+    name: 'c_status',
+    default: 'Active'
+  })
+  cStatus: 'Active' | 'Inactive' | 'Banned';
 
   @ApiProperty({ description: '마지막 읽은 메시지 (외래키)', required: false })
   @Column({ type: 'bigint', nullable: true })

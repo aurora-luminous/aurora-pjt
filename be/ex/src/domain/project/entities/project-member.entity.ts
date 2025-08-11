@@ -26,9 +26,18 @@ export class ProjectMember {
   @Column()
   userPk: number;
 
-  @ApiProperty({ description: 'P 상태' })
-  @Column({ type: 'varchar', length: 20, name: 'p_status' })
-  pStatus: string;
+  @ApiProperty({ 
+    description: '프로젝트 상태',
+    enum: ['Active', 'Inactive', 'Banned'],
+    default: 'Active'
+  })
+  @Column({ 
+    type: 'varchar', 
+    length: 20, 
+    name: 'p_status',
+    default: 'Active'
+  })
+  pStatus: 'Active' | 'Inactive' | 'Banned';
 
   @ApiProperty({ 
     description: '프로젝트 역할', 

@@ -14,16 +14,16 @@ public interface ChatService {
     Message saveMessage(MessageRequest request, Integer userPK);
 
     // 채널별 최신 메시지 조회 (최초 로드 시)
-    List<MessageResponse> getLatestMessage(Integer channelPk);
+    List<MessageResponse> getLatestMessage(Integer channelPk, String jwtToken);
 
     // 채널별 이전 메시지 조회 (스크롤 시)
-    List<MessageResponse> getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime);
+    List<MessageResponse> getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, String jwtToken);
 
     // DM 방별 최신 메시지 조회
-    List<MessageResponse> getLatestDmMessage(Integer dmRoomPk);
+    List<MessageResponse> getLatestDmMessage(Integer dmRoomPk, String jwtToken);
 
     // DM 방별 이전 메시지 조회 (스크롤 시)
-    List<MessageResponse> getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime);
+    List<MessageResponse> getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, String jwtToken);
 
     // Message 엔티티를 ChatMessage로 변환 (WebSocket용)
     ChatMessage convertToChatMessage(Message message);

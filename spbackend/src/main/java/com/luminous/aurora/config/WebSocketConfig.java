@@ -11,7 +11,8 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    public void configureMessageBrocker(MessageBrokerRegistry config) {
+    @Override
+    public void configureMessageBroker(MessageBrokerRegistry config) {
         // 클라이언트가 서버로 메시지를 보낼 때 사용할 prefix
         config.setApplicationDestinationPrefixes("/app");
 
@@ -19,14 +20,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         config.enableSimpleBroker("/topic");
     }
 
-    public void registerStompEndpoint(StompEndpointRegistry registry) {
+    @Override
+    public void registerStompEndpoints(StompEndpointRegistry registry) {
         // Websocket 연결 엔드포인트
         registry.addEndpoint("/ws")
                 .setAllowedOrigins(
                         "http://localhost:3000",
                         "http://localhost:5173",
                         "http://localhost:8080",
-                        "https://t1329.p.ssafy.io")
+                        "https://t1329.p.ssafy.io",
+                        "http://127.0.0.1:5500/")
                 .withSockJS();
     }
 

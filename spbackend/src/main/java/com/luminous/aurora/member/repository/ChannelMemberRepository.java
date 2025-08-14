@@ -11,8 +11,8 @@ public interface ChannelMemberRepository extends JpaRepository<ChannelMember, In
 
 
     // 채널 멤버인지 확인
-    Optional<ChannelMember> findByChannelPkAndUserPk(Integer channelPk, Integer userPk);
+    Optional<ChannelMember> findByChannel_ChannelPkAndUser_UserPk(Integer channelPk, Integer userPk);
 
     // 채널 멤버 존재 여부 확인
-    boolean existsByChannelPkAndUserPk(Integer channelPk, Integer userPk);
+    boolean existsByChannel_ChannelPkAndUser_UserPk(Integer channelPk, Integer userPk);
 }

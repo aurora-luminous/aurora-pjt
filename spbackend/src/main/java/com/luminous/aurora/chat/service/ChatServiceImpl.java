@@ -29,7 +29,7 @@ public class ChatServiceImpl implements ChatService{
 
     @Override
     @Transactional
-    public Message saveMessage(MessageRequest request, String jwtToken){
+    public void saveMessage(MessageRequest request, String jwtToken){
 
         Integer userPk = getUserPkFromToken(jwtToken);
 
@@ -51,9 +51,9 @@ public class ChatServiceImpl implements ChatService{
                 .messageType(request.getMessageType() != null ? request.getMessageType() : "TEXT")
                 .build();
 
-        log.info("메세지 저장: channelPk = {}, userPk = {}", request.getChannelPk(), userPk);
+        messageRepository.save(message);
 
-        return messageRepository.save(message);
+        log.info("메세지 저장: channelPk = {}, userPk = {}", request.getChannelPk(), userPk);
     }
 
     @Override
@@ -115,7 +115,20 @@ public class ChatServiceImpl implements ChatService{
                 .messageType(message.getMessageType())
                 .build();
     }
-
+    // Message 엔티티를 MessageResponse로 변환
+    @Override
+    public MessageResponse convertToMessageResponse(Message message) {
+        return MessageResponse.builder()
+                .messagePk(message.getMessagePk())
+                .channelPk(message.getChannelPk())
+                .dmRoomPk(message.getDmRoomPk())
+                .userPk(message.getUserPk())
+                .userName(getUserNameByUserPk(message.getUserPk()))
+                .content(message.getContent())
+                .createdAt(message.getCreatedAt())
+                .messageType(message.getMessageType())
+                .build();
+    }
     // jwt 토큰에서 userPk 추출
     private Integer getUserPkFromToken(String jwtToken) {
         String userEmail = jwtTokenProvider.getUserEmailFromToken(jwtToken);
@@ -143,18 +156,6 @@ public class ChatServiceImpl implements ChatService{
         }
     }
 
-    // Message 엔티티를 MessageResponse로 변환
-    private MessageResponse convertToMessageResponse(Message message) {
-        return MessageResponse.builder()
-                .messagePk(message.getMessagePk())
-                .channelPk(message.getChannelPk())
-                .dmRoomPk(message.getDmRoomPk())
-                .userPk(message.getUserPk())
-                .userName(getUserNameByUserPk(message.getUserPk()))
-                .content(message.getContent())
-                .createdAt(message.getCreatedAt())
-                .messageType(message.getMessageType())
-                .build();
-    }
+
 
 }

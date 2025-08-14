@@ -16,7 +16,7 @@ public class MemberServiceImpl implements MemberService{
 
     @Override
     public boolean hasChannelAccess(Integer channelPk, Integer userPk) {
-        boolean hasAccess = channelMemberRepository.existsByChannelPkAndUserPk(channelPk, userPk);
+        boolean hasAccess = channelMemberRepository.existsByChannel_ChannelPkAndUser_UserPk(channelPk, userPk);
 
         log.debug("채널 접근 권한 확인 : channelPk = {}, userPk = {}, hasAccess={}", channelPk, userPk, hasAccess);
         return hasAccess;
@@ -24,7 +24,7 @@ public class MemberServiceImpl implements MemberService{
 
     @Override
     public boolean hasDmRoomAccess(Integer dmRoomPk, Integer userPk) {
-        boolean hasAccess = dmMemberRepository.existsByDmRoomPkAndUserPk(dmRoomPk, userPk);
+        boolean hasAccess = dmMemberRepository.existsByDmRoom_DmRoomPkAndUser_UserPk(dmRoomPk, userPk);
 
         log.debug("DM방 접근 권한 확인 : dmRoomPk={}, userPk={}, hasAccess={}", dmRoomPk, userPk, hasAccess);
         return hasAccess;

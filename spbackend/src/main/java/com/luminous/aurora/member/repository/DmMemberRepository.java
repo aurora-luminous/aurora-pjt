@@ -10,8 +10,8 @@ import java.util.Optional;
 public interface DmMemberRepository extends JpaRepository<DmMember, Integer> {
 
     // DM 방 멤버인지 확인
-    Optional<DmMember> findByDmRoomPkAndUserPk(Integer dmRoomPk, Integer userPk);
+    Optional<DmMember> findByDmRoom_DmRoomPkAndUser_UserPk(Integer dmRoomPk, Integer userPk);
 
     // DM방 멤버 존재 여부 확인
-    boolean existsByDmRoomPkAndUserPk(Integer dmRoomPk, Integer userPk);
+    boolean existsByDmRoom_DmRoomPkAndUser_UserPk(Integer dmRoomPk, Integer userPk);
 }

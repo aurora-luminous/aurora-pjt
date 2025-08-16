@@ -7,6 +7,7 @@ import com.luminous.aurora.chat.service.ChatService;
 import com.luminous.aurora.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -27,15 +28,21 @@ public class ChatWebSocketController {
     private final JwtTokenProvider jwtTokenProvider;
 
     // 채널 메시지 전송
-    @MessageMapping("/chat/channel")
+    @MessageMapping("/chat/channel/{channelPk}")
     @SendTo("/topic/channel/{channelPk}")
     public ChatMessage sendChannelMessage(@Payload MessageRequest messageRequest,
+                                          @DestinationVariable Integer channelPk,
                                           SimpMessageHeaderAccessor headerAccessor) {
         try {
             // 세션에서 JWT 토큰 추출
+            // channelPk 검증
+            if (!channelPk.equals(messageRequest.getChannelPk())) {
+                throw new RuntimeException("경로의 채널과 요청의 채널이 일치하지 않습니다.");
+            }
             String jwtToken = extractJwtFromSession(headerAccessor);
             if (jwtToken == null) {
                 throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
+
             }
             chatService.saveMessage(messageRequest, jwtToken);
             ChatMessage chatMessage = ChatMessage.builder()
@@ -57,10 +64,17 @@ public class ChatWebSocketController {
     }
 
     // DM 메시지 전송
-    @MessageMapping("/chat/dm")
+    @MessageMapping("/chat/dm/{dmRoomPk}")
+    @SendTo("/topic/dm/{dmRoomPk}")
     public void sendDmMessage(@Payload MessageRequest messageRequest,
+                              @DestinationVariable Integer dmRoomPk,
                               SimpMessageHeaderAccessor headerAccessor) {
         try {
+            // 경로의 dmRoomPk와 요청의 dmRoomPk 일치 검증
+            if (!dmRoomPk.equals(messageRequest.getDmRoomPk())) {
+                throw new RuntimeException("경로의 DM방과 요청의 DM방이 일치하지 않습니다.");
+            }
+
             String jwtToken = extractJwtFromSession(headerAccessor);
             if (jwtToken == null) {
                 throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");

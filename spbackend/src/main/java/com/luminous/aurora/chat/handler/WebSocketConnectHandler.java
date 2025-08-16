@@ -1,5 +1,6 @@
 package com.luminous.aurora.chat.handler;
 
+import com.luminous.aurora.auth.repository.UserRepository;
 import com.luminous.aurora.jwt.JwtTokenProvider;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,22 +19,26 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class WebSocketConnectHandler {
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
+
 
     // WebSocket 연결 시 JWT 토큰을 쿠키에 저장
     @EventListener
     public void handleWebSocketConnectListener(SessionConnectEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        HttpServletRequest request = (HttpServletRequest) event.getSource();
-
         try {
-            // 쿠키에서 JWT 토큰 추출
-            String jwtToken = extractJwtFromCookies(request);
+            // 핸드셰이크에서 저장한 JWT 토큰을 세션에서 가져옴
+            String jwtToken = (String) headerAccessor.getSessionAttributes().get("jwt_token");
             if (jwtToken != null && jwtTokenProvider.validateToken(jwtToken)) {
-                //세션에 JWT 토큰 저장
-                headerAccessor.getSessionAttributes().put("jwt_token", jwtToken);
-                log.info("WebSocket 연결 성공 : JWT 토큰을 세션에 저장완료");
+                String userEmail = jwtTokenProvider.getUserEmailFromToken(jwtToken);
+                Integer userPk = userRepository.findUserPkByUserEmail(userEmail)
+                        .orElseThrow(()-> new RuntimeException("사용자를 찾을 수 없습니다."));
+                // JWT가 유효하면 연결 허용
+                headerAccessor.getSessionAttributes().put("authenticated",true);
+                headerAccessor.getSessionAttributes().put("user_pk", userPk);
+                log.info("WebSocket 연결 성공 : 인증된 사용자 - userEmail ={}", userEmail);
             } else {
-                log.warn("WebSocket 연결 실패 : 유효하지 않은 JWT 토큰");
+                log.warn("WebSocket 연결 실패 : 인증 실패");
                 // 연결 거부 처리
                 headerAccessor.setUser(null);
             }
@@ -50,16 +55,4 @@ public class WebSocketConnectHandler {
         log.info("WebSocket 연결 해제 : sessionId={}", headerAccessor.getSessionId());
     }
 
-    // 쿠키에서 JWT 토큰 추출
-    private String extractJwtFromCookies(HttpServletRequest request) {
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            return Arrays.stream(cookies)
-                    .filter(cookie -> "access_token".equals(cookie.getName()))
-                    .findFirst()
-                    .map(Cookie::getValue)
-                    .orElse(null);
-        }
-        return null;
-    }
 }

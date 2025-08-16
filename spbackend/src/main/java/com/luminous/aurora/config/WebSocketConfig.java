@@ -29,8 +29,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         "http://localhost:5173",
                         "http://localhost:8080",
                         "https://t1329.p.ssafy.io",
-                        "http://127.0.0.1:5500/")
-                .withSockJS();
+                        "http://127.0.0.1:5500")
+                .withSockJS()
+                .setInterceptors(new HttpHandshakeInterceptor()); // 인터셉터 등록
     }
 
 }

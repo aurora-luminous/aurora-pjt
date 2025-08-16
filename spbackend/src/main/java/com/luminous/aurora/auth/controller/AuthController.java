@@ -18,7 +18,7 @@ import java.time.Duration;
 
 @Slf4j
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/jv")
 @RequiredArgsConstructor
 public class AuthController {
 

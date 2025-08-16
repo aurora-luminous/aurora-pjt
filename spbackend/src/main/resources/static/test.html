@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket 테스트 (쿠키 기반 JWT)</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+    <h2>WebSocket 테스트 (쿠키 기반 JWT)</h2>
+
+    <div>
+        <h3>1단계: 로그인하여 JWT 토큰 획득</h3>
+        <input type="email" id="email" placeholder="이메일" value="test@test.com">
+        <input type="password" id="password" placeholder="비밀번호" value="qwe123">
+        <button onclick="login()">로그인</button>
+        <div id="loginResult"></div>
+    </div>
+
+    <div>
+        <h3>2단계: 쿠키 확인</h3>
+        <button onclick="checkCookies()">쿠키 확인</button>
+        <div id="cookieResult"></div>
+    </div>
+
+    <div>
+        <h3>3단계: WebSocket 연결</h3>
+        <button onclick="connect()">연결</button>
+        <button onclick="disconnect()">연결 해제</button>
+    </div>
+
+    <div>
+        <h3>4단계: 메시지 전송</h3>
+        <input type="text" id="message" placeholder="메시지">
+        <button onclick="sendMessage()">전송</button>
+    </div>
+
+    <div>
+        <h3>수신된 메시지:</h3>
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        let stompClient = null;
+
+        async function login() {
+            try {
+                const response = await fetch('http://localhost:8080/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userEmail: document.getElementById('email').value,
+                        password: document.getElementById('password').value
+                    }),
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    document.getElementById('loginResult').innerHTML =
+                        '<p style="color: green;">로그인 성공! JWT 토큰이 쿠키에 저장됨</p>' +
+                        '<p>Response Headers:</p>' +
+                        '<pre>' + JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2) + '</pre>';
+                    console.log('로그인 성공, 응답:', result);
+                } else {
+                    document.getElementById('loginResult').innerHTML = '<p style="color: red;">로그인 실패</p>';
+                }
+            } catch (error) {
+                console.error('로그인 오류:', error);
+                document.getElementById('loginResult').innerHTML = '<p style="color: red;">로그인 오류: ' + error.message + '</p>';
+            }
+        }
+
+        function checkCookies() {
+        // ✅ 모든 쿠키 확인
+        const cookies = document.cookie;
+        console.log('전체 쿠키:', cookies);
+
+        if (cookies) {
+            document.getElementById('cookieResult').innerHTML =
+                '<p>현재 쿠키:</p><pre>' + cookies + '</pre>';
+        } else {
+            document.getElementById('cookieResult').innerHTML =
+                '<p style="color: orange;">쿠키가 없거나 HttpOnly로 설정되어 JavaScript에서 접근 불가</p>';
+        }
+
+        // ✅ 브라우저 개발자 도구에서 확인하라는 안내
+        document.getElementById('cookieResult').innerHTML +=
+            '<p style="color: blue;">💡 브라우저 개발자 도구 → Application → Cookies → localhost:5500에서 쿠키 확인</p>';
+    }
+
+        function connect() {
+            const socket = new SockJS('http://localhost:8080/ws');
+            stompClient = Stomp.over(socket);
+
+            stompClient.connect({}, function (frame) {
+                console.log('Connected: ' + frame);
+                document.getElementById('messages').innerHTML += '<p style="color: green;">WebSocket 연결 성공!</p>';
+
+                // 메시지 구독
+                stompClient.subscribe('/topic/channel/1', function (message) {
+                    showMessage('채널 메시지: ' + message.body);
+                });
+
+                // DM 메시지 구독
+                stompClient.subscribe('/topic/dm/1', function (message) {
+                    showMessage('DM 메시지: ' + message.body);
+                });
+            }, function (error) {
+                console.error('WebSocket 연결 실패:', error);
+                document.getElementById('messages').innerHTML += '<p style="color: red;">WebSocket 연결 실패: ' + error.message + '</p>';
+            });
+        }
+
+        function disconnect() {
+            if (stompClient !== null) {
+                stompClient.disconnect();
+                document.getElementById('messages').innerHTML += '<p style="color: orange;">연결 해제됨</p>';
+                stompClient = null;
+            }
+        }
+
+        function sendMessage() {
+            if (!stompClient) {
+                alert('먼저 WebSocket에 연결하세요!');
+                return;
+            }
+
+            const content = document.getElementById('message').value;
+            if (!content.trim()) {
+                alert('메시지를 입력하세요!');
+                return;
+            }
+
+            const channelPk = 1; // 테스트용 채널 번호
+
+            const message = {
+                channelPk: channelPk,
+                dmRoomPk: null,
+                content: content,
+                messageType: 'TEXT'
+            };
+
+            try {
+                // ✅ 경로에 channelPk 포함
+                stompClient.send(`/app/chat/channel/${channelPk}`, {}, JSON.stringify(message));
+                document.getElementById('message').value = '';
+                document.getElementById('messages').innerHTML += '<p style="color: blue;">전송됨: ' + content + '</p>';
+            } catch (error) {
+                console.error('메시지 전송 실패:', error);
+                document.getElementById('messages').innerHTML += '<p style="color: red;">메시지 전송 실패: ' + error.message + '</p>';
+            }
+        }
+
+        function showMessage(message) {
+            document.getElementById('messages').innerHTML += '<p style="color: purple;">' + message + '</p>';
+        }
+
+        // 페이지 로드 시 상태 확인
+        window.onload = function() {
+            console.log('WebSocket 테스트 페이지 로드됨');
+            console.log('쿠키 확인:', document.cookie);
+        };
+    </script>
+</body>
+</html>

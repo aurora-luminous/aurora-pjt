@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 public class Users {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long userPk;
+    private Integer userPk;
     private String userEmail;
     private String userName;
     private String password;

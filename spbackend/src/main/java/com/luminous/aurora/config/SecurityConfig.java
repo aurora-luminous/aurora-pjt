@@ -34,7 +34,9 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 사용 안함 -> jwt 로그인 방식이기 때문
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/").permitAll() // 루트경로 허용
+                        .requestMatchers("/test.html").permitAll()
                         .requestMatchers("/api/login","/api/signup","/api/refresh").permitAll() // 인증관련 api 전부 허용
+                        .requestMatchers("/ws/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -47,9 +49,12 @@ public class SecurityConfig {
 
         // localhost와 프론트엔드 도메인만 허용
         configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:3000",      // React 개발 서버
+                "http://localhost:3000",      // Express 개발 서버
                 "http://localhost:8080",      // Spring Boot 개발 서버
-                "http://localhost:5173"       // Vite 개발 서버
+                "http://localhost:5173",      // React 개발 서버
+                "https://t1329.p.ssafy.io",    // 프로덕션 서버
+                "http://127.0.0.1:5500"
+
         ));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));

@@ -44,11 +44,11 @@ import { TextChannelModule } from './domain/text-channel/text-channel.module';
         module: ServerModule,
       },
       {
-        path: 'servers/:serverPk/projects',
+        path: 'servers/:serverUrl/projects',
         module: ProjectModule,
       },
       {
-        path: 'servers/:serverPk/projects/:projectPk/channels',
+        path: 'servers/:serverUrl/projects/:projectPk/channels',
         module: TextChannelModule,
       },
     ]),

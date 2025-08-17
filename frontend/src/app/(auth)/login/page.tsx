@@ -1,13 +1,15 @@
-'use client'
+"use client";
 
-import React from 'react'
-import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { useAuthForm } from '../hooks/useAuthForm'
-import { AuthFormData } from '../types/AuthFormData'
-import { AuthInput } from '../components/AuthInput'
-import { AuthCheckbox } from '../components/AuthCheckbox'
-import { AuthButton } from '../components/AuthButton'
+import React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { useAuthForm } from "../hooks/useAuthForm";
+import { AuthFormData } from "../types/AuthFormData";
+import { AuthInput } from "../components/AuthInput";
+import { AuthCheckbox } from "../components/AuthCheckbox";
+import { AuthButton } from "../components/AuthButton";
+import { useLoginMutation } from "../hooks/useAuthMutations";
 
 const pageVariants = {
   initial: {
@@ -22,23 +24,42 @@ const pageVariants = {
     opacity: 0,
     y: -50,
   },
-}
+};
 
 const LoginPage = () => {
-  const { formData, errors, isLoading, updateField, handleSubmit } = useAuthForm({
-    onSubmit: async (data: AuthFormData) => {
-      console.log('Login data:', data)
-      await new Promise(resolve => setTimeout(resolve, 1000)) // 임시 delay
-    }
-  })
+  const router = useRouter();
+  const loginMutation = useLoginMutation();
+  const { formData, errors, isLoading, updateField, handleSubmit } =
+    useAuthForm({
+      onSubmit: async (data: AuthFormData) => {
+        console.log("Login data:", data);
+        try {
+          const response = await loginMutation.mutateAsync({
+            userEmail: data.userEmail,
+            password: data.password,
+            rememberMe: data.rememberMe || false,
+          });
+
+          console.log("🎉 로그인 성공:", response);
+          console.log(
+            `💾 로그인 상태 유지: ${data.rememberMe ? "활성화" : "비활성화"}`
+          );
+
+          // 로그인 성공 후 서버 연결 페이지로 이동
+          router.push("/server-connect");
+        } catch (error) {
+          console.error("❌ Login error:", error);
+        }
+      },
+    });
 
   const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    handleSubmit('login')
-  }
+    e.preventDefault();
+    handleSubmit("login");
+  };
 
   return (
-    <motion.div 
+    <motion.div
       key="login"
       variants={pageVariants}
       initial="initial"
@@ -46,7 +67,7 @@ const LoginPage = () => {
       exit="exit"
       transition={{
         duration: 0.4,
-        ease: "easeInOut"
+        ease: "easeInOut",
       }}
       className="w-full"
     >
@@ -59,12 +80,12 @@ const LoginPage = () => {
         <AuthInput
           label="이메일"
           type="email"
-          id="email"
-          name="email"
-          value={formData.email}
+          id="userEmail"
+          name="userEmail"
+          value={formData.userEmail}
           placeholder="이메일을 입력하세요"
-          error={errors.email}
-          onChange={(value) => updateField('email', value)}
+          error={errors.userEmail}
+          onChange={(value) => updateField("userEmail", value)}
           required
         />
 
@@ -76,7 +97,7 @@ const LoginPage = () => {
           value={formData.password}
           placeholder="비밀번호를 입력하세요"
           error={errors.password}
-          onChange={(value) => updateField('password', value)}
+          onChange={(value) => updateField("password", value)}
           required
         />
 
@@ -85,38 +106,37 @@ const LoginPage = () => {
             id="rememberMe"
             name="rememberMe"
             checked={formData.rememberMe || false}
-            onChange={(checked) => updateField('rememberMe', checked)}
+            onChange={(checked) => updateField("rememberMe", checked)}
           >
             로그인 상태 유지
           </AuthCheckbox>
-          
-          <Link href="#" className="text-sm text-purple-300 hover:text-purple-200">
+
+          <Link
+            href="#"
+            className="text-sm text-purple-300 hover:text-purple-200"
+          >
             비밀번호 찾기
           </Link>
         </div>
 
-        {/* <AuthButton
-          type="submit"
+        <AuthButton
+          type="button"
           variant="primary"
-          loading={isLoading}
-          disabled={isLoading}
+          loading={isLoading || loginMutation.isPending}
+          disabled={isLoading || loginMutation.isPending}
+          onClick={() => handleSubmit("login")}
         >
-          로그인
-        </AuthButton> */}
-        <Link href="/server-connect" className="block w-full">
-        <button
-          type="submit"
-          className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400"
-        >
-          로그인
-        </button>
-        </Link>
+          {loginMutation.isPending ? "로그인 중..." : "로그인"}
+        </AuthButton>
       </form>
 
       <div className="mt-8 text-center">
         <p className="text-white/70">
-          계정이 없으신가요?{' '}
-          <Link href="/register" className="text-purple-300 hover:text-purple-200 font-medium">
+          계정이 없으신가요?{" "}
+          <Link
+            href="/register"
+            className="text-purple-300 hover:text-purple-200 font-medium"
+          >
             회원가입
           </Link>
         </p>
@@ -131,7 +151,7 @@ const LoginPage = () => {
         </AuthButton>
       </div>
     </motion.div>
-  )
-}
+  );
+};
 
-export default LoginPage
+export default LoginPage;

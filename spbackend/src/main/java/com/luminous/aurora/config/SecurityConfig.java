@@ -35,7 +35,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/").permitAll() // 루트경로 허용
                         .requestMatchers("/test.html").permitAll()
-                        .requestMatchers("/api/login","/api/signup","/api/refresh").permitAll() // 인증관련 api 전부 허용
+                        .requestMatchers("/api/jv/login","/api/jv/signup","/api/jv/refresh").permitAll() // 인증관련 api 전부 허용
                         .requestMatchers("/ws/**").authenticated()
                         .anyRequest().authenticated()
                 )

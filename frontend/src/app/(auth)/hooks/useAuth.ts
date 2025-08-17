@@ -1,5 +1,11 @@
 import { useApi } from "react-easy-api";
 import axiosClient from "@/app/lib/axiosClient";
+import {
+  setTokens,
+  getRefreshToken,
+  updateAccessToken,
+  clearTokens,
+} from "@/app/lib/tokenStorage";
 import { SignUpRequest } from "../types/SignUp";
 import { LoginRequest, LoginResponse } from "../types/Login";
 
@@ -57,14 +63,22 @@ export const useAuth = () => {
   /**
    * 로그인을 처리하는 함수
    */
-  const login = async (data: LoginRequest): Promise<LoginResponse> => {
+  const login = async (
+    data: LoginRequest & { rememberMe?: boolean }
+  ): Promise<LoginResponse> => {
     try {
-      const response = await loginApi(data);
+      const response = await loginApi({
+        userEmail: data.userEmail,
+        password: data.password,
+      });
 
-      // 로그인 성공 시 토큰 저장
+      // 로그인 성공 시 토큰 저장 (rememberMe 옵션 적용)
       if (response) {
-        localStorage.setItem("accessToken", response.accessToken);
-        localStorage.setItem("refreshToken", response.refreshToken);
+        setTokens(
+          response.accessToken,
+          response.refreshToken,
+          data.rememberMe || false
+        );
       }
 
       return response || { accessToken: "", refreshToken: "" };
@@ -74,9 +88,45 @@ export const useAuth = () => {
     }
   };
 
+  /**
+   * 토큰 갱신을 처리하는 함수
+   */
+  const refreshAccessToken = async (): Promise<string> => {
+    try {
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) {
+        throw new Error("Refresh token이 없습니다.");
+      }
+
+      console.log("🔄 토큰 갱신 시작");
+
+      const response = await axiosClient.post<{ accessToken: string }>(
+        "/jv/refresh",
+        {
+          refreshToken,
+        }
+      );
+
+      console.log("✅ 토큰 갱신 성공");
+
+      // 새로운 accessToken 저장 (기존 rememberMe 설정 유지)
+      updateAccessToken(response.data.accessToken);
+
+      return response.data.accessToken;
+    } catch (error) {
+      console.error("❌ 토큰 갱신 실패:", error);
+
+      // 리프레시 토큰도 만료된 경우 모든 토큰 제거
+      clearTokens();
+
+      throw error;
+    }
+  };
+
   return {
     signUp,
     login,
+    refreshAccessToken,
     isSigningUp,
     isLoggingIn,
     signUpError,

@@ -33,15 +33,17 @@ export const useLoginMutation = () => {
   const { login } = useAuth();
 
   return useMutation({
-    mutationFn: async (data: LoginRequest) => {
+    mutationFn: async (data: LoginRequest & { rememberMe?: boolean }) => {
       const result = await login(data);
       return result;
     },
     onSuccess: (data) => {
-      console.log("로그인 성공:", data);
+      console.log("🎉 로그인 mutation 성공:", data);
+      // 토큰은 이미 useAuth에서 저장됨
     },
     onError: (error) => {
-      console.error("로그인 실패:", error);
+      console.error("❌ 로그인 mutation 실패:", error);
+      // 에러 토스트 메시지 표시 가능
     },
   });
 };

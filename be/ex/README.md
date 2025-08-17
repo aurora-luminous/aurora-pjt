@@ -2,6 +2,9 @@
 
 Discord + Mattermost 스타일 메신저의 서버-프로젝트-채널 구조 관리 API
 
+## API DOCS
+http://localhost:3001/api-docs
+
 ## 🏗 시스템 아키텍처
 
 ```
@@ -87,7 +90,7 @@ SPRING_CHAT_API_KEY=api_key_from_spring_team
 ### 선택 환경 변수
 ```env
 NODE_ENV=development
-PORT=3000
+PORT=3001
 ```
 
 

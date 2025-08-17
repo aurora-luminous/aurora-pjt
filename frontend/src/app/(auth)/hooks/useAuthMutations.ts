@@ -47,3 +47,14 @@ export const useLoginMutation = () => {
     },
   });
 };
+
+export const useLogoutMutation = () => {
+  const { logout } = useAuth();
+
+  return useMutation({
+    mutationFn: async () => {
+      await logout();
+    },
+    onSuccess: () => {},
+  });
+};

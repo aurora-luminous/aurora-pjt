@@ -35,6 +35,26 @@ export const useAuth = () => {
     axiosInstance: axiosClient,
   });
 
+  const {
+    execute: refreshTokenApi,
+    loading: isRefreshing,
+    error: refreshError,
+  } = useApi<{ accessToken: string }, { refreshToken: string }>({
+    endpoint: "/jv/refresh",
+    method: "POST",
+    axiosInstance: axiosClient,
+  });
+
+  const {
+    execute: logoutApi,
+    loading: isLoggingOut,
+    error: logoutError,
+  } = useApi<string, void>({
+    endpoint: "/jv/logout",
+    method: "POST",
+    axiosInstance: axiosClient,
+  });
+
   /**
    * 회원가입을 처리하는 함수
    */
@@ -100,19 +120,18 @@ export const useAuth = () => {
 
       console.log("🔄 토큰 갱신 시작");
 
-      const response = await axiosClient.post<{ accessToken: string }>(
-        "/jv/refresh",
-        {
-          refreshToken,
-        }
-      );
+      const response = await refreshTokenApi({ refreshToken });
+
+      if (!response) {
+        throw new Error(refreshError?.message || "토큰 갱신에 실패했습니다.");
+      }
 
       console.log("✅ 토큰 갱신 성공");
 
       // 새로운 accessToken 저장 (기존 rememberMe 설정 유지)
-      updateAccessToken(response.data.accessToken);
+      updateAccessToken(response.accessToken);
 
-      return response.data.accessToken;
+      return response.accessToken;
     } catch (error) {
       console.error("❌ 토큰 갱신 실패:", error);
 
@@ -123,13 +142,31 @@ export const useAuth = () => {
     }
   };
 
+  /**
+   * 로그아웃을 처리하는 함수
+   */
+  const logout = async () => {
+    try {
+      await logoutApi();
+      clearTokens();
+    } catch (error) {
+      console.error("❌ 로그아웃 실패:", error);
+      throw error;
+    }
+  };
+
   return {
     signUp,
     login,
     refreshAccessToken,
     isSigningUp,
     isLoggingIn,
+    isRefreshing,
     signUpError,
     loginError,
+    refreshError,
+    logout,
+    isLoggingOut,
+    logoutError,
   };
 };

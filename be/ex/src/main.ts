@@ -10,12 +10,12 @@ async function startApp() {
   const logger = new Logger('StartApp');
 
   // 글롭벌 prefix 설정
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api/ex');
 
   // CORS 설정
   app.enableCors({
     origin: [
-      'http://localhost:3000',
+      'http://localhost:3001',
       'http://localhost:5173',
       'http://localhost:8080',
     ],
@@ -60,10 +60,10 @@ async function startApp() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('api-docs', app, document);
 
-    const port = configService.get('PORT', 3000);
+    const port = configService.get('PORT', 3001);
     await app.listen(port);
 
-  logger.log(`🚀 Application is running on: http://localhost:${port}/api`);
+  logger.log(`🚀 Application is running on: http://localhost:${port}/api/ex`);
   logger.log(`📚 Swagger Documentation: http://localhost:${port}/api-docs`);
   logger.log(`🌍 Environment: ${configService.get('NODE_ENV')}`);
 }

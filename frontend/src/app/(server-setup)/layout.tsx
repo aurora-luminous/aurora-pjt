@@ -3,8 +3,20 @@
 import React from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { useLogoutMutation } from "../(auth)/hooks/useAuthMutations";
+import { useRouter } from "next/navigation";
 
 const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
+  const logoutMutation = useLogoutMutation();
+  const router = useRouter();
+  const handleLogout = () => {
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        router.push("/login");
+      },
+    });
+  };
+
   return (
     <div className="min-h-screen flex relative bg-aurora-blue-gradient-diagonal">
       {/* Left Panel - 사라지는 애니메이션 */}
@@ -34,6 +46,7 @@ const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
       </motion.div>
 
       {/* Right Panel - 확장되는 애니메이션 */}
+
       <motion.div
         initial={{ width: "50%" }}
         animate={{ width: "100%" }}
@@ -56,6 +69,7 @@ const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
           />
           <h1 className="text-xl font-bold text-white tracking-wide">Aurora</h1>
         </motion.div>
+        <button onClick={handleLogout}>로그아웃</button>
 
         {/* Content Container */}
         <div className="relative z-10 flex items-center justify-center min-h-screen p-8">

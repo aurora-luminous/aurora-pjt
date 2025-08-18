@@ -6,12 +6,24 @@ import { ProjectMember } from '../entities/project-member.entity';
 import { User } from '../../user/entities/user.entity';
 import { Server } from '../../server/entities/server.entity';
 import { ServerMember } from '../../server/entities/server-member.entity';
+import { Channel } from '../../text-channel/entities/channel.entity';
+import { ChannelMember } from '../../text-channel/entities/channel-member.entity';
 
 export interface InviteToProjectDto {
   projectPk: number;
   userEmail: string;
   inviterUserPk: number;
   projectRole?: 'member' | 'admin';
+}
+
+export interface UserEmailDto {
+  userEmail: string;
+}
+
+export interface BulkInviteToProjectDto {
+  users: UserEmailDto[];
+  projectPk: number;
+  inviterUserPk: number;
 }
 
 export interface ProjectMemberDto {
@@ -47,6 +59,10 @@ export class ProjectInvitationService {
     private readonly serverRepository: Repository<Server>,
     @InjectRepository(ServerMember)
     private readonly serverMemberRepository: Repository<ServerMember>,
+    @InjectRepository(Channel)
+    private readonly channelRepository: Repository<Channel>,
+    @InjectRepository(ChannelMember)
+    private readonly channelMemberRepository: Repository<ChannelMember>,
   ) {}
 
   // 이메일로 프로젝트에 사용자 초대 (직접 추가)
@@ -112,6 +128,9 @@ export class ProjectInvitationService {
         existingMember.projectRole = inviteDto.projectRole || 'member';
         const reactivatedMember = await this.projectMemberRepository.save(existingMember);
         
+        // 재활성화된 멤버를 모든 public 채널에 추가
+        await this.addMemberToPublicChannels(inviteDto.projectPk, targetUser.userPk);
+        
         return {
           projectMemberPk: reactivatedMember.projectMemberPk,
           projectPk: reactivatedMember.projectPk,
@@ -137,6 +156,9 @@ export class ProjectInvitationService {
     });
     const savedMember = await this.projectMemberRepository.save(projectMember);
 
+    // 8. 새 멤버를 모든 public 채널에 자동 추가
+    await this.addMemberToPublicChannels(inviteDto.projectPk, targetUser.userPk);
+
     return {
       projectMemberPk: savedMember.projectMemberPk,
       projectPk: savedMember.projectPk,
@@ -150,6 +172,25 @@ export class ProjectInvitationService {
         profileImagePath: targetUser.profileImagePath,
       },
     };
+  }
+
+  // 여러 사용자를 프로젝트에 일괄 초대
+  async bulkInviteUsersToProject(bulkInviteDto: BulkInviteToProjectDto): Promise<void> {
+    for (const userEmail of bulkInviteDto.users) {
+      try {
+        const inviteDto: InviteToProjectDto = {
+          projectPk: bulkInviteDto.projectPk,
+          userEmail: userEmail.userEmail,
+          inviterUserPk: bulkInviteDto.inviterUserPk,
+          projectRole: 'member' // 기본 역할
+        };
+        
+        await this.inviteUserToProject(inviteDto);
+      } catch (error) {
+        // 개별 초대 실패 시 로그만 남기고 계속 진행
+        console.error(`Failed to invite ${userEmail.userEmail}:`, error.message);
+      }
+    }
   }
 
   // 프로젝트 멤버 목록 조회
@@ -327,6 +368,9 @@ export class ProjectInvitationService {
     // 3. 상태를 Active로 복구
     bannedMember.pStatus = 'Active';
     const unbannedMember = await this.projectMemberRepository.save(bannedMember);
+    
+    // 4. 차단 해제된 멤버를 모든 public 채널에 추가
+    await this.addMemberToPublicChannels(projectPk, targetUserPk);
 
     return {
       projectMemberPk: unbannedMember.projectMemberPk,
@@ -341,5 +385,93 @@ export class ProjectInvitationService {
         profileImagePath: bannedMember.user.profileImagePath,
       },
     };
+  }
+
+  // 새 멤버를 모든 public 채널에 추가하는 헬퍼 메서드
+  private async addMemberToPublicChannels(projectPk: number, userPk: number): Promise<void> {
+    // 해당 프로젝트의 모든 public 채널 조회
+    const publicChannels = await this.channelRepository.find({
+      where: { 
+        projectPk, 
+        isDeletedChannel: false,
+        isPrivate: false 
+      }
+    });
+
+    if (publicChannels.length === 0) {
+      return; // public 채널이 없으면 종료
+    }
+
+    // 각 public 채널에 멤버로 추가
+    const channelMembersToAdd = publicChannels.map(channel => 
+      this.channelMemberRepository.create({
+        channelPk: channel.channelPk,
+        userPk: userPk,
+        cStatus: 'Active',
+        channelRole: 'member',
+      })
+    );
+
+    await this.channelMemberRepository.save(channelMembersToAdd);
+  }
+
+  // === 이메일 기반 메서드들 ===
+
+  async removeUserFromProjectByEmail(
+    projectPk: number,
+    targetUserEmail: string,
+    adminUserPk: number
+  ): Promise<void> {
+    // 이메일로 사용자 찾기
+    const targetUser = await this.userRepository.findOne({
+      where: { userEmail: targetUserEmail, isDeleted: false }
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException(`User with email ${targetUserEmail} not found`);
+    }
+
+    const removeDto: RemoveFromProjectDto = {
+      projectPk,
+      targetUserPk: targetUser.userPk,
+      adminUserPk
+    };
+
+    return this.removeUserFromProject(removeDto);
+  }
+
+  async banUserFromProjectByEmail(
+    projectPk: number,
+    targetUserEmail: string,
+    adminUserPk: number
+  ): Promise<{ message: string }> {
+    // 이메일로 사용자 찾기
+    const targetUser = await this.userRepository.findOne({
+      where: { userEmail: targetUserEmail, isDeleted: false }
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException(`User with email ${targetUserEmail} not found`);
+    }
+
+    await this.banUserFromProject(projectPk, targetUser.userPk, adminUserPk);
+    return { message: '사용자가 차단되었습니다.' };
+  }
+
+  async unbanUserFromProjectByEmail(
+    projectPk: number,
+    targetUserEmail: string,
+    ownerUserPk: number
+  ): Promise<void> {
+    // 이메일로 사용자 찾기
+    const targetUser = await this.userRepository.findOne({
+      where: { userEmail: targetUserEmail, isDeleted: false }
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException(`User with email ${targetUserEmail} not found`);
+    }
+
+    await this.unbanUserFromProject(projectPk, targetUser.userPk, ownerUserPk);
   }
 }

@@ -24,19 +24,30 @@ export class ProjectCreationService {
     ) {}
 
     async createProject(createProjectDto: CreateProjectDto): Promise<ProjectResponseDto> {
-        // 1. 서버 존재 확인
-        const server = await this.serverRepository.findOne({
-        where: { serverPk: createProjectDto.serverPk, isDeletedServer: false }
-        });
-
-        if (!server) {
-        throw new NotFoundException(`Server with ID ${createProjectDto.serverPk} not found`);
+        // 1. 서버 존재 확인 (serverUrl 또는 serverPk로)
+        let server;
+        if (createProjectDto.serverUrl) {
+            server = await this.serverRepository.findOne({
+                where: { serverUrl: createProjectDto.serverUrl, isDeletedServer: false }
+            });
+            if (!server) {
+                throw new NotFoundException(`Server with URL ${createProjectDto.serverUrl} not found`);
+            }
+        } else if (createProjectDto.serverPk) {
+            server = await this.serverRepository.findOne({
+                where: { serverPk: createProjectDto.serverPk, isDeletedServer: false }
+            });
+            if (!server) {
+                throw new NotFoundException(`Server with ID ${createProjectDto.serverPk} not found`);
+            }
+        } else {
+            throw new NotFoundException('Either serverUrl or serverPk must be provided');
         }
 
         // 2. 사용자가 해당 서버의 멤버인지 확인
         const serverMember = await this.serverMemberRepository.findOne({
         where: { 
-            serverPk: createProjectDto.serverPk, 
+            serverPk: server.serverPk, 
             userPk: createProjectDto.creatorUserPk,
             status: 'Approved'
         },
@@ -54,7 +65,7 @@ export class ProjectCreationService {
 
         // 4. 프로젝트 생성
         const project = this.projectRepository.create({
-        serverPk: createProjectDto.serverPk,
+        serverPk: server.serverPk,
         projectName: createProjectDto.projectName,
         });
         const savedProject = await this.projectRepository.save(project);
@@ -78,24 +89,65 @@ export class ProjectCreationService {
             serverName: server.serverName,
         },
         ownerInfo: {
-            userPk: serverMember.user.userPk,
             userName: serverMember.user.userName,
         },
         };
     }
 
-    async getProjectsByServer(serverPk: number): Promise<ProjectResponseDto[]> {
+    async getProjectsByServerForUser(serverUrl: string, userPk: number): Promise<ProjectResponseDto[]> {
         // 서버 존재 확인
         const server = await this.serverRepository.findOne({
-        where: { serverPk, isDeletedServer: false }
+        where: { serverUrl, isDeletedServer: false }
         });
 
         if (!server) {
-        throw new NotFoundException(`Server with ID ${serverPk} not found`);
+        throw new NotFoundException(`Server with URL ${serverUrl} not found`);
+        }
+
+        // 사용자가 속한 프로젝트만 조회
+        const projectMembers = await this.projectMemberRepository.find({
+            where: { 
+                userPk: userPk,
+                pStatus: 'Active'
+            },
+            relations: ['project', 'project.projectMembers', 'project.projectMembers.user', 'project.server'],
+        });
+
+        return projectMembers
+            .filter(member => member.project.serverPk === server.serverPk && !member.project.isDeletedProject)
+            .map(member => {
+                const project = member.project;
+                const owner = project.projectMembers.find(pm => pm.projectRole === 'owner');
+                
+                return {
+                    projectPk: project.projectPk,
+                    serverPk: project.serverPk,
+                    projectName: project.projectName,
+                    isDeletedProject: project.isDeletedProject,
+                    serverInfo: {
+                        serverPk: project.server.serverPk,
+                        serverName: project.server.serverName,
+                    },
+                    ownerInfo: owner ? {
+                        
+                        userName: owner.user.userName,
+                    } : undefined,
+                };
+            });
+    }
+
+    async getProjectsByServer(serverUrl: string): Promise<ProjectResponseDto[]> {
+        // 서버 존재 확인
+        const server = await this.serverRepository.findOne({
+        where: { serverUrl, isDeletedServer: false }
+        });
+
+        if (!server) {
+        throw new NotFoundException(`Server with URL ${serverUrl} not found`);
         }
 
         const projects = await this.projectRepository.find({
-            where: { serverPk, isDeletedProject: false },
+            where: { serverPk: server.serverPk, isDeletedProject: false },
             relations: ['projectMembers', 'projectMembers.user', 'server'],
         });
 
@@ -112,7 +164,7 @@ export class ProjectCreationService {
                 serverName: project.server.serverName,
                 },
                 ownerInfo: owner ? {
-                userPk: owner.user.userPk,
+                
                 userName: owner.user.userName,
                 } : undefined,
             };
@@ -141,7 +193,7 @@ export class ProjectCreationService {
             serverName: project.server.serverName,
         },
         ownerInfo: owner ? {
-            userPk: owner.user.userPk,
+            
             userName: owner.user.userName,
         } : undefined,
         };

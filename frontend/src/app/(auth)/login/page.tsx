@@ -2,14 +2,11 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { useAuthForm } from "../hooks/useAuthForm";
-import { AuthFormData } from "../types/AuthFormData";
+import { useAuth } from "../hooks/useAuth";
 import { AuthInput } from "../components/AuthInput";
 import { AuthCheckbox } from "../components/AuthCheckbox";
 import { AuthButton } from "../components/AuthButton";
-import { useLoginMutation } from "../hooks/useAuthMutations";
 
 const pageVariants = {
   initial: {
@@ -27,31 +24,14 @@ const pageVariants = {
 };
 
 const LoginPage = () => {
-  const router = useRouter();
-  const loginMutation = useLoginMutation();
-  const { formData, errors, isLoading, updateField, handleSubmit } =
-    useAuthForm({
-      onSubmit: async (data: AuthFormData) => {
-        console.log("Login data:", data);
-        try {
-          const response = await loginMutation.mutateAsync({
-            userEmail: data.userEmail,
-            password: data.password,
-            rememberMe: data.rememberMe || false,
-          });
-
-          console.log("🎉 로그인 성공:", response);
-          console.log(
-            `💾 로그인 상태 유지: ${data.rememberMe ? "활성화" : "비활성화"}`
-          );
-
-          // 로그인 성공 후 서버 연결 페이지로 이동
-          router.push("/server-connect");
-        } catch (error) {
-          console.error("❌ Login error:", error);
-        }
-      },
-    });
+  const {
+    formData,
+    errors,
+    isLoading,
+    updateField,
+    handleSubmit,
+    loginMutation,
+  } = useAuth("login");
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();

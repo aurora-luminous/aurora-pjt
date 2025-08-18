@@ -1,172 +1,118 @@
-import { useApi } from "react-easy-api";
-import axiosClient from "@/app/lib/axiosClient";
+import { useAuthForm } from "./useAuthForm";
+import { AuthFormData } from "../types/AuthFormData";
 import {
-  setTokens,
-  getRefreshToken,
-  updateAccessToken,
-  clearTokens,
-} from "@/app/lib/tokenStorage";
-import { SignUpRequest } from "../types/SignUp";
-import { LoginRequest, LoginResponse } from "../types/Login";
+  useSignUpMutation,
+  useLoginMutation,
+  useLogoutMutation,
+} from "./useAuthMutations";
+import { useRouter } from "next/navigation";
 
-/**
- * 인증 관련 API 호출을 처리하는 커스텀 훅
- * react-easy-api를 사용하여 API 호출을 관리합니다.
- */
-export const useAuth = () => {
-  // API 훅을 사용하여 각 엔드포인트별 함수 생성
-  const {
-    execute: signUpApi,
-    loading: isSigningUp,
-    error: signUpError,
-  } = useApi<string, SignUpRequest>({
-    endpoint: "/jv/signup",
-    method: "POST",
-    axiosInstance: axiosClient,
-  });
+export const useAuth = (type: "login" | "register" = "register") => {
+  const router = useRouter();
+  const signUpMutation = useSignUpMutation();
+  const loginMutation = useLoginMutation();
+  const logoutMutation = useLogoutMutation();
 
-  const {
-    execute: loginApi,
-    loading: isLoggingIn,
-    error: loginError,
-  } = useApi<LoginResponse, LoginRequest>({
-    endpoint: "/jv/login",
-    method: "POST",
-    axiosInstance: axiosClient,
-  });
-
-  const {
-    execute: refreshTokenApi,
-    loading: isRefreshing,
-    error: refreshError,
-  } = useApi<{ accessToken: string }, { refreshToken: string }>({
-    endpoint: "/jv/refresh",
-    method: "POST",
-    axiosInstance: axiosClient,
-  });
-
-  const {
-    execute: logoutApi,
-    loading: isLoggingOut,
-    error: logoutError,
-  } = useApi<string, void>({
-    endpoint: "/jv/logout",
-    method: "POST",
-    axiosInstance: axiosClient,
-  });
-
-  /**
-   * 회원가입을 처리하는 함수
-   */
-  const signUp = async (data: SignUpRequest): Promise<string> => {
+  // 회원가입 처리 함수
+  const handleRegister = async (data: AuthFormData) => {
+    console.log("회원가입 프로세스 시작 - 폼 데이터:", data);
     try {
-      console.log("🔐 회원가입 시작:", data);
-      console.log("🔗 API URL:", process.env.NEXT_PUBLIC_API_URL);
+      // 1. 회원가입 먼저 진행
+      const signUpResponse = await signUpMutation.mutateAsync({
+        userEmail: data.userEmail,
+        userName: data.userName || "",
+        password: data.password,
+      });
+      console.log("✅ 회원가입 성공:", signUpResponse);
 
-      // react-easy-api 사용
-      const response = await signUpApi(data);
-      console.log("✅ 회원가입 응답:", response);
-
-      // null 응답도 성공으로 처리 (서버에서 빈 응답을 보낼 수 있음)
-      if (response === null || response === undefined) {
-        console.log("✅ 회원가입 완료 (서버에서 빈 응답)");
-        return "회원가입이 완료되었습니다.";
-      }
-
-      return response || "";
-    } catch (error) {
-      console.error("❌ 회원가입 중 오류 발생:", error);
-      throw error;
-    }
-  };
-
-  /**
-   * 로그인을 처리하는 함수
-   */
-  const login = async (
-    data: LoginRequest & { rememberMe?: boolean }
-  ): Promise<LoginResponse> => {
-    try {
-      const response = await loginApi({
+      // 2. 회원가입 성공 후 바로 로그인
+      console.log("🔄 자동 로그인 시작...");
+      const loginResponse = await loginMutation.mutateAsync({
         userEmail: data.userEmail,
         password: data.password,
       });
+      console.log("✅ 자동 로그인 성공:", loginResponse);
 
-      // 로그인 성공 시 토큰 저장 (rememberMe 옵션 적용)
-      if (response) {
-        setTokens(
-          response.accessToken,
-          response.refreshToken,
-          data.rememberMe || false
-        );
-      }
-
-      return response || { accessToken: "", refreshToken: "" };
+      // 3. 로그인 성공 후 서버 연결 페이지로 이동
+      console.log("🎉 회원가입 및 로그인 완료! 서버 연결 페이지로 이동합니다.");
+      router.push("/server-connect");
     } catch (error) {
-      console.error("로그인 중 오류 발생:", error);
+      console.error("❌ 회원가입 또는 로그인 에러:", error);
       throw error;
     }
   };
 
-  /**
-   * 토큰 갱신을 처리하는 함수
-   */
-  const refreshAccessToken = async (): Promise<string> => {
+  // 로그인 처리 함수
+  const handleLogin = async (data: AuthFormData) => {
+    console.log("로그인 프로세스 시작 - 폼 데이터:", data);
     try {
-      const refreshToken = getRefreshToken();
-      if (!refreshToken) {
-        throw new Error("Refresh token이 없습니다.");
-      }
+      const response = await loginMutation.mutateAsync({
+        userEmail: data.userEmail,
+        password: data.password,
+        rememberMe: data.rememberMe || false,
+      });
 
-      console.log("🔄 토큰 갱신 시작");
+      console.log("🎉 로그인 성공:", response);
+      console.log(
+        `💾 로그인 상태 유지: ${data.rememberMe ? "활성화" : "비활성화"}`
+      );
 
-      const response = await refreshTokenApi({ refreshToken });
-
-      if (!response) {
-        throw new Error(refreshError?.message || "토큰 갱신에 실패했습니다.");
-      }
-
-      console.log("✅ 토큰 갱신 성공");
-
-      // 새로운 accessToken 저장 (기존 rememberMe 설정 유지)
-      updateAccessToken(response.accessToken);
-
-      return response.accessToken;
+      // 로그인 성공 후 서버 연결 페이지로 이동
+      router.push("/server-connect");
     } catch (error) {
-      console.error("❌ 토큰 갱신 실패:", error);
-
-      // 리프레시 토큰도 만료된 경우 모든 토큰 제거
-      clearTokens();
-
+      console.error("❌ 로그인 에러:", error);
       throw error;
     }
   };
 
-  /**
-   * 로그아웃을 처리하는 함수
-   */
-  const logout = async () => {
-    try {
-      await logoutApi();
-      clearTokens();
-    } catch (error) {
-      console.error("❌ 로그아웃 실패:", error);
-      throw error;
-    }
+  // 로그아웃 처리 함수
+  const handleLogout = () => {
+    console.log("로그아웃 프로세스 시작");
+    logoutMutation.mutate(undefined, {
+      onSuccess: () => {
+        console.log("✅ 로그아웃 성공");
+        router.push("/login");
+      },
+      onError: (error) => {
+        console.error("❌ 로그아웃 에러:", error);
+      },
+    });
   };
+
+  // 타입에 따른 초기 데이터 설정
+  const getInitialData = () => {
+    if (type === "register") {
+      return {
+        userName: "",
+        confirmPassword: "",
+        agreeToTerms: false,
+      };
+    }
+    return {};
+  };
+
+  // 타입에 따른 onSubmit 함수 선택
+  const getOnSubmitHandler = () => {
+    return type === "register" ? handleRegister : handleLogin;
+  };
+
+  const { formData, errors, isLoading, updateField, handleSubmit } =
+    useAuthForm({
+      initialData: getInitialData(),
+      onSubmit: getOnSubmitHandler(),
+    });
 
   return {
-    signUp,
-    login,
-    refreshAccessToken,
-    isSigningUp,
-    isLoggingIn,
-    isRefreshing,
-    signUpError,
-    loginError,
-    refreshError,
-    logout,
-    isLoggingOut,
-    logoutError,
+    formData,
+    errors,
+    isLoading,
+    updateField,
+    handleSubmit,
+    signUpMutation,
+    loginMutation,
+    logoutMutation,
+    handleRegister,
+    handleLogin,
+    handleLogout,
   };
 };

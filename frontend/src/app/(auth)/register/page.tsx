@@ -2,13 +2,10 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { useAuthForm } from "../hooks/useAuthForm";
-import { AuthFormData } from "../types/AuthFormData";
+import { useAuth } from "../hooks/useAuth";
 import { AuthInput } from "../components/AuthInput";
 import { AuthCheckbox } from "../components/AuthCheckbox";
-import { useSignUpMutation, useLoginMutation } from "../hooks/useAuthMutations";
 import { AuthButton } from "../components/AuthButton";
 import { AuthInputWithButton } from "../components/AuthInputWithButton";
 
@@ -28,46 +25,15 @@ const pageVariants = {
 };
 
 const RegisterPage = () => {
-  const router = useRouter();
-  const signUpMutation = useSignUpMutation();
-  const loginMutation = useLoginMutation();
-
-  const { formData, errors, isLoading, updateField, handleSubmit } =
-    useAuthForm({
-      initialData: {
-        userName: "",
-        confirmPassword: "",
-        agreeToTerms: false,
-      },
-      onSubmit: async (data: AuthFormData) => {
-        console.log("onSubmit 호출됨 - 폼 데이터:", data);
-        try {
-          // 1. 회원가입 먼저 진행
-          const signUpResponse = await signUpMutation.mutateAsync({
-            userEmail: data.userEmail,
-            userName: data.userName || "",
-            password: data.password,
-          });
-          console.log("✅ 회원가입 성공:", signUpResponse);
-
-          // 2. 회원가입 성공 후 바로 로그인
-          console.log("🔄 자동 로그인 시작...");
-          const loginResponse = await loginMutation.mutateAsync({
-            userEmail: data.userEmail,
-            password: data.password,
-          });
-          console.log("✅ 자동 로그인 성공:", loginResponse);
-
-          // 3. 로그인 성공 후 서버 연결 페이지로 이동
-          console.log(
-            "🎉 회원가입 및 로그인 완료! 서버 연결 페이지로 이동합니다."
-          );
-          router.push("/server-connect");
-        } catch (error) {
-          console.error("❌ 회원가입 또는 로그인 에러:", error);
-        }
-      },
-    });
+  const {
+    formData,
+    errors,
+    isLoading,
+    updateField,
+    handleSubmit,
+    signUpMutation,
+    loginMutation,
+  } = useAuth("register");
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();

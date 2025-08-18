@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "./useAuth";
+import { useAuthApi } from "./useAuthApi";
 import {
   getAccessToken,
   getRefreshToken,
@@ -13,7 +13,7 @@ import {
 export const useAutoLogin = () => {
   const [isChecking, setIsChecking] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const { refreshAccessToken } = useAuth();
+  const { refreshAccessToken } = useAuthApi();
 
   useEffect(() => {
     const checkAuthStatus = async () => {

@@ -3,19 +3,10 @@
 import React from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { useLogoutMutation } from "../(auth)/hooks/useAuthMutations";
-import { useRouter } from "next/navigation";
+import { useAuth } from "../(auth)/hooks/useAuth";
 
 const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
-  const logoutMutation = useLogoutMutation();
-  const router = useRouter();
-  const handleLogout = () => {
-    logoutMutation.mutate(undefined, {
-      onSuccess: () => {
-        router.push("/login");
-      },
-    });
-  };
+  const { handleLogout } = useAuth();
 
   return (
     <div className="min-h-screen flex relative bg-aurora-blue-gradient-diagonal">

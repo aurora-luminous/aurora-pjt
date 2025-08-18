@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { useAuth } from "./useAuth";
+import { useAuth } from "./useAuthApi";
 import { SignUpRequest } from "../types/SignUp";
 import { LoginRequest } from "../types/Login";
 

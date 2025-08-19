@@ -72,11 +72,38 @@ export class ServerCreationService {
         serverUrl: savedServer.serverUrl,
         isDeletedServer: savedServer.isDeletedServer,
         ownerInfo: {
-            userPk: user.userPk,
             userName: user.userName,
             userEmail: user.userEmail,
         },
         };
+    }
+
+    async getUserServers(userPk: number): Promise<ServerResponseDto[]> {
+        const serverMembers = await this.serverMemberRepository.find({
+            where: { 
+                userPk: userPk,
+                sStatus: 'Active'
+            },
+            relations: ['server', 'server.serverMembers', 'server.serverMembers.user'],
+        });
+
+        return serverMembers
+            .filter(member => !member.server.isDeletedServer)
+            .map(member => {
+                const server = member.server;
+                const owner = server.serverMembers.find(sm => sm.serverRole === 'owner');
+                
+                return {
+                    serverPk: server.serverPk,
+                    serverName: server.serverName,
+                    serverUrl: server.serverUrl,
+                    isDeletedServer: server.isDeletedServer,
+                    ownerInfo: owner ? {
+                        userName: owner.user.userName,
+                        userEmail: owner.user.userEmail,
+                    } : undefined,
+                };
+            });
     }
 
     async getAllServers(): Promise<ServerResponseDto[]> {
@@ -94,7 +121,7 @@ export class ServerCreationService {
             serverUrl: server.serverUrl,
             isDeletedServer: server.isDeletedServer,
             ownerInfo: owner ? {
-            userPk: owner.user.userPk,
+            
             userName: owner.user.userName,
             userEmail: owner.user.userEmail,
             } : undefined,
@@ -120,7 +147,31 @@ export class ServerCreationService {
         serverUrl: server.serverUrl,
         isDeletedServer: server.isDeletedServer,
         ownerInfo: owner ? {
-            userPk: owner.user.userPk,
+            
+            userName: owner.user.userName,
+            userEmail: owner.user.userEmail,
+        } : undefined,
+        };
+    }
+
+    async getServerByUrl(serverUrl: string): Promise<ServerResponseDto> {
+        const server = await this.serverRepository.findOne({
+        where: { serverUrl, isDeletedServer: false },
+        relations: ['serverMembers', 'serverMembers.user'],
+        });
+
+        if (!server) {
+        throw new NotFoundException(`Server with URL ${serverUrl} not found`);
+        }
+
+        const owner = server.serverMembers.find(member => member.serverRole === 'owner');
+
+        return {
+        serverPk: server.serverPk,
+        serverName: server.serverName,
+        serverUrl: server.serverUrl,
+        isDeletedServer: server.isDeletedServer,
+        ownerInfo: owner ? {
             userName: owner.user.userName,
             userEmail: owner.user.userEmail,
         } : undefined,

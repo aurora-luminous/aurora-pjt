@@ -13,7 +13,7 @@ import { LoginRequest, LoginResponse } from "../types/Login";
  * 인증 관련 API 호출을 처리하는 커스텀 훅
  * react-easy-api를 사용하여 API 호출을 관리합니다.
  */
-export const useAuth = () => {
+export const useAuthApi = () => {
   // API 훅을 사용하여 각 엔드포인트별 함수 생성
   const {
     execute: signUpApi,

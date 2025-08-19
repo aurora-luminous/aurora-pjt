@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { useAuth } from "./useAuthApi";
+import { useAuthApi } from "./useAuthApi";
 import { SignUpRequest } from "../types/SignUp";
 import { LoginRequest } from "../types/Login";
 
@@ -8,7 +8,7 @@ import { LoginRequest } from "../types/Login";
  * TanStack Query를 사용하여 회원가입을 처리합니다.
  */
 export const useSignUpMutation = () => {
-  const { signUp } = useAuth();
+  const { signUp } = useAuthApi();
 
   return useMutation({
     mutationFn: async (data: SignUpRequest) => {
@@ -30,7 +30,7 @@ export const useSignUpMutation = () => {
  * TanStack Query를 사용하여 로그인을 처리합니다.
  */
 export const useLoginMutation = () => {
-  const { login } = useAuth();
+  const { login } = useAuthApi();
 
   return useMutation({
     mutationFn: async (data: LoginRequest & { rememberMe?: boolean }) => {
@@ -49,7 +49,7 @@ export const useLoginMutation = () => {
 };
 
 export const useLogoutMutation = () => {
-  const { logout } = useAuth();
+  const { logout } = useAuthApi();
 
   return useMutation({
     mutationFn: async () => {

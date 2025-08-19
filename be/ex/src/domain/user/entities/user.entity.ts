@@ -4,6 +4,8 @@ import {
   Column,
   OneToOne,
   OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { UserOption } from './user-option.entity';
@@ -36,6 +38,14 @@ export class User {
   @ApiProperty({ description: '프로필 이미지 경로', required: false })
   @Column({ type: 'text', nullable: true })
   profileImagePath: string;
+
+  @ApiProperty({ description: '생성 시간' })
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @ApiProperty({ description: '수정 시간' })
+  @UpdateDateColumn()
+  updatedAt: Date;
 
   // 관계 설정
   @OneToOne(() => UserOption, (option) => option.user, { cascade: true })

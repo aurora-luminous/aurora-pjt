@@ -41,13 +41,6 @@ npm 8+
 # 의존성 설치
 npm install
 
-# 환경 변수 설정
-cp .env.example .env
-# .env 파일에서 DB 정보 및 API 키 설정
-
-# 데이터베이스 생성
-createdb messenger_db
-
 # 서버 실행
 npm run start:dev
 ```

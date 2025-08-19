@@ -99,7 +99,7 @@ export class ServerInvitationService {
 
     // 3. 해시 생성 및 링크 생성
     const inviteHash = this.generateInviteHash(serverPk);
-    const baseUrl = this.configService.get('FRONTEND_URL', 'http://localhost:3000');
+    const baseUrl = this.configService.get('FRONTEND_URL', 'http://localhost:3000'); // env에 FRONTEND_URL 있으면 그거 사용, 없으면 localhost 사용
     const inviteLink = `${baseUrl}/join/${inviteHash}`;
 
     return {
@@ -287,6 +287,66 @@ export class ServerInvitationService {
         user_name: serverMember.user.userName,
         user_email: serverMember.user.userEmail,
         profile_image_path: serverMember.user.profileImagePath,
+      },
+    };
+  }
+
+  async updateMemberStatusByEmail(
+    serverPk: number,
+    userEmail: string,
+    status: 'Approved' | 'Rejected' | 'Banned',
+    adminUserPk: number
+  ): Promise<PendingMemberDto> {
+    // 1. userEmail로 사용자 찾기
+    const user = await this.userRepository.findOne({
+      where: { userEmail, isDeleted: false }
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with email ${userEmail} not found`);
+    }
+
+    // 2. 서버 멤버 찾기
+    const serverMember = await this.serverMemberRepository.findOne({
+      where: { serverPk, userPk: user.userPk },
+      relations: ['user', 'server']
+    });
+
+    if (!serverMember) {
+      throw new NotFoundException(`User ${userEmail} is not a member of this server`);
+    }
+
+    // 3. 관리자 권한 확인
+    const adminMember = await this.serverMemberRepository.findOne({
+      where: { 
+        serverPk, 
+        userPk: adminUserPk, 
+        status: 'Approved'
+      }
+    });
+
+    if (!adminMember || !['admin', 'owner'].includes(adminMember.serverRole)) {
+      throw new ForbiddenException('Only server admin or owner can approve/reject members');
+    }
+
+    // 4. 상태가 Pending인지 확인 (Banned는 예외)
+    if (serverMember.status !== 'Pending' && status !== 'Banned') {
+      throw new ConflictException('Only pending members can be approved or rejected');
+    }
+
+    // 5. 상태 업데이트
+    serverMember.status = status;
+    const updatedMember = await this.serverMemberRepository.save(serverMember);
+
+    return {
+      serverMemberPk: updatedMember.serverMemberPk,
+      userPk: updatedMember.userPk,
+      status: updatedMember.status,
+      userInfo: {
+        user_pk: user.userPk,
+        user_name: user.userName,
+        user_email: user.userEmail,
+        profile_image_path: user.profileImagePath,
       },
     };
   }

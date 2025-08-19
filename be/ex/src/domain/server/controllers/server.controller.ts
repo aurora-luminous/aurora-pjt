@@ -1,8 +1,11 @@
-import { Controller, Post, Get, Body, Param, ParseIntPipe, Patch } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Get, Body, Param, ParseIntPipe, Patch, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ServerCreationService } from '../services/server-creation.service';
 import { ServerInvitationService } from '../services/server-invitation.service';
 import { CreateServerDto, ServerListDto, ServerCreateResponseDto } from '../dto';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { CurrentUser } from '../../auth/current-user.decorator';
+import { User } from '../../user/entities/user.entity';
 
 @ApiTags('servers')
 @Controller()
@@ -13,14 +16,15 @@ export class ServerController {
   ) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '서버 생성' })
   @ApiResponse({ status: 201, description: '서버 생성 성공' })
   async createServer(
-    @Body() createServerDto: Omit<CreateServerDto, 'creatorUserPk'>
+    @Body() createServerDto: Omit<CreateServerDto, 'creatorUserPk'>,
+    @CurrentUser() user: User
   ): Promise<ServerCreateResponseDto> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    // @CurrentUser() user: User
-    const creatorUserPk = 1; // 임시 하드코딩
+    const creatorUserPk = user.userPk;
 
     const completeServerDto: CreateServerDto = {
       ...createServerDto,
@@ -31,11 +35,14 @@ export class ServerController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '유저가 속한 서버 목록 조회' })
   @ApiResponse({ status: 200, description: '서버 목록 조회 성공', type: [ServerListDto] })
-  async getUserServers(): Promise<ServerListDto[]> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const requestUserPk = 1; // 임시 하드코딩
+  async getUserServers(
+    @CurrentUser() user: User
+  ): Promise<ServerListDto[]> {
+    const requestUserPk = user.userPk;
     
     const servers = await this.serverCreationService.getUserServers(requestUserPk);
     return servers.map(server => ({
@@ -47,11 +54,13 @@ export class ServerController {
   @Post(':serverUrl/invite')
   @ApiOperation({ summary: '서버 초대 링크 생성' })
   @ApiResponse({ status: 201, description: '초대 링크 생성 성공' })
+  @UseGuards(JwtAuthGuard) // ✅ 메서드 위에 데코레이터
+  @ApiBearerAuth('access-token') // Swagger용
   async generateServerInviteLink(
-    @Param('serverUrl') serverUrl: string
+    @Param('serverUrl') serverUrl: string,
+    @CurrentUser() user: User // ✅ 매개변수로 추가
   ): Promise<{ inviteLink: string }> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const requestUserPk = 1; // 임시 하드코딩
+    const requestUserPk = user.userPk; // ✅ 하드코딩 대신 JWT에서 추출
     
     // serverUrl로 serverPk 조회
     const server = await this.serverCreationService.getServerByUrl(serverUrl);
@@ -60,27 +69,32 @@ export class ServerController {
   }
 
   @Get(':serverUrl/join/:inviteHash')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '서버 가입 신청' })
   @ApiResponse({ status: 200, description: '가입 신청 성공' })
   async joinServer(
     @Param('serverUrl') serverUrl: string,
-    @Param('inviteHash') inviteHash: string
+    @Param('inviteHash') inviteHash: string,
+    @CurrentUser() user: User
   ): Promise<{ status: 'Pending' | 'Approved' | 'Rejected' }> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const userPk = 1; // 임시 하드코딩
+    const userPk = user.userPk;
     
     const result = await this.serverInvitationService.joinServerByInvite({
       inviteHash,
       userPk
     });
-    return { status: result.status as 'Pending' | 'Approved' | 'Rejected' };
+    return { status: result.sStatus as 'Pending' | 'Approved' | 'Rejected' };
   }
 
   @Get(':serverUrl/pending')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '서버 가입 대기 목록' })
   @ApiResponse({ status: 200, description: '대기 목록 조회 성공' })
   async getPendingMembers(
-    @Param('serverUrl') serverUrl: string
+    @Param('serverUrl') serverUrl: string,
+    @CurrentUser() user: User
   ): Promise<Array<{
     status: string;
     userInfo: {
@@ -89,8 +103,7 @@ export class ServerController {
       profile_image_path: string;
     };
   }>> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const requestUserPk = 1; // 임시 하드코딩
+    const requestUserPk = user.userPk;
     
     // serverUrl로 serverPk 조회
     const server = await this.serverCreationService.getServerByUrl(serverUrl);
@@ -98,7 +111,7 @@ export class ServerController {
     
     // 명세서 형식에 맞게 변환
     return members.map(member => ({
-      status: member.status,
+      status: member.sStatus,
       userInfo: {
         user_name: member.userInfo.user_name,
         user_email: member.userInfo.user_email,
@@ -108,6 +121,8 @@ export class ServerController {
   }
 
   @Patch(':serverUrl/members')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '서버 멤버 승인/거절/밴' })
   @ApiResponse({ status: 200, description: '멤버 상태 변경 성공' })
   async updateMemberStatus(
@@ -115,7 +130,8 @@ export class ServerController {
     @Body() updateDto: { 
       userEmail: string;
       status: 'Approved' | 'Rejected' | 'Banned';
-    }
+    },
+    @CurrentUser() user: User
   ): Promise<{
     status: 'Approved' | 'Rejected' | 'Banned';
     userInfo: {
@@ -124,8 +140,7 @@ export class ServerController {
       profile_image_path: string;
     };
   }> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const adminUserPk = 1; // 임시 하드코딩
+    const adminUserPk = user.userPk;
     
     // serverUrl로 serverPk 조회
     const server = await this.serverCreationService.getServerByUrl(serverUrl);
@@ -139,7 +154,7 @@ export class ServerController {
     
     // 명세서 형식에 맞게 변환
     return {
-      status: result.status as 'Approved' | 'Rejected' | 'Banned',
+      status: result.sStatus as 'Approved' | 'Rejected' | 'Banned',
       userInfo: {
         user_name: result.userInfo.user_name,
         user_email: result.userInfo.user_email,

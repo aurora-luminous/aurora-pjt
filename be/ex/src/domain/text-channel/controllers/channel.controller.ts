@@ -6,8 +6,12 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { CurrentUser } from '../../auth/current-user.decorator';
+import { User } from '../../user/entities/user.entity';
 import { ChannelCreationService } from '../services/channel-creation.service';
 import { ChannelInvitationService } from '../services/channel-invitation.service';
 import {
@@ -27,6 +31,8 @@ export class ChannelController {
   ) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '채널 생성' })
   @ApiResponse({
     status: 201,
@@ -38,10 +44,9 @@ export class ChannelController {
     @Param('projectPk', ParseIntPipe) projectPk: number,
     @Body()
     createChannelDto: Omit<CreateChannelDto, 'projectPk' | 'creatorUserPk'>,
+    @CurrentUser() user: User
   ): Promise<ChannelListDto> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    // @CurrentUser() user: User
-    const creatorUserPk = 1; // 임시 하드코딩
+    const creatorUserPk = user.userPk;
 
     const channelDto: CreateChannelDto = {
       ...createChannelDto,
@@ -58,6 +63,8 @@ export class ChannelController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '해당 프로젝트의 유저별 채널 목록 조회' })
   @ApiResponse({
     status: 200,
@@ -67,11 +74,9 @@ export class ChannelController {
   async getChannelsByProject(
     @Param('serverUrl') serverUrl: string, // RouterModule에서 자동 제공
     @Param('projectPk', ParseIntPipe) projectPk: number,
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    // @CurrentUser() user: User
+    @CurrentUser() user: User
   ): Promise<ChannelListDto[]> {
-    // 임시로 하드코딩 (추후 JWT 인증으로 변경)
-    const requestUserPk = 1;
+    const requestUserPk = user.userPk;
     // 서버와 프로젝트 컴텍스트 정보 전달
     const channels = await this.channelCreationService.getChannelsByProject(
       projectPk,
@@ -89,14 +94,16 @@ export class ChannelController {
   // === 채널 초대 관련 엔드포인트 ===
 
   @Post(':channelPk/invite')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Private 채널에 사용자들 초대' })
   @ApiResponse({ status: 201, description: '초대 성공' })
   async inviteUsersToChannel(
     @Param('channelPk', ParseIntPipe) channelPk: number,
     @Body() users: Array<{ userEmail: string }>,
+    @CurrentUser() user: User
   ): Promise<{ message: string }> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const inviterUserPk = 1; // 임시 하드코딩
+    const inviterUserPk = user.userPk;
 
     const bulkInviteDto: BulkInviteToChannelDto = {
       users: users,
@@ -109,6 +116,8 @@ export class ChannelController {
   }
 
   @Get(':channelPk/members')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '채널 멤버 목록 조회' })
   @ApiResponse({
     status: 200,
@@ -117,9 +126,9 @@ export class ChannelController {
   })
   async getChannelMembers(
     @Param('channelPk', ParseIntPipe) channelPk: number,
+    @CurrentUser() user: User
   ): Promise<ChannelMemberDto[]> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const requestUserPk = 1; // 임시 하드코딩
+    const requestUserPk = user.userPk;
 
     return this.channelInvitationService.getChannelMembers(
       channelPk,
@@ -128,14 +137,16 @@ export class ChannelController {
   }
 
   @Patch(':channelPk/members/remove')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '채널에서 사용자 제거/퇴장' })
   @ApiResponse({ status: 200, description: '사용자 제거 성공' })
   async removeUserFromChannel(
     @Param('channelPk', ParseIntPipe) channelPk: number,
     @Body() manageMemberDto: ManageMemberDto,
+    @CurrentUser() user: User
   ): Promise<{ message: string }> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const adminUserPk = 1; // 임시 하드코딩
+    const adminUserPk = user.userPk;
 
     await this.channelInvitationService.removeUserFromChannelByEmail(
       channelPk,
@@ -146,14 +157,16 @@ export class ChannelController {
   }
 
   @Patch(':channelPk/members/ban')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '채널에서 사용자 차단' })
   @ApiResponse({ status: 200, description: '사용자 차단 성공' })
   async banUserFromChannel(
     @Param('channelPk', ParseIntPipe) channelPk: number,
     @Body() manageMemberDto: ManageMemberDto,
+    @CurrentUser() user: User
   ): Promise<{ message: string }> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const adminUserPk = 1; // 임시 하드코딩
+    const adminUserPk = user.userPk;
 
     return this.channelInvitationService.banUserFromChannelByEmail(
       channelPk,
@@ -163,14 +176,16 @@ export class ChannelController {
   }
 
   @Patch(':channelPk/members/unban')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '채널에서 사용자 차단 해제' })
   @ApiResponse({ status: 200, description: '차단 해제 성공' })
   async unbanUserFromChannel(
     @Param('channelPk', ParseIntPipe) channelPk: number,
     @Body() manageMemberDto: ManageMemberDto,
+    @CurrentUser() user: User
   ): Promise<{ message: string }> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const ownerUserPk = 1; // 임시 하드코딩
+    const ownerUserPk = user.userPk;
 
     await this.channelInvitationService.unbanUserFromChannelByEmail(
       channelPk,

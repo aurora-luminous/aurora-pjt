@@ -6,8 +6,12 @@ import {
   Param,
   ParseIntPipe,
   Patch,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { CurrentUser } from '../../auth/current-user.decorator';
+import { User } from '../../user/entities/user.entity';
 import { ProjectCreationService } from '../services/project-creation.service';
 import { ProjectInvitationService } from '../services/project-invitation.service';
 import {
@@ -28,6 +32,8 @@ export class ProjectController {
   ) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '프로젝트 생성' })
   @ApiResponse({
     status: 201,
@@ -41,10 +47,9 @@ export class ProjectController {
       CreateProjectDto,
       'serverUrl' | 'serverPk' | 'creatorUserPk'
     >,
+    @CurrentUser() user: User
   ): Promise<ProjectListDto> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    // @CurrentUser() user: User
-    const creatorUserPk = 1; // 임시 하드코딩
+    const creatorUserPk = user.userPk;
 
     const completeProjectDto: CreateProjectDto = {
       ...createProjectDto,
@@ -60,6 +65,8 @@ export class ProjectController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '해당 서버의 유저별 프로젝트 목록 조회' })
   @ApiResponse({
     status: 200,
@@ -68,9 +75,9 @@ export class ProjectController {
   })
   async getProjectsByServer(
     @Param('serverUrl') serverUrl: string,
+    @CurrentUser() user: User
   ): Promise<ProjectListDto[]> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const requestUserPk = 1; // 임시 하드코딩
+    const requestUserPk = user.userPk;
 
     const projects =
       await this.projectCreationService.getProjectsByServerForUser(
@@ -86,14 +93,16 @@ export class ProjectController {
   // === 프로젝트 초대 관련 엔드포인트 ===
 
   @Post(':projectPk/invite')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '프로젝트에 사용자들 초대' })
   @ApiResponse({ status: 201, description: '초대 성공' })
   async inviteUsersToProject(
     @Param('projectPk', ParseIntPipe) projectPk: number,
     @Body() users: UserEmailDto[],
+    @CurrentUser() user: User
   ): Promise<{ message: string }> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const inviterUserPk = 1; // 임시 하드코딩
+    const inviterUserPk = user.userPk;
 
     const bulkInviteDto: BulkInviteToProjectDto = {
       users: users,
@@ -106,6 +115,8 @@ export class ProjectController {
   }
 
   @Get(':projectPk/members')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '프로젝트 멤버 목록 조회' })
   @ApiResponse({
     status: 200,
@@ -114,9 +125,9 @@ export class ProjectController {
   })
   async getProjectMembers(
     @Param('projectPk', ParseIntPipe) projectPk: number,
+    @CurrentUser() user: User
   ): Promise<ProjectMemberDto[]> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const requestUserPk = 1; // 임시 하드코딩
+    const requestUserPk = user.userPk;
 
     return this.projectInvitationService.getProjectMembers(
       projectPk,
@@ -125,14 +136,16 @@ export class ProjectController {
   }
 
   @Patch(':projectPk/members/remove')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '프로젝트에서 사용자 제거' })
   @ApiResponse({ status: 200, description: '사용자 제거 성공' })
   async removeUserFromProject(
     @Param('projectPk', ParseIntPipe) projectPk: number,
     @Body() manageMemberDto: ManageMemberDto,
+    @CurrentUser() user: User
   ): Promise<{ message: string }> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const adminUserPk = 1; // 임시 하드코딩
+    const adminUserPk = user.userPk;
 
     await this.projectInvitationService.removeUserFromProjectByEmail(
       projectPk,
@@ -143,14 +156,16 @@ export class ProjectController {
   }
 
   @Patch(':projectPk/members/ban')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '프로젝트에서 사용자 차단' })
   @ApiResponse({ status: 200, description: '사용자 차단 성공' })
   async banUserFromProject(
     @Param('projectPk', ParseIntPipe) projectPk: number,
     @Body() manageMemberDto: ManageMemberDto,
+    @CurrentUser() user: User
   ): Promise<{ message: string }> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const adminUserPk = 1; // 임시 하드코딩
+    const adminUserPk = user.userPk;
 
     return this.projectInvitationService.banUserFromProjectByEmail(
       projectPk,
@@ -160,14 +175,16 @@ export class ProjectController {
   }
 
   @Patch(':projectPk/members/unban')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '프로젝트에서 사용자 차단 해제' })
   @ApiResponse({ status: 200, description: '차단 해제 성공' })
   async unbanUserFromProject(
     @Param('projectPk', ParseIntPipe) projectPk: number,
     @Body() manageMemberDto: ManageMemberDto,
+    @CurrentUser() user: User
   ): Promise<{ message: string }> {
-    // TODO: JWT에서 사용자 정보 추출하도록 수정 필요
-    const ownerUserPk = 1; // 임시 하드코딩
+    const ownerUserPk = user.userPk;
 
     await this.projectInvitationService.unbanUserFromProjectByEmail(
       projectPk,

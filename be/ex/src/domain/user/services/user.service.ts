@@ -10,5 +10,12 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  // TODO: 기능 구현 예정
+  async findByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: {
+        userEmail: email,
+        isDeleted: false
+      },
+    });
+  }
 }

@@ -12,8 +12,13 @@ const axiosClient = axios.create({
 
 console.log("🔗 Using Next.js proxy: /api");
 
-// 스프링 서버 전용 클라이언트
+// 스프링 서버 전용 클라이언트 (인증 필요)
 export const springClient = axios.create({
+  baseURL: "/api/jv", // 스프링 서버로 라우팅
+});
+
+// 스프링 서버 전용 클라이언트 (인증 불필요 - 회원가입, 로그인용)
+export const springAuthClient = axios.create({
   baseURL: "/api/jv", // 스프링 서버로 라우팅
 });
 
@@ -22,8 +27,15 @@ export const expressClient = axios.create({
   baseURL: "/api/ex", // Express 서버로 라우팅
 });
 
+// 인증이 불필요한 엔드포인트 목록
+const authFreeEndpoints = ["/signup", "/login"];
+
 // 공통 인터셉터 설정 함수
-const setupInterceptors = (client: AxiosInstance, serverName: string) => {
+const setupInterceptors = (
+  client: AxiosInstance,
+  serverName: string,
+  skipAuth = false
+) => {
   // 요청 인터셉터
   client.interceptors.request.use((config) => {
     console.log(
@@ -33,11 +45,17 @@ const setupInterceptors = (client: AxiosInstance, serverName: string) => {
     );
     console.log("📦 요청 데이터:", config.data);
 
-    // tokenStorage에서 토큰 가져오기
-    const accessToken = getAccessToken();
+    // skipAuth가 false이고, 인증이 불필요한 엔드포인트가 아닌 경우에만 토큰 추가
+    if (
+      !skipAuth &&
+      !authFreeEndpoints.some((endpoint) => config.url?.includes(endpoint))
+    ) {
+      // tokenStorage에서 토큰 가져오기
+      const accessToken = getAccessToken();
 
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+      if (accessToken) {
+        config.headers.Authorization = `Bearer ${accessToken}`;
+      }
     }
 
     return config;
@@ -64,8 +82,12 @@ const setupInterceptors = (client: AxiosInstance, serverName: string) => {
       );
       console.error("📦 에러 데이터:", error.response?.data);
 
-      // 401 에러이고 아직 재시도하지 않은 경우
-      if (error.response?.status === 401 && !originalRequest._retry) {
+      // 401 에러이고 아직 재시도하지 않은 경우 (skipAuth가 false인 경우만)
+      if (
+        error.response?.status === 401 &&
+        !originalRequest._retry &&
+        !skipAuth
+      ) {
         originalRequest._retry = true;
 
         try {
@@ -74,8 +96,8 @@ const setupInterceptors = (client: AxiosInstance, serverName: string) => {
           if (refreshToken) {
             console.log("🔄 401 에러 감지, 토큰 갱신 시도");
 
-            // 토큰 갱신 요청 (스프링 서버에서 처리한다고 가정)
-            const refreshResponse = await axiosClient.post("/jv/refresh", {
+            // 토큰 갱신 요청 (인증 불필요한 클라이언트 사용)
+            const refreshResponse = await springAuthClient.post("/refresh", {
               refreshToken,
             });
 
@@ -113,12 +135,15 @@ const setupInterceptors = (client: AxiosInstance, serverName: string) => {
 // 각 클라이언트에 인터셉터 설정
 setupInterceptors(axiosClient, "Spring");
 setupInterceptors(springClient, "Spring");
+setupInterceptors(springAuthClient, "Spring Auth-Free", true); // 인증 불필요
 setupInterceptors(expressClient, "Express");
 
 // 편의 함수들
 export const apiRequest = {
   // 스프링 서버 요청
   spring: springClient,
+  // 스프링 서버 요청 (인증 불필요)
+  springAuth: springAuthClient,
   // Express 서버 요청
   express: expressClient,
   // 기본 요청 (스프링 서버)

@@ -1,5 +1,5 @@
 import { useApi } from "react-easy-api";
-import axiosClient from "@/app/lib/axiosClient";
+import { springClient } from "@/app/lib/axiosClient";
 import {
   setTokens,
   getRefreshToken,
@@ -22,7 +22,7 @@ export const useAuthApi = () => {
   } = useApi<string, SignUpRequest>({
     endpoint: "/jv/signup",
     method: "POST",
-    axiosInstance: axiosClient,
+    axiosInstance: springClient,
   });
 
   const {
@@ -32,7 +32,7 @@ export const useAuthApi = () => {
   } = useApi<LoginResponse, LoginRequest>({
     endpoint: "/jv/login",
     method: "POST",
-    axiosInstance: axiosClient,
+    axiosInstance: springClient,
   });
 
   const {
@@ -42,7 +42,7 @@ export const useAuthApi = () => {
   } = useApi<{ accessToken: string }, { refreshToken: string }>({
     endpoint: "/jv/refresh",
     method: "POST",
-    axiosInstance: axiosClient,
+    axiosInstance: springClient,
   });
 
   const {
@@ -52,7 +52,7 @@ export const useAuthApi = () => {
   } = useApi<string, void>({
     endpoint: "/jv/logout",
     method: "POST",
-    axiosInstance: axiosClient,
+    axiosInstance: springClient,
   });
 
   /**
@@ -61,7 +61,6 @@ export const useAuthApi = () => {
   const signUp = async (data: SignUpRequest): Promise<string> => {
     try {
       console.log("🔐 회원가입 시작:", data);
-      console.log("🔗 API URL:", process.env.NEXT_PUBLIC_API_URL);
 
       // react-easy-api 사용
       const response = await signUpApi(data);

@@ -6,6 +6,7 @@ import { Project } from '../project/entities/project.entity';
 import { ProjectMember } from '../project/entities/project-member.entity';
 import { User } from '../user/entities/user.entity';
 import { ChannelCreationService } from './services/channel-creation.service';
+import { ChannelInvitationService } from './services/channel-invitation.service';
 import { ChannelController } from './controllers/channel.controller';
 
 @Module({
@@ -23,9 +24,11 @@ import { ChannelController } from './controllers/channel.controller';
   ],
   providers: [
     ChannelCreationService,
+    ChannelInvitationService,
   ],
   exports: [
     ChannelCreationService,
+    ChannelInvitationService,
   ],
 })
 export class TextChannelModule {}

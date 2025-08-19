@@ -14,6 +14,16 @@ export interface InviteToChannelDto {
   channelRole?: 'member' | 'admin';
 }
 
+export interface UserEmailDto {
+  userEmail: string;
+}
+
+export interface BulkInviteToChannelDto {
+  users: UserEmailDto[];
+  channelPk: number;
+  inviterUserPk: number;
+}
+
 export interface ChannelMemberDto {
   channelMemberPk: number;
   channelPk: number;
@@ -532,5 +542,84 @@ export class ChannelInvitationService {
         profileImagePath: targetMember.user.profileImagePath,
       },
     };
+  }
+
+  // 여러 사용자를 채널에 일괄 초대 (Private 채널만)
+  async bulkInviteUsersToChannel(bulkInviteDto: BulkInviteToChannelDto): Promise<void> {
+    for (const userEmail of bulkInviteDto.users) {
+      try {
+        const inviteDto: InviteToChannelDto = {
+          channelPk: bulkInviteDto.channelPk,
+          userEmail: userEmail.userEmail,
+          inviterUserPk: bulkInviteDto.inviterUserPk,
+          channelRole: 'member' // 기본 역할
+        };
+        
+        await this.inviteUserToChannel(inviteDto);
+      } catch (error) {
+        // 개별 초대 실패 시 로그만 남기고 계속 진행
+        console.error(`Failed to invite ${userEmail.userEmail} to channel:`, error.message);
+      }
+    }
+  }
+
+  // === 이메일 기반 메서드들 ===
+
+  async removeUserFromChannelByEmail(
+    channelPk: number,
+    targetUserEmail: string,
+    adminUserPk: number
+  ): Promise<void> {
+    // 이메일로 사용자 찾기
+    const targetUser = await this.userRepository.findOne({
+      where: { userEmail: targetUserEmail, isDeleted: false }
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException(`User with email ${targetUserEmail} not found`);
+    }
+
+    const removeDto: RemoveFromChannelDto = {
+      channelPk,
+      targetUserPk: targetUser.userPk,
+      adminUserPk
+    };
+
+    return this.removeUserFromChannel(removeDto);
+  }
+
+  async banUserFromChannelByEmail(
+    channelPk: number,
+    targetUserEmail: string,
+    adminUserPk: number
+  ): Promise<{ message: string }> {
+    // 이메일로 사용자 찾기
+    const targetUser = await this.userRepository.findOne({
+      where: { userEmail: targetUserEmail, isDeleted: false }
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException(`User with email ${targetUserEmail} not found`);
+    }
+
+    await this.banUserFromChannel(channelPk, targetUser.userPk, adminUserPk);
+    return { message: '사용자가 차단되었습니다.' };
+  }
+
+  async unbanUserFromChannelByEmail(
+    channelPk: number,
+    userEmail: string,
+    ownerUserPk: number
+  ): Promise<void> {
+    // 이메일로 사용자 찾기
+    const targetUser = await this.userRepository.findOne({
+      where: { userEmail: userEmail, isDeleted: false }
+    });
+
+    if (!targetUser) {
+      throw new NotFoundException(`User with email ${userEmail} not found`);
+    }
+
+    await this.unbanUserFromChannel(channelPk, targetUser.userPk, ownerUserPk);
   }
 }

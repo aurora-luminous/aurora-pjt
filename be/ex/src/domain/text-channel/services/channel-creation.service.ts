@@ -97,6 +97,29 @@ export class ChannelCreationService {
     });
     await this.channelMemberRepository.save(channelMember);
 
+    // 7. Public 채널인 경우 프로젝트의 모든 멤버를 자동으로 추가
+    if (!savedChannel.isPrivate) {
+      const projectMembers = await this.projectMemberRepository.find({
+        where: { 
+          projectPk: createChannelDto.projectPk,
+          pStatus: 'Active' // 활성 멤버만
+        }
+      });
+
+      const channelMembersToAdd = projectMembers
+        .filter(member => member.userPk !== createChannelDto.creatorUserPk) // 생성자는 이미 추가됨
+        .map(member => this.channelMemberRepository.create({
+          channelPk: savedChannel.channelPk,
+          userPk: member.userPk,
+          cStatus: 'Active',
+          channelRole: 'member',
+        }));
+
+      if (channelMembersToAdd.length > 0) {
+        await this.channelMemberRepository.save(channelMembersToAdd);
+      }
+    }
+
     return {
       channelPk: savedChannel.channelPk,
       projectPk: savedChannel.projectPk,
@@ -109,7 +132,6 @@ export class ChannelCreationService {
         projectName: project.projectName,
       },
       ownerInfo: {
-        userPk: user.userPk,
         userName: user.userName,
       },
     };
@@ -118,7 +140,7 @@ export class ChannelCreationService {
   async getChannelsByProject(
     projectPk: number,
     requestUserPk?: number,
-    serverPk?: number, // 추가: 서버 컴텍스트 정보
+    serverUrl?: string, // 추가: 서버 컴텍스트 정보
   ): Promise<ChannelResponseDto[]> {
     // 프로젝트 존재 확인
     const project = await this.projectRepository.findOne({
@@ -174,7 +196,7 @@ export class ChannelCreationService {
         },
         ownerInfo: owner
           ? {
-              userPk: owner.user.userPk,
+              
               userName: owner.user.userName,
             }
           : undefined,
@@ -185,7 +207,7 @@ export class ChannelCreationService {
   async getChannelById(
     channelPk: number,
     projectPk?: number, // 추가: 프로젝트 컴텍스트 정보
-    serverPk?: number,  // 추가: 서버 컴텍스트 정보
+    serverUrl?: string,  // 추가: 서버 컴텍스트 정보
   ): Promise<ChannelResponseDto> {
     const channel = await this.channelRepository.findOne({
       where: { channelPk, isDeletedChannel: false },
@@ -213,7 +235,7 @@ export class ChannelCreationService {
       },
       ownerInfo: owner
         ? {
-            userPk: owner.user.userPk,
+            
             userName: owner.user.userName,
           }
         : undefined,

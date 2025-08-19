@@ -77,14 +77,14 @@ export class ServerController {
     @Param('serverUrl') serverUrl: string,
     @Param('inviteHash') inviteHash: string,
     @CurrentUser() user: User
-  ): Promise<{ status: 'Pending' | 'Approved' | 'Rejected' }> {
+  ): Promise<{ sStatus: 'Pending' | 'Approved' | 'Rejected' }> {
     const userPk = user.userPk;
     
     const result = await this.serverInvitationService.joinServerByInvite({
       inviteHash,
       userPk
     });
-    return { status: result.sStatus as 'Pending' | 'Approved' | 'Rejected' };
+    return { sStatus: result.sStatus as 'Pending' | 'Approved' | 'Rejected' };
   }
 
   @Get(':serverUrl/pending')
@@ -96,7 +96,7 @@ export class ServerController {
     @Param('serverUrl') serverUrl: string,
     @CurrentUser() user: User
   ): Promise<Array<{
-    status: string;
+    sStatus: string;
     userInfo: {
       user_name: string;
       user_email: string;
@@ -111,7 +111,7 @@ export class ServerController {
     
     // 명세서 형식에 맞게 변환
     return members.map(member => ({
-      status: member.sStatus,
+      sStatus: member.sStatus,
       userInfo: {
         user_name: member.userInfo.user_name,
         user_email: member.userInfo.user_email,
@@ -129,11 +129,11 @@ export class ServerController {
     @Param('serverUrl') serverUrl: string,
     @Body() updateDto: { 
       userEmail: string;
-      status: 'Approved' | 'Rejected' | 'Banned';
+      sStatus: 'Approved' | 'Rejected' | 'Banned';
     },
     @CurrentUser() user: User
   ): Promise<{
-    status: 'Approved' | 'Rejected' | 'Banned';
+    sStatus: 'Approved' | 'Rejected' | 'Banned';
     userInfo: {
       user_name: string;
       user_email: string;
@@ -148,13 +148,13 @@ export class ServerController {
     const result = await this.serverInvitationService.updateMemberStatusByEmail(
       server.serverPk,
       updateDto.userEmail,
-      updateDto.status,
+      updateDto.sStatus,
       adminUserPk
     );
     
     // 명세서 형식에 맞게 변환
     return {
-      status: result.sStatus as 'Approved' | 'Rejected' | 'Banned',
+      sStatus: result.sStatus as 'Approved' | 'Rejected' | 'Banned',
       userInfo: {
         user_name: result.userInfo.user_name,
         user_email: result.userInfo.user_email,

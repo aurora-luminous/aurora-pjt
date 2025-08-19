@@ -26,7 +26,7 @@ export class ServerMember {
   serverPk: number;
 
   @ApiProperty({ description: '서버 멤버 승인 상태' })
-  @Column({ type: 'varchar', length: 20, name: 's_status' })
+  @Column({ type: 'varchar', length: 20, name: 's_status', default: 'Pending' })
   sStatus: string;
 
   @ApiProperty({

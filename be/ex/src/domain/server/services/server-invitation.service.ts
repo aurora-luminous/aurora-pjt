@@ -21,7 +21,7 @@ export interface ServerInviteDto {
 export interface PendingMemberDto {
   serverMemberPk: number;
   userPk: number;
-  sStatus: string;
+  status: string;
   userInfo: {
     user_pk: number;
     user_name: string;
@@ -31,7 +31,7 @@ export interface PendingMemberDto {
 }
 
 export interface UpdateMemberStatusDto {
-  sStatus: 'Approved' | 'Rejected' | 'Banned';
+  status: 'Approved' | 'Rejected' | 'Banned';
   adminUserPk: number;
 }
 
@@ -89,7 +89,7 @@ export class ServerInvitationService {
       where: { 
         serverPk, 
         userPk: requestUserPk, 
-        sStatus: 'Approved'
+        status: 'Approved'
       }
     });
 
@@ -142,19 +142,19 @@ export class ServerInvitationService {
     });
 
     if (existingMember) {
-      if (existingMember.sStatus === 'Approved') {
+      if (existingMember.status === 'Approved') {
         throw new ConflictException('User is already a member of this server');
-      } else if (existingMember.sStatus === 'Pending') {
+      } else if (existingMember.status === 'Pending') {
         throw new ConflictException('Join request is already pending');
-              } else if (existingMember.sStatus === 'Rejected' || existingMember.sStatus === 'Banned') {
+              } else if (existingMember.status === 'Rejected' || existingMember.status === 'Banned') {
         // 거절되었거나 밴당한 사용자의 재신청 가능하도록 상태 업데이트
-        existingMember.sStatus = 'Pending';
+        existingMember.status = 'Pending';
         await this.serverMemberRepository.save(existingMember);
         
         return {
           serverMemberPk: existingMember.serverMemberPk,
           userPk: existingMember.userPk,
-          sStatus: existingMember.sStatus,
+          status: existingMember.status,
           userInfo: {
             user_pk: user.userPk,
             user_name: user.userName,
@@ -169,7 +169,7 @@ export class ServerInvitationService {
     const serverMember = this.serverMemberRepository.create({
       serverPk,
       userPk: joinDto.userPk,
-      sStatus: 'Pending',
+      status: 'Pending',
       serverRole: 'member',
     });
     const savedMember = await this.serverMemberRepository.save(serverMember);
@@ -177,7 +177,7 @@ export class ServerInvitationService {
     return {
       serverMemberPk: savedMember.serverMemberPk,
       userPk: savedMember.userPk,
-      sStatus: savedMember.sStatus,
+      status: savedMember.status,
       userInfo: {
         user_pk: user.userPk,
         user_name: user.userName,
@@ -203,7 +203,7 @@ export class ServerInvitationService {
       where: { 
         serverPk, 
         userPk: requestUserPk, 
-        sStatus: 'Approved'
+        status: 'Approved'
       }
     });
 
@@ -213,7 +213,7 @@ export class ServerInvitationService {
 
     // 3. 대기 중인 멤버 목록 조회
     const pendingMembers = await this.serverMemberRepository.find({
-      where: { serverPk, sStatus: 'Pending' },
+      where: { serverPk, status: 'Pending' },
       relations: ['user'],
       order: { serverMemberPk: 'ASC' }, // 신청 순서대로
     });
@@ -221,7 +221,7 @@ export class ServerInvitationService {
     return pendingMembers.map(member => ({
       serverMemberPk: member.serverMemberPk,
       userPk: member.userPk,
-      sStatus: member.sStatus,
+      status: member.status,
       userInfo: {
         user_pk: member.user.userPk,
         user_name: member.user.userName,
@@ -251,7 +251,7 @@ export class ServerInvitationService {
       where: { 
         serverPk: serverMember.serverPk, 
         userPk: updateDto.adminUserPk, 
-        sStatus: 'Approved'
+        status: 'Approved'
       }
     });
 
@@ -260,23 +260,23 @@ export class ServerInvitationService {
     }
 
     // 3. 상태가 Pending인지 확인
-    if (serverMember.sStatus !== 'Pending') {
+    if (serverMember.status !== 'Pending') {
       throw new ConflictException('Only pending members can be approved or rejected');
     }
 
     // 4. 상태 업데이트 (Approved 또는 Rejected만 허용)
-    if (!['Approved', 'Rejected'].includes(updateDto.sStatus)) {
+    if (!['Approved', 'Rejected'].includes(updateDto.status)) {
       throw new ConflictException('Invalid status. Only Approved or Rejected allowed for pending members');
     }
 
     // 5. 상태 업데이트
-    serverMember.sStatus = updateDto.sStatus;
+    serverMember.status = updateDto.status;
     const updatedMember = await this.serverMemberRepository.save(serverMember);
 
     return {
       serverMemberPk: updatedMember.serverMemberPk,
       userPk: updatedMember.userPk,
-      sStatus: updatedMember.sStatus,
+      status: updatedMember.status,
       userInfo: {
         user_pk: serverMember.user.userPk,
         user_name: serverMember.user.userName,
@@ -289,7 +289,7 @@ export class ServerInvitationService {
   async updateMemberStatusByEmail(
     serverPk: number,
     userEmail: string,
-    sStatus: 'Approved' | 'Rejected' | 'Banned',
+    status: 'Approved' | 'Rejected' | 'Banned',
     adminUserPk: number
   ): Promise<PendingMemberDto> {
     // 1. userEmail로 사용자 찾기
@@ -316,7 +316,7 @@ export class ServerInvitationService {
       where: { 
         serverPk, 
         userPk: adminUserPk, 
-        sStatus: 'Approved'
+        status: 'Approved'
       }
     });
 
@@ -325,18 +325,18 @@ export class ServerInvitationService {
     }
 
     // 4. 상태가 Pending인지 확인 (Banned는 예외)
-    if (serverMember.sStatus !== 'Pending' && sStatus !== 'Banned') {
+    if (serverMember.status !== 'Pending' && status !== 'Banned') {
       throw new ConflictException('Only pending members can be approved or rejected');
     }
 
     // 5. 상태 업데이트
-    serverMember.sStatus = sStatus;
+    serverMember.status = status;
     const updatedMember = await this.serverMemberRepository.save(serverMember);
 
     return {
       serverMemberPk: updatedMember.serverMemberPk,
       userPk: updatedMember.userPk,
-      sStatus: updatedMember.sStatus,
+      status: updatedMember.status,
       userInfo: {
         user_pk: user.userPk,
         user_name: user.userName,
@@ -362,7 +362,7 @@ export class ServerInvitationService {
       where: { 
         serverPk, 
         userPk: requestUserPk, 
-        sStatus: 'Approved'
+        status: 'Approved'
       }
     });
 
@@ -372,7 +372,7 @@ export class ServerInvitationService {
 
     // 3. 활성 멤버 목록 조회 (Approved 상태만)
     const activeMembers = await this.serverMemberRepository.find({
-      where: { serverPk, sStatus: 'Approved' },
+      where: { serverPk, status: 'Approved' },
       relations: ['user'],
       order: { serverMemberPk: 'ASC' },
     });
@@ -380,7 +380,7 @@ export class ServerInvitationService {
     return activeMembers.map(member => ({
       serverMemberPk: member.serverMemberPk,
       userPk: member.userPk,
-      sStatus: member.sStatus,
+      status: member.status,
       userInfo: {
         user_pk: member.user.userPk,
         user_name: member.user.userName,
@@ -406,7 +406,7 @@ export class ServerInvitationService {
       where: { 
         serverPk, 
         userPk: requestUserPk, 
-        sStatus: 'Approved'
+        status: 'Approved'
       }
     });
 
@@ -416,7 +416,7 @@ export class ServerInvitationService {
 
     // 3. 밴된 멤버 목록 조회
     const bannedMembers = await this.serverMemberRepository.find({
-      where: { serverPk, sStatus: 'Banned' },
+      where: { serverPk, status: 'Banned' },
       relations: ['user'],
       order: { serverMemberPk: 'DESC' }, // 최근 밴된 순서
     });
@@ -424,7 +424,7 @@ export class ServerInvitationService {
     return bannedMembers.map(member => ({
       serverMemberPk: member.serverMemberPk,
       userPk: member.userPk,
-      sStatus: member.sStatus,
+      status: member.status,
       userInfo: {
         user_pk: member.user.userPk,
         user_name: member.user.userName,
@@ -438,7 +438,7 @@ export class ServerInvitationService {
   async unbanMember(serverMemberPk: number, adminUserPk: number): Promise<PendingMemberDto> {
     // 1. 밴된 멤버 확인
     const bannedMember = await this.serverMemberRepository.findOne({
-      where: { serverMemberPk, sStatus: 'Banned' },
+      where: { serverMemberPk, status: 'Banned' },
       relations: ['user', 'server']
     });
 
@@ -451,7 +451,7 @@ export class ServerInvitationService {
       where: { 
         serverPk: bannedMember.serverPk, 
         userPk: adminUserPk, 
-        sStatus: 'Approved'
+        status: 'Approved'
       }
     });
 
@@ -460,13 +460,13 @@ export class ServerInvitationService {
     }
 
     // 3. 상태를 Approved로 복구
-    bannedMember.sStatus = 'Approved';
+    bannedMember.status = 'Approved';
     const unbannedMember = await this.serverMemberRepository.save(bannedMember);
 
     return {
       serverMemberPk: unbannedMember.serverMemberPk,
       userPk: unbannedMember.userPk,
-      sStatus: unbannedMember.sStatus,
+      status: unbannedMember.status,
       userInfo: {
         user_pk: bannedMember.user.userPk,
         user_name: bannedMember.user.userName,
@@ -487,7 +487,7 @@ export class ServerInvitationService {
 
     // 2. 강퇴할 멤버 확인 (승인된 멤버만)
     const targetMember = await this.serverMemberRepository.findOne({
-      where: { serverPk, userPk: targetUserPk, sStatus: 'Approved' }
+      where: { serverPk, userPk: targetUserPk, status: 'Approved' }
     });
 
     if (!targetMember) {
@@ -496,7 +496,7 @@ export class ServerInvitationService {
 
     // 3. 관리자 권한 확인
     const adminMember = await this.serverMemberRepository.findOne({
-      where: { serverPk, userPk: adminUserPk, sStatus: 'Approved' }
+      where: { serverPk, userPk: adminUserPk, status: 'Approved' }
     });
 
     if (!adminMember || !['admin', 'owner'].includes(adminMember.serverRole)) {
@@ -514,7 +514,7 @@ export class ServerInvitationService {
     }
 
     // 6. 논리적 삭제 (상태를 'Banned'로 변경)
-    targetMember.sStatus = 'Banned';
+    targetMember.status = 'Banned';
     await this.serverMemberRepository.save(targetMember);
   }
 }

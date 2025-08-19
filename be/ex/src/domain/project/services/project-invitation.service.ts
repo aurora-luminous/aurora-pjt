@@ -104,7 +104,7 @@ export class ProjectInvitationService {
       where: { 
         serverPk: project.serverPk, 
         userPk: targetUser.userPk,
-        sStatus: 'Approved'
+        status: 'Approved'
       }
     });
 

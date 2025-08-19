@@ -24,7 +24,15 @@ export class ProjectResponseDto {
 
   @ApiProperty({ description: '소유자 정보', required: false })
   ownerInfo?: {
-    userPk: number;
     userName: string;
   };
+}
+
+// 프로젝트 목록/생성 응답용
+export class ProjectListDto {
+  @ApiProperty({ description: '프로젝트 PK' })
+  projectPk: number;
+
+  @ApiProperty({ description: '프로젝트명' })
+  projectName: string;
 }

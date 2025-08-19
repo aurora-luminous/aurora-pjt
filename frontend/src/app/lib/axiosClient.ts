@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosInstance } from "axios";
 import {
   getAccessToken,
   getRefreshToken,
@@ -7,86 +7,122 @@ import {
 } from "./tokenStorage";
 
 const axiosClient = axios.create({
-  baseURL: "/api", // Next.js 프록시 사용
+  baseURL: "/api", // Next.js 프록시 사용 - 기본은 스프링 서버
 });
 
 console.log("🔗 Using Next.js proxy: /api");
 
-// 요청 인터셉터
-axiosClient.interceptors.request.use((config) => {
-  console.log("🚀 API 요청:", config.method?.toUpperCase(), config.url);
-  console.log("📦 요청 데이터:", config.data);
-
-  // tokenStorage에서 토큰 가져오기
-  const accessToken = getAccessToken();
-
-  if (accessToken) {
-    config.headers.Authorization = `Bearer ${accessToken}`;
-  }
-
-  return config;
+// 스프링 서버 전용 클라이언트
+export const springClient = axios.create({
+  baseURL: "/api/jv", // 스프링 서버로 라우팅
 });
 
-// 응답 인터셉터 (자동 토큰 갱신 포함)
-axiosClient.interceptors.response.use(
-  (response) => {
-    console.log("✅ API 응답 성공:", response.status, response.config.url);
-    console.log("📦 응답 데이터:", response.data);
-    return response;
-  },
-  async (error) => {
-    const originalRequest = error.config;
+// Express 서버 전용 클라이언트
+export const expressClient = axios.create({
+  baseURL: "/api/ex", // Express 서버로 라우팅
+});
 
-    console.error(
-      "❌ API 응답 에러:",
-      error.response?.status,
-      error.config?.url
+// 공통 인터셉터 설정 함수
+const setupInterceptors = (client: AxiosInstance, serverName: string) => {
+  // 요청 인터셉터
+  client.interceptors.request.use((config) => {
+    console.log(
+      `🚀 ${serverName} API 요청:`,
+      config.method?.toUpperCase(),
+      config.url
     );
-    console.error("📦 에러 데이터:", error.response?.data);
+    console.log("📦 요청 데이터:", config.data);
 
-    // 401 에러이고 아직 재시도하지 않은 경우
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+    // tokenStorage에서 토큰 가져오기
+    const accessToken = getAccessToken();
 
-      try {
-        const refreshToken = getRefreshToken();
-
-        if (refreshToken) {
-          console.log("🔄 401 에러 감지, 토큰 갱신 시도");
-
-          // 토큰 갱신 요청
-          const refreshResponse = await axiosClient.post("/jv/refresh", {
-            refreshToken,
-          });
-
-          const newAccessToken = refreshResponse.data.accessToken;
-
-          // 새 토큰 저장 (기존 rememberMe 설정 유지)
-          updateAccessToken(newAccessToken);
-
-          // 원래 요청에 새 토큰 적용
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-
-          console.log("✅ 토큰 갱신 완료, 원래 요청 재시도");
-
-          // 원래 요청 재시도
-          return axiosClient(originalRequest);
-        }
-      } catch (refreshError) {
-        console.error("❌ 토큰 갱신 실패:", refreshError);
-
-        // 토큰 갱신 실패 시 모든 토큰 제거
-        clearTokens();
-
-        // 로그인 페이지로 리다이렉트 (필요시)
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
-        }
-      }
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
 
-    return Promise.reject(error);
-  }
-);
+    return config;
+  });
+
+  // 응답 인터셉터 (자동 토큰 갱신 포함)
+  client.interceptors.response.use(
+    (response) => {
+      console.log(
+        `✅ ${serverName} API 응답 성공:`,
+        response.status,
+        response.config.url
+      );
+      console.log("📦 응답 데이터:", response.data);
+      return response;
+    },
+    async (error) => {
+      const originalRequest = error.config;
+
+      console.error(
+        `❌ ${serverName} API 응답 에러:`,
+        error.response?.status,
+        error.config?.url
+      );
+      console.error("📦 에러 데이터:", error.response?.data);
+
+      // 401 에러이고 아직 재시도하지 않은 경우
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
+
+        try {
+          const refreshToken = getRefreshToken();
+
+          if (refreshToken) {
+            console.log("🔄 401 에러 감지, 토큰 갱신 시도");
+
+            // 토큰 갱신 요청 (스프링 서버에서 처리한다고 가정)
+            const refreshResponse = await axiosClient.post("/jv/refresh", {
+              refreshToken,
+            });
+
+            const newAccessToken = refreshResponse.data.accessToken;
+
+            // 새 토큰 저장 (기존 rememberMe 설정 유지)
+            updateAccessToken(newAccessToken);
+
+            // 원래 요청에 새 토큰 적용
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+            console.log("✅ 토큰 갱신 완료, 원래 요청 재시도");
+
+            // 원래 요청 재시도
+            return client(originalRequest);
+          }
+        } catch (refreshError) {
+          console.error("❌ 토큰 갱신 실패:", refreshError);
+
+          // 토큰 갱신 실패 시 모든 토큰 제거
+          clearTokens();
+
+          // 로그인 페이지로 리다이렉트 (필요시)
+          if (typeof window !== "undefined") {
+            window.location.href = "/login";
+          }
+        }
+      }
+
+      return Promise.reject(error);
+    }
+  );
+};
+
+// 각 클라이언트에 인터셉터 설정
+setupInterceptors(axiosClient, "Spring");
+setupInterceptors(springClient, "Spring");
+setupInterceptors(expressClient, "Express");
+
+// 편의 함수들
+export const apiRequest = {
+  // 스프링 서버 요청
+  spring: springClient,
+  // Express 서버 요청
+  express: expressClient,
+  // 기본 요청 (스프링 서버)
+  default: axiosClient,
+};
 
 export default axiosClient;

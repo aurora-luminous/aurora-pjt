@@ -2,9 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsInt, IsPositive, IsNotEmpty, IsOptional, IsEnum, IsBoolean, Length } from 'class-validator';
 
 export class CreateChannelDto {
-  @ApiProperty({ description: '채널명', maxLength: 50 })
+  @ApiProperty({ description: '채널명', maxLength: 20 })
   @IsString()
-  @Length(1, 50)
+  @Length(1, 20)
   @IsNotEmpty()
   channelName: string;
 

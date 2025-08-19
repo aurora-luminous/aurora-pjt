@@ -10,7 +10,6 @@ export class CreateServerDto {
 
   @ApiProperty({ description: '서버 URL', maxLength: 100, example: 'example' })
   @IsString()
-  @IsUrl()
   @Length(1, 100)
   @IsNotEmpty()
   serverUrl: string;

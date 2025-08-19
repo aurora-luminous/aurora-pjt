@@ -3,20 +3,33 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useModal } from "../hooks/useModal";
+import { useServer } from "../hooks/useServer";
 
 const AddServerModal = () => {
   const { isOpen, isServerAddModal, close } = useModal();
-  const [isSuccess, setIsSuccess] = useState(false);
+  const {
+    handleAddServer,
+    isAddingServer,
+    isAddServerSuccess,
+    resetAddServer,
+  } = useServer();
   const [serverUrl, setServerUrl] = useState("");
   const [serverName, setServerName] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSuccess(true);
+
+    // useServer의 통합된 서버 추가 함수 사용
+    handleAddServer({
+      serverUrl: serverUrl,
+      serverName: serverName,
+    });
   };
 
   const handleClose = () => {
-    setIsSuccess(false);
+    resetAddServer(); // 서버 상태 초기화
+    setServerUrl("");
+    setServerName("");
     close();
   };
 
@@ -37,7 +50,7 @@ const AddServerModal = () => {
             className="w-full max-w-xl mx-auto bg-aurora-form rounded-xl p-8 border border-black/10"
             onClick={(e) => e.stopPropagation()}
           >
-            {!isSuccess && (
+            {!isAddServerSuccess && (
               <div className="flex flex-col">
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
@@ -45,12 +58,13 @@ const AddServerModal = () => {
                       서버 도메인 URL을 입력해주세요.
                     </label>
                     <input
-                      type="url"
+                      type="text"
                       value={serverUrl}
                       onChange={(e) => setServerUrl(e.target.value)}
                       placeholder="서버 URL"
                       className="w-full px-4 py-3 bg-white border border-white/20 rounded-lg text-gray-500 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent backdrop-blur-sm transition-colors"
                       required
+                      disabled={isAddingServer}
                     />
                   </div>
 
@@ -65,19 +79,21 @@ const AddServerModal = () => {
                       placeholder="서버 호스팅 이름"
                       className="w-full px-4 py-3 bg-white border border-gray-500 rounded-lg text-gray-500 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent backdrop-blur-sm transition-colors"
                       required
+                      disabled={isAddingServer}
                     />
                   </div>
                   <button
                     type="submit"
-                    className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                    disabled={isAddingServer}
+                    className="w-full bg-purple-500 hover:bg-purple-600 disabled:bg-purple-400 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400"
                   >
-                    서버 추가
+                    {isAddingServer ? "추가 중..." : "서버 추가"}
                   </button>
                 </form>
               </div>
             )}
 
-            {isSuccess && (
+            {isAddServerSuccess && (
               <div className="flex flex-col space-y-4">
                 <div className="text-center mb-6">
                   <h2 className="text-2xl font-bold text-white mb-2">

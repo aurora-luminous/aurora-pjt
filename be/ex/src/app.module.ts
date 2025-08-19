@@ -10,6 +10,8 @@ import { AppController } from './app.controller';
 import { ServerModule } from './domain/server/server.module';
 import { ProjectModule } from './domain/project/project.module';
 import { TextChannelModule } from './domain/text-channel/text-channel.module';
+import { AuthModule } from './domain/auth/auth.module';
+import { UserModule } from './domain/user/user.module';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { TextChannelModule } from './domain/text-channel/text-channel.module';
     ServerModule,
     ProjectModule,
     TextChannelModule,
+    AuthModule,
+    UserModule,
 
     // Workspace 도메인 라우터 설정
     RouterModule.register([

@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
 import { useServerApi } from "@/app/(server-setup)/hooks/useServerApi";
 import { Project } from "@/app/(server-setup)/types/Projcets";
-import { Channel } from "@/app/(server-setup)/types/Channel";
 import { useModal } from "@/app/(server-setup)/hooks/useModal";
 import AddChannelModal from "@/app/(server-setup)/components/AddChannelModal";
+import AddProjectModal from "@/app/(server-setup)/components/AddProjectModal";
+import { useChannels } from "../hooks/useChannels";
 
 interface ProjectSidebarProps {
   serverId: string;
@@ -23,13 +24,33 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   isProjectSelected,
 }) => {
   const serverInfo = useCurrentServerInfo();
-  const { getProjectList, getChannelList } = useServerApi();
-  const { openChannelAddModal } = useModal();
+  const { getProjectList } = useServerApi();
+  const { openChannelAddModal, openProjectAddModal } = useModal();
+
+  // URL 인코딩된 channelId를 디코딩
+  const decodedChannelId = useMemo(() => {
+    try {
+      return decodeURIComponent(channelId);
+    } catch (error) {
+      console.warn("채널 ID 디코딩 실패:", channelId, error);
+      return channelId;
+    }
+  }, [channelId]);
+
+  // Redux를 통한 채널 관리
+  const {
+    channels,
+    loading: loadingChannels,
+    loadChannels,
+    textChannels,
+    voiceChannels,
+    noticeChannels,
+    resetChannels,
+    currentProjectPk,
+  } = useChannels();
 
   const [projects, setProjects] = useState<Project[]>([]);
-  const [channels, setChannels] = useState<Channel[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
-  const [loadingChannels, setLoadingChannels] = useState(false);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
 
   // 프로젝트 목록 로딩
@@ -42,10 +63,36 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
         const projectList = await getProjectList(serverInfo.serverUrl);
         setProjects(projectList);
 
-        // 현재 프로젝트 찾기
-        const currentProj =
-          projectList.find((p) => p.projectName === projectId) ||
-          projectList[0];
+        // 현재 프로젝트 찾기 - projectPk 기반 매칭
+        let currentProj: Project | null = null;
+
+        if (projectId) {
+          // projectId를 숫자로 변환해서 projectPk와 매칭
+          const projectPkFromUrl = parseInt(projectId, 10);
+
+          if (!isNaN(projectPkFromUrl)) {
+            currentProj =
+              projectList.find((p) => p.projectPk === projectPkFromUrl) || null;
+
+            console.log("🔍 [프로젝트 매칭]:");
+            console.log("  - URL projectId:", projectId);
+            console.log("  - 변환된 projectPk:", projectPkFromUrl);
+            console.log("  - 찾은 프로젝트:", currentProj);
+            console.log(
+              "  - 전체 프로젝트 목록:",
+              projectList.map((p) => `${p.projectName}(PK:${p.projectPk})`)
+            );
+          } else {
+            console.log("❌ projectId를 숫자로 변환 실패:", projectId);
+          }
+        }
+
+        // 매칭되지 않으면 첫 번째 프로젝트 사용
+        if (!currentProj && projectList.length > 0) {
+          currentProj = projectList[0];
+          console.log("📋 매칭 실패, 첫 번째 프로젝트 사용:", currentProj);
+        }
+
         setCurrentProject(currentProj);
       } catch (error) {
         console.error("프로젝트 목록 로딩 실패:", error);
@@ -55,30 +102,36 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     };
 
     loadProjects();
-  }, [serverInfo?.serverUrl, projectId]); // 함수 제거
+  }, [serverInfo?.serverUrl, projectId, getProjectList]);
 
-  // 채널 목록 로딩 (프로젝트가 선택되었을 때)
+  // 채널 목록 로딩 - projectId 변경 직접 감지
   useEffect(() => {
-    const loadChannels = async () => {
-      if (!serverInfo?.serverUrl || !currentProject || !isProjectSelected)
-        return;
+    console.log("🔍 [채널 로딩] useEffect 실행됨:");
+    console.log("  - projectId:", projectId);
+    console.log("  - serverInfo?.serverUrl:", serverInfo?.serverUrl);
+    console.log("  - isProjectSelected:", isProjectSelected);
+    console.log("  - currentProject:", currentProject);
 
-      setLoadingChannels(true);
-      try {
-        const channelList = await getChannelList(
-          serverInfo.serverUrl,
-          currentProject.projectPk
-        );
-        setChannels(channelList);
-      } catch (error) {
-        console.error("채널 목록 로딩 실패:", error);
-      } finally {
-        setLoadingChannels(false);
-      }
-    };
-
-    loadChannels();
-  }, [serverInfo?.serverUrl, currentProject?.projectPk, isProjectSelected]); // 함수 제거, projectPk 사용
+    if (
+      serverInfo?.serverUrl &&
+      projectId &&
+      isProjectSelected &&
+      currentProject?.projectPk
+    ) {
+      console.log(
+        `📋 채널 목록 로드: ${projectId} (PK: ${currentProject.projectPk})`
+      );
+      loadChannels(serverInfo.serverUrl, currentProject.projectPk);
+    } else {
+      console.log("🗑️ 채널 로딩 조건 불충족");
+    }
+  }, [
+    projectId, // URL에서 직접 가져온 projectId 변경 감지
+    serverInfo?.serverUrl,
+    isProjectSelected,
+    currentProject?.projectPk, // currentProject가 설정되면 실행
+    loadChannels,
+  ]);
 
   // 채널 추가 모달 열기
   const handleAddChannel = () => {
@@ -93,12 +146,28 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     });
   };
 
-  // 채널 타입별 필터링 (기본값으로 분류)
-  const textChannels = channels.filter(
-    (c) => c.channelKind === "text" || !c.channelKind
-  );
-  const voiceChannels = channels.filter((c) => c.channelKind === "voice");
-  const noticeChannels = channels.filter((c) => c.channelKind === "notice");
+  // 프로젝트 추가 모달 열기
+  const handleAddProject = () => {
+    if (!serverInfo?.serverUrl) return;
+
+    openProjectAddModal({
+      serverUrl: serverInfo.serverUrl,
+      projectName: "",
+      projectDescription: "",
+    });
+  };
+
+  // 채널 링크 생성 함수 (채널 타입별 경로 구분)
+  const createChannelLink = (channelName: string, isVoice: boolean = false) => {
+    const encodedChannelName = encodeURIComponent(channelName);
+    const channelType = isVoice ? "voice_channels" : "channels";
+    return `/${serverId}/projects/${currentProject?.projectPk}/${channelType}/${encodedChannelName}`;
+  };
+
+  // 현재 채널인지 확인하는 함수 (디코딩된 이름으로 비교)
+  const isCurrentChannel = (channelName: string) => {
+    return decodedChannelId === channelName;
+  };
 
   return (
     <>
@@ -116,13 +185,13 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                 projects.map((project, index) => (
                   <Link
                     key={project.projectPk}
-                    href={`/${serverId}/projects/${project.projectName}/channels/general`}
+                    href={`/${serverId}/projects/${project.projectPk}/channels/general`}
                     className={`block mb-2 ${
                       index === 0
                         ? "rounded-tr-lg rounded-br-lg rounded-bl-lg"
                         : "rounded"
                     } cursor-pointer transition-colors ${
-                      isProjectActive(project.projectName)
+                      isProjectActive(project.projectPk.toString())
                         ? "bg-blue-600"
                         : "hover:bg-gray-700"
                     }`}
@@ -139,7 +208,10 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
               )}
 
               {/* 프로젝트 생성 버튼 */}
-              <div className="mb-2 rounded cursor-pointer hover:bg-gray-700 transition-colors border-2 border-dashed border-gray-600 hover:border-gray-500">
+              <div
+                onClick={handleAddProject}
+                className="mb-2 rounded cursor-pointer hover:bg-gray-700 transition-colors border-2 border-dashed border-gray-600 hover:border-gray-500"
+              >
                 <div className="flex items-center justify-center p-2">
                   <div className="w-10 h-10 bg-gray-600 rounded flex items-center justify-center">
                     <span className="text-white text-lg">+</span>
@@ -188,9 +260,9 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                         {noticeChannels.map((channel) => (
                           <Link
                             key={channel.channelName}
-                            href={`/${serverId}/projects/${projectId}/channels/${channel.channelName}`}
+                            href={createChannelLink(channel.channelName)}
                             className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
-                              channelId === channel.channelName
+                              isCurrentChannel(channel.channelName)
                                 ? "bg-gray-600 text-white"
                                 : "text-gray-300 hover:bg-gray-600 hover:text-white"
                             }`}
@@ -236,11 +308,11 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                         textChannels.map((channel) => (
                           <Link
                             key={channel.channelName}
-                            href={`/${serverId}/projects/${projectId}/channels/${channel.channelName}`}
+                            href={createChannelLink(channel.channelName)}
                           >
                             <div
                               className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
-                                channelId === channel.channelName
+                                isCurrentChannel(channel.channelName)
                                   ? "bg-gray-600 text-white"
                                   : "text-gray-300 hover:bg-gray-600 hover:text-white"
                               }`}
@@ -286,11 +358,11 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                         voiceChannels.map((channel) => (
                           <Link
                             key={channel.channelName}
-                            href={`/${serverId}/projects/${projectId}/voice_channels/${channel.channelName}`}
+                            href={createChannelLink(channel.channelName, true)}
                           >
                             <div
                               className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
-                                channelId === channel.channelName
+                                isCurrentChannel(channel.channelName)
                                   ? "bg-gray-600 text-white"
                                   : "text-gray-300 hover:bg-gray-600 hover:text-white"
                               }`}
@@ -343,8 +415,9 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
         )}
       </div>
 
-      {/* 채널 추가 모달 */}
+      {/* 모달들 */}
       <AddChannelModal />
+      <AddProjectModal />
     </>
   );
 };

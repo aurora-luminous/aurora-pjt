@@ -38,7 +38,7 @@ export const ServerHeader: React.FC<ServerHeaderProps> = ({
         {channelId ? (
           <span className="text-white text-xl font-semibold flex items-center">
             <span className="text-gray-300 mr-2">#</span>
-            {channelName}
+            {serverName}
           </span>
         ) : (
           <span className="text-white text-xl font-semibold flex items-center">

@@ -71,9 +71,9 @@ export class ServerController {
   @Get(':serverUrl/join/:inviteHash')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: '서버 가입 신청' })
+  @ApiOperation({ summary: '초대링크로 서버 가입 신청' })
   @ApiResponse({ status: 200, description: '가입 신청 성공' })
-  async joinServer(
+  async joinServerByInvite(
     @Param('serverUrl') serverUrl: string,
     @Param('inviteHash') inviteHash: string,
     @CurrentUser() user: User
@@ -84,6 +84,21 @@ export class ServerController {
       inviteHash,
       userPk
     });
+    return { status: result.status as 'Pending' | 'Approved' | 'Rejected' };
+  }
+
+  @Get(':serverUrl/join')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '직접 서버 가입 신청' })
+  @ApiResponse({ status: 200, description: '가입 신청 성공' })
+  async joinServerDirect(
+    @Param('serverUrl') serverUrl: string,
+    @CurrentUser() user: User
+  ): Promise<{ status: 'Pending' | 'Approved' | 'Rejected' }> {
+    const userPk = user.userPk;
+    
+    const result = await this.serverInvitationService.joinServerDirect(serverUrl, userPk);
     return { status: result.status as 'Pending' | 'Approved' | 'Rejected' };
   }
 

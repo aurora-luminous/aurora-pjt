@@ -12,7 +12,7 @@ export const useChannelPage = () => {
   const channelId = params.channel_id as string;
 
   const serverInfo = useCurrentServerInfo();
-  const { getChannelList } = useServerApi();
+  const { getChannelList, createChannel } = useServerApi();
 
   // 상태 관리
   const [newMessage, setNewMessage] = useState("");
@@ -133,6 +133,26 @@ export const useChannelPage = () => {
     }
   };
 
+  const addChannel = async (channelName: string) => {
+    const newChannel: Channel = {
+      channelName,
+      channelKind: "text",
+      isPrivate: false,
+      channelRole: "text",
+    };
+
+    const response = await createChannel(
+      serverInfo?.serverUrl || "",
+      serverInfo?.projectPk || 0,
+      newChannel
+    );
+
+    if (response) {
+      console.log("채널 생성 성공:", response);
+      setChannels((prev) => [...prev, newChannel]);
+    }
+  };
+
   return {
     // URL 파라미터
     serverId,
@@ -153,5 +173,6 @@ export const useChannelPage = () => {
     // 함수들
     getChannelName,
     handleSendMessage,
+    addChannel,
   };
 };

@@ -14,9 +14,9 @@ export const useProjectListApi = (serverUrl: string) => {
   });
 };
 
-export const useSeverListApi = (serverUrl: string, projectPk: number) => {
-  return useApi<Project[], void>({
-    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/servers`,
+export const useSeverListApi = () => {
+  return useApi<ServerResponse[], void>({
+    endpoint: "/ex/servers",
     method: "GET",
     axiosInstance: expressClient,
   });
@@ -117,6 +117,33 @@ export const useServerApi = () => {
     []
   );
 
+  // 프로젝트 생성 API 추가
+  const createProject = useCallback(
+    async (
+      serverUrl: string,
+      projectData: {
+        projectName: string;
+        projectDescription?: string;
+      }
+    ): Promise<Project> => {
+      try {
+        console.log("프로젝트 생성 시작:", { serverUrl, projectData });
+
+        const response = await expressClient.post<Project>(
+          `/ex/servers/${serverUrl}/projects`,
+          projectData
+        );
+
+        console.log("✅ 프로젝트 생성 성공:", response.data);
+        return response.data;
+      } catch (error) {
+        console.error("❌ 프로젝트 생성 실패:", error);
+        throw error;
+      }
+    },
+    []
+  );
+
   return {
     addServer,
     isAddingServer,
@@ -126,5 +153,6 @@ export const useServerApi = () => {
     getProjectListError: projectListError,
     getChannelList,
     createChannel,
+    createProject,
   };
 };

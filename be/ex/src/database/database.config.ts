@@ -7,6 +7,7 @@ import { Server } from '../domain/server/entities/server.entity';
 import { ServerMember } from '../domain/server/entities/server-member.entity';
 import { Project } from '../domain/project/entities/project.entity';
 import { ProjectMember } from '../domain/project/entities/project-member.entity';
+import { Event } from '../domain/project/entities/event.entity';
 import { Channel } from '../domain/text-channel/entities/channel.entity';
 import { ChannelMember } from '../domain/text-channel/entities/channel-member.entity';
 
@@ -24,10 +25,11 @@ export const getDatabaseConfig = (ConfigService: ConfigService): TypeOrmModuleOp
         ServerMember,
         Project,
         ProjectMember,
+        Event,
         Channel,
         ChannelMember
     ],
-    synchronize: ConfigService.get('NODE_ENV', 'development') === 'development',
+    synchronize: false,
     logging: ConfigService.get('NODE_ENV', 'development') === 'development',
     namingStrategy: new SnakeNamingStrategy(),
     

@@ -1,23 +1,25 @@
 import React from "react";
 import Image from "next/image";
+import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
 
 interface ServerHeaderProps {
   serverId: string;
   channelId?: string;
-  getServerName: (id: string) => string;
-  getChannelName: (id: string) => string;
   toggleSidebar: () => void;
   isSidebarOpen: boolean;
 }
 
 export const ServerHeader: React.FC<ServerHeaderProps> = ({
-  serverId,
   channelId,
-  getServerName,
-  getChannelName,
   toggleSidebar,
   isSidebarOpen,
 }) => {
+  const serverInfo = useCurrentServerInfo();
+
+  // 서버 정보 로딩 중일 때 기본값 사용
+  const serverName = serverInfo?.serverName || "서버";
+  const channelName = serverInfo?.channelName || "채널";
+
   return (
     <div className="h-12 bg-aurora-main flex items-center justify-between px-4">
       {/* 왼쪽: 로고 */}
@@ -36,11 +38,11 @@ export const ServerHeader: React.FC<ServerHeaderProps> = ({
         {channelId ? (
           <span className="text-white text-xl font-semibold flex items-center">
             <span className="text-gray-300 mr-2">#</span>
-            {getChannelName(channelId)}
+            {channelName}
           </span>
         ) : (
           <span className="text-white text-xl font-semibold flex items-center">
-            {getServerName(serverId)}
+            {serverName}
             <svg
               className="w-4 h-4 text-white ml-2 flex-shrink-0"
               fill="currentColor"

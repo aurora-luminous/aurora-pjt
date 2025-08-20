@@ -2,6 +2,7 @@ import { useServerApi } from "./useServerApi";
 import { ServerRequest } from "../types/Server";
 import { useMutation } from "@tanstack/react-query";
 import { Channel } from "../types/Channel";
+import { Project } from "../types/Projcets";
 
 export const useAddServerMutation = () => {
   const { addServer } = useServerApi();
@@ -81,6 +82,32 @@ export const useCreateChannelMutation = () => {
     },
     onError: (error) => {
       console.error("❌ 채널 생성 실패:", error);
+    },
+  });
+};
+
+export const useCreateProjectMutation = () => {
+  const { createProject } = useServerApi();
+
+  return useMutation({
+    mutationFn: async ({
+      serverUrl,
+      projectData,
+    }: {
+      serverUrl: string;
+      projectData: {
+        projectName: string;
+        projectDescription?: string;
+      };
+    }) => {
+      const result = await createProject(serverUrl, projectData);
+      return result;
+    },
+    onSuccess: (data) => {
+      console.log("🎉 프로젝트 생성 성공:", data);
+    },
+    onError: (error) => {
+      console.error("❌ 프로젝트 생성 실패:", error);
     },
   });
 };

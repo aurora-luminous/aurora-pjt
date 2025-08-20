@@ -4,8 +4,7 @@ import { Repository } from "typeorm";
 import { Server } from "../entities/server.entity";
 import { ServerMember } from "../entities/server-member.entity";
 import { User } from "../../user/entities/user.entity";
-import { Project } from "../../project/entities/project.entity";
-import { ProjectMember } from "../../project/entities/project-member.entity";
+import { ProjectCreationService } from "../../project/services/project-creation.service";
 import { CreateServerDto, ServerResponseDto } from "../dto";
 
 @Injectable()
@@ -17,10 +16,7 @@ export class ServerCreationService {
         private readonly serverMemberRepository: Repository<ServerMember>,
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
-        @InjectRepository(Project)
-        private readonly projectRepository: Repository<Project>,
-        @InjectRepository(ProjectMember)
-        private readonly projectMemberRepository: Repository<ProjectMember>,
+        private readonly projectCreationService: ProjectCreationService,
     ) {}
 
     async createServer(createServerDto: CreateServerDto): Promise<ServerResponseDto> {
@@ -49,21 +45,12 @@ export class ServerCreationService {
         });
         await this.serverMemberRepository.save(serverMember);
 
-        // 4. 기본 "일반" 프로젝트 생성 (홈 화면 대용)
-        const defaultProject = this.projectRepository.create({
-        serverPk: savedServer.serverPk,
-        projectName: '일반', // 기본 프로젝트명
+        // 4. 기본 "일반" 프로젝트 생성 (채널도 함께 생성됨)
+        await this.projectCreationService.createProject({
+            serverPk: savedServer.serverPk,
+            projectName: '일반',
+            creatorUserPk: createServerDto.creatorUserPk
         });
-        const savedProject = await this.projectRepository.save(defaultProject);
-
-        // 5. 서버 생성자를 기본 프로젝트 owner로 추가
-        const projectMember = this.projectMemberRepository.create({
-        projectPk: savedProject.projectPk,
-        userPk: createServerDto.creatorUserPk,
-        pStatus: 'Active', // 기본 상태
-        projectRole: 'owner',
-        });
-        await this.projectMemberRepository.save(projectMember);
 
         return {
         serverPk: savedServer.serverPk,

@@ -8,6 +8,7 @@ import { ProjectMember } from '../project/entities/project-member.entity';
 import { ServerCreationService } from './services/server-creation.service';
 import { ServerInvitationService } from './services/server-invitation.service';
 import { ServerController } from './controllers/server.controller';
+import { ProjectModule } from '../project/project.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ServerController } from './controllers/server.controller';
       Project,
       ProjectMember,
     ]),
+    ProjectModule,
   ],
   controllers: [
     ServerController,

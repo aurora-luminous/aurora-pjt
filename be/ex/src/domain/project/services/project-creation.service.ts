@@ -6,6 +6,8 @@ import { ProjectMember } from "../entities/project-member.entity";
 import { Server } from "../../server/entities/server.entity";
 import { ServerMember } from "../../server/entities/server-member.entity";
 import { User } from "../../user/entities/user.entity";
+import { Channel } from "../../text-channel/entities/channel.entity";
+import { ChannelMember } from "../../text-channel/entities/channel-member.entity";
 import { CreateProjectDto, ProjectResponseDto } from "../dto";
 
 @Injectable()
@@ -21,6 +23,10 @@ export class ProjectCreationService {
         private readonly serverMemberRepository: Repository<ServerMember>,
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
+        @InjectRepository(Channel)
+        private readonly channelRepository: Repository<Channel>,
+        @InjectRepository(ChannelMember)
+        private readonly channelMemberRepository: Repository<ChannelMember>,
     ) {}
 
     async createProject(createProjectDto: CreateProjectDto): Promise<ProjectResponseDto> {
@@ -78,6 +84,23 @@ export class ProjectCreationService {
         projectRole: 'owner',
         });
         await this.projectMemberRepository.save(projectMember);
+
+        // 6. 기본 "일반" 채널 생성
+        const defaultChannel = this.channelRepository.create({
+        projectPk: savedProject.projectPk,
+        channelName: '일반',
+        channelKind: 'TEXT', // 텍스트 채널
+        });
+        const savedChannel = await this.channelRepository.save(defaultChannel);
+
+        // 7. 생성자를 채널 멤버로 추가
+        const channelMember = this.channelMemberRepository.create({
+        channelPk: savedChannel.channelPk,
+        userPk: createProjectDto.creatorUserPk,
+        cStatus: 'Active',
+        channelRole: 'owner',
+        });
+        await this.channelMemberRepository.save(channelMember);
 
         return {
         projectPk: savedProject.projectPk,

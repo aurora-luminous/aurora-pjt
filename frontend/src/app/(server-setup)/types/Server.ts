@@ -4,5 +4,5 @@ export interface ServerRequest {
 }
 
 export interface ServerResponse {
-    message: string;
+  message: string | "";
 }

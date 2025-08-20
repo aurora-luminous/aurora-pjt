@@ -8,6 +8,7 @@ export type ModalType =
   | "SERVER_EDIT"
   | "SERVER_DELETE"
   | "CHANNEL_ADD"
+  | "PROJECT_ADD"
   | null;
 
 // 서버 데이터 타입 정의
@@ -27,11 +28,18 @@ export interface ChannelData {
   isPrivate: boolean;
 }
 
+// 프로젝트 데이터 타입 정의
+export interface ProjectData {
+  serverUrl: string;
+  projectName: string;
+  projectDescription?: string;
+}
+
 // 모달 상태 인터페이스
 export interface ModalState {
   isOpen: boolean;
   type: ModalType;
-  data: ServerData | ChannelData | null;
+  data: ServerData | ChannelData | ProjectData | null;
   loading: boolean;
   error: string | null;
 }
@@ -55,7 +63,7 @@ const modalSlice = createSlice({
       state,
       action: PayloadAction<{
         type: ModalType;
-        data?: ServerData | ChannelData;
+        data?: ServerData | ChannelData | ProjectData;
       }>
     ) => {
       state.isOpen = true;
@@ -76,7 +84,7 @@ const modalSlice = createSlice({
     // 모달 데이터 업데이트
     updateModalData: (
       state,
-      action: PayloadAction<ServerData | ChannelData>
+      action: PayloadAction<ServerData | ChannelData | ProjectData>
     ) => {
       state.data = action.payload;
     },
@@ -138,13 +146,18 @@ export const useModal = () => {
       dispatch(openModal({ type: "CHANNEL_ADD", data: channelData }));
     },
 
+    // 프로젝트 추가 모달 열기
+    openProjectAddModal: (projectData: ProjectData) => {
+      dispatch(openModal({ type: "PROJECT_ADD", data: projectData }));
+    },
+
     // 모달 닫기
     close: () => {
       dispatch(closeModal());
     },
 
     // 모달 데이터 업데이트
-    updateData: (data: ServerData | ChannelData) => {
+    updateData: (data: ServerData | ChannelData | ProjectData) => {
       dispatch(updateModalData(data));
     },
 
@@ -185,5 +198,6 @@ export const useModal = () => {
     isServerEditModal: modalState.type === "SERVER_EDIT",
     isServerDeleteModal: modalState.type === "SERVER_DELETE",
     isChannelAddModal: modalState.type === "CHANNEL_ADD",
+    isProjectAddModal: modalState.type === "PROJECT_ADD",
   };
 };

@@ -109,6 +109,68 @@ export class ServerInvitationService {
     };
   }
 
+  // 직접 서버 가입 신청 (serverUrl로)
+  async joinServerDirect(serverUrl: string, userPk: number): Promise<PendingMemberDto> {
+    // 1. 서버 존재 확인
+    const server = await this.serverRepository.findOne({
+      where: { serverUrl, isDeletedServer: false }
+    });
+
+    if (!server) {
+      throw new NotFoundException(`Server with URL ${serverUrl} not found`);
+    }
+
+    // 2. 사용자 존재 확인
+    const user = await this.userRepository.findOne({
+      where: { userPk, isDeleted: false }
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userPk} not found`);
+    }
+
+    // 3. 이미 서버 멤버인지 확인
+    const existingMember = await this.serverMemberRepository.findOne({
+      where: { serverPk: server.serverPk, userPk }
+    });
+
+    if (existingMember) {
+      // 모든 상태에 대해 현재 상태 반환 (프론트에서 처리)
+      return {
+        serverMemberPk: existingMember.serverMemberPk,
+        userPk: existingMember.userPk,
+        status: existingMember.status,
+        userInfo: {
+          user_pk: user.userPk,
+          user_name: user.userName,
+          user_email: user.userEmail,
+          profile_image_path: user.profileImagePath,
+        },
+      };
+    }
+
+    // 4. 가입 신청 생성 (Pending 상태)
+    const serverMember = this.serverMemberRepository.create({
+      serverPk: server.serverPk,
+      userPk,
+      status: 'Pending',
+      serverRole: 'member',
+    });
+    const savedMember = await this.serverMemberRepository.save(serverMember);
+
+    return {
+      serverMemberPk: savedMember.serverMemberPk,
+      userPk: savedMember.userPk,
+      status: savedMember.status,
+      userInfo: {
+        user_pk: user.userPk,
+        user_name: user.userName,
+        user_email: user.userEmail,
+        profile_image_path: user.profileImagePath,
+      },
+    };
+  }
+
   // 초대 링크로 서버 가입 신청
   async joinServerByInvite(joinDto: JoinServerDto): Promise<PendingMemberDto> {
     // 1. 해시로 서버 찾기
@@ -142,27 +204,18 @@ export class ServerInvitationService {
     });
 
     if (existingMember) {
-      if (existingMember.status === 'Approved') {
-        throw new ConflictException('User is already a member of this server');
-      } else if (existingMember.status === 'Pending') {
-        throw new ConflictException('Join request is already pending');
-              } else if (existingMember.status === 'Rejected' || existingMember.status === 'Banned') {
-        // 거절되었거나 밴당한 사용자의 재신청 가능하도록 상태 업데이트
-        existingMember.status = 'Pending';
-        await this.serverMemberRepository.save(existingMember);
-        
-        return {
-          serverMemberPk: existingMember.serverMemberPk,
-          userPk: existingMember.userPk,
-          status: existingMember.status,
-          userInfo: {
-            user_pk: user.userPk,
-            user_name: user.userName,
-            user_email: user.userEmail,
-            profile_image_path: user.profileImagePath,
-          },
-        };
-      }
+      // 모든 상태에 대해 현재 상태 반환 (프론트에서 처리)
+      return {
+        serverMemberPk: existingMember.serverMemberPk,
+        userPk: existingMember.userPk,
+        status: existingMember.status,
+        userInfo: {
+          user_pk: user.userPk,
+          user_name: user.userName,
+          user_email: user.userEmail,
+          profile_image_path: user.profileImagePath,
+        },
+      };
     }
 
     // 5. 가입 신청 생성 (Pending 상태)

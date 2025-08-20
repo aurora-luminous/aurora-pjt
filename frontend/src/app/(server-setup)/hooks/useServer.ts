@@ -134,7 +134,8 @@ export const useServer = () => {
         sessionStorage.setItem("currentServerInfo", JSON.stringify(serverInfo));
       }
 
-      const targetUrl = `/${serverUrl}/projects/${firstProject.projectName}/channels/${targetChannel.channelName}`;
+      const encodedChannelName = encodeURIComponent(targetChannel.channelName);
+      const targetUrl = `/${serverUrl}/projects/${firstProject.projectPk}/channels/${encodedChannelName}`;
       console.log("🔄 라우팅 URL:", targetUrl);
       console.log("💾 서버 정보 저장:", serverInfo);
 

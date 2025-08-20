@@ -4,10 +4,14 @@ import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useModal, ChannelData } from "../hooks/useModal";
 import { useCreateChannelMutation } from "../hooks/useServerMutation";
+import { useRouter } from "next/navigation";
+import { useChannels } from "@/app/(servers)/hooks/useChannels";
 
 const AddChannelModal = () => {
   const { isOpen, isChannelAddModal, close, data } = useModal();
   const createChannelMutation = useCreateChannelMutation();
+  const router = useRouter();
+  const { addChannelToState } = useChannels(); // Redux 상태 업데이트용
 
   const [channelName, setChannelName] = useState("");
   const [channelKind, setChannelKind] = useState<"text" | "voice" | "notice">(
@@ -23,24 +27,51 @@ const AddChannelModal = () => {
     if (!channelData) return;
 
     try {
-      await createChannelMutation.mutateAsync({
+      const newChannelData = {
+        channelName,
+        channelKind,
+        isPrivate,
+        channelRole: "member",
+      };
+
+      console.log("🚀 채널 생성 시작:", newChannelData);
+
+      const newChannel = await createChannelMutation.mutateAsync({
         serverUrl: channelData.serverUrl,
         projectPk: channelData.projectPk,
-        channelData: {
-          channelName,
-          channelKind,
-          isPrivate,
-          channelRole: "member",
-        },
+        channelData: newChannelData,
       });
+
+      console.log("✅ 서버에서 채널 생성 성공:", newChannel);
+
+      // Redux에 채널 추가
+      addChannelToState(newChannel);
 
       // 성공 시 모달 닫기
       handleClose();
 
-      // 페이지 새로고침으로 채널 목록 업데이트
-      window.location.reload();
+      // 한글 채널명을 URL 인코딩
+      const encodedChannelName = encodeURIComponent(channelName);
+      console.log(`🔗 채널 이동: "${channelName}" → "${encodedChannelName}"`);
+
+      // 현재 URL에서 serverId 추출
+      const pathParts = window.location.pathname.split("/");
+      const serverIndex =
+        pathParts.findIndex((part) => part === "projects") - 1;
+      const serverId = pathParts[serverIndex];
+
+      // channelData에서 projectPk 직접 사용
+      if (channelKind === "voice") {
+        router.push(
+          `/${serverId}/projects/${channelData.projectPk}/voice_channels/${encodedChannelName}`
+        );
+      } else {
+        router.push(
+          `/${serverId}/projects/${channelData.projectPk}/channels/${encodedChannelName}`
+        );
+      }
     } catch (error) {
-      console.error("채널 생성 실패:", error);
+      console.error("❌ 채널 생성 실패:", error);
     }
   };
 

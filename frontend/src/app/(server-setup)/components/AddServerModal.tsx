@@ -11,6 +11,8 @@ const AddServerModal = () => {
     handleAddServer,
     isAddingServer,
     isAddServerSuccess,
+    isAddServerError,
+    addServerError,
     resetAddServer,
   } = useServer();
   const [serverUrl, setServerUrl] = useState("");
@@ -33,6 +35,10 @@ const AddServerModal = () => {
     close();
   };
 
+  const handleRetry = () => {
+    resetAddServer(); // 에러 상태 초기화
+  };
+
   return (
     <AnimatePresence>
       {isOpen && isServerAddModal && (
@@ -50,7 +56,7 @@ const AddServerModal = () => {
             className="w-full max-w-xl mx-auto bg-aurora-form rounded-xl p-8 border border-black/10"
             onClick={(e) => e.stopPropagation()}
           >
-            {!isAddServerSuccess && (
+            {!isAddServerSuccess && !isAddServerError && (
               <div className="flex flex-col">
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
@@ -116,6 +122,43 @@ const AddServerModal = () => {
                     className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition duration-200"
                   >
                     확인
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {isAddServerError && (
+              <div className="flex flex-col space-y-4">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold text-red-400 mb-2">
+                    서버 추가 실패
+                  </h2>
+                  <p className="text-white/80 mb-4">
+                    서버 추가 중 오류가 발생했습니다.
+                  </p>
+                  {addServerError && (
+                    <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3 mb-4">
+                      <p className="text-red-300 text-sm">
+                        {addServerError instanceof Error
+                          ? addServerError.message
+                          : "알 수 없는 오류가 발생했습니다."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-center space-x-3">
+                  <button
+                    onClick={handleClose}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition duration-200"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleRetry}
+                    className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition duration-200"
+                  >
+                    다시 시도
                   </button>
                 </div>
               </div>

@@ -4,6 +4,8 @@ import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
 import { useServerApi } from "@/app/(server-setup)/hooks/useServerApi";
 import { Project } from "@/app/(server-setup)/types/Projcets";
 import { Channel } from "@/app/(server-setup)/types/Channel";
+import { useModal } from "@/app/(server-setup)/hooks/useModal";
+import AddChannelModal from "@/app/(server-setup)/components/AddChannelModal";
 
 interface ProjectSidebarProps {
   serverId: string;
@@ -22,6 +24,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
 }) => {
   const serverInfo = useCurrentServerInfo();
   const { getProjectList, getChannelList } = useServerApi();
+  const { openChannelAddModal } = useModal();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -77,6 +80,19 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     loadChannels();
   }, [serverInfo?.serverUrl, currentProject?.projectPk, isProjectSelected]); // 함수 제거, projectPk 사용
 
+  // 채널 추가 모달 열기
+  const handleAddChannel = () => {
+    if (!serverInfo?.serverUrl || !currentProject) return;
+
+    openChannelAddModal({
+      serverUrl: serverInfo.serverUrl,
+      projectPk: currentProject.projectPk,
+      channelName: "",
+      channelKind: "text",
+      isPrivate: false,
+    });
+  };
+
   // 채널 타입별 필터링 (기본값으로 분류)
   const textChannels = channels.filter(
     (c) => c.channelKind === "text" || !c.channelKind
@@ -85,240 +101,250 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   const noticeChannels = channels.filter((c) => c.channelKind === "notice");
 
   return (
-    <div className="flex flex-col h-full bg-aurora-main rounded-tl-lg">
-      <div className="flex flex-1">
-        {/* 왼쪽: 프로젝트 목록 */}
-        <div className="w-16 bg-gray-800 flex flex-col py-3">
-          {/* 프로젝트 목록 */}
-          <div className="flex-1 overflow-y-auto px-2">
-            {loadingProjects ? (
-              <div className="text-white text-xs text-center py-4">
-                로딩중...
-              </div>
-            ) : (
-              projects.map((project, index) => (
-                <Link
-                  key={project.projectPk}
-                  href={`/${serverId}/projects/${project.projectName}/channels/general`}
-                  className={`block mb-2 ${
-                    index === 0
-                      ? "rounded-tr-lg rounded-br-lg rounded-bl-lg"
-                      : "rounded"
-                  } cursor-pointer transition-colors ${
-                    isProjectActive(project.projectName)
-                      ? "bg-blue-600"
-                      : "hover:bg-gray-700"
-                  }`}
-                >
-                  <div className="flex items-center justify-center p-2">
-                    <div className="w-10 h-10 bg-purple-500 rounded flex items-center justify-center">
-                      <span className="text-white font-semibold text-sm">
-                        {project.projectName[0]?.toUpperCase()}
-                      </span>
+    <>
+      <div className="flex flex-col h-full bg-aurora-main rounded-tl-lg">
+        <div className="flex flex-1">
+          {/* 왼쪽: 프로젝트 목록 */}
+          <div className="w-16 bg-gray-800 flex flex-col py-3">
+            {/* 프로젝트 목록 */}
+            <div className="flex-1 overflow-y-auto px-2">
+              {loadingProjects ? (
+                <div className="text-white text-xs text-center py-4">
+                  로딩중...
+                </div>
+              ) : (
+                projects.map((project, index) => (
+                  <Link
+                    key={project.projectPk}
+                    href={`/${serverId}/projects/${project.projectName}/channels/general`}
+                    className={`block mb-2 ${
+                      index === 0
+                        ? "rounded-tr-lg rounded-br-lg rounded-bl-lg"
+                        : "rounded"
+                    } cursor-pointer transition-colors ${
+                      isProjectActive(project.projectName)
+                        ? "bg-blue-600"
+                        : "hover:bg-gray-700"
+                    }`}
+                  >
+                    <div className="flex items-center justify-center p-2">
+                      <div className="w-10 h-10 bg-purple-500 rounded flex items-center justify-center">
+                        <span className="text-white font-semibold text-sm">
+                          {project.projectName[0]?.toUpperCase()}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))
-            )}
+                  </Link>
+                ))
+              )}
 
-            {/* 프로젝트 생성 버튼 */}
-            <div className="mb-2 rounded cursor-pointer hover:bg-gray-700 transition-colors border-2 border-dashed border-gray-600 hover:border-gray-500">
-              <div className="flex items-center justify-center p-2">
-                <div className="w-10 h-10 bg-gray-600 rounded flex items-center justify-center">
-                  <span className="text-white text-lg">+</span>
+              {/* 프로젝트 생성 버튼 */}
+              <div className="mb-2 rounded cursor-pointer hover:bg-gray-700 transition-colors border-2 border-dashed border-gray-600 hover:border-gray-500">
+                <div className="flex items-center justify-center p-2">
+                  <div className="w-10 h-10 bg-gray-600 rounded flex items-center justify-center">
+                    <span className="text-white text-lg">+</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* 중앙: 채널 목록 (프로젝트 선택 시에만 표시) */}
-        {isProjectSelected && (
-          <div className="w-72 bg-gray-700 flex flex-col rounded-tl-lg rounded-tr-lg overflow-hidden">
-            {/* 프로젝트 헤더 */}
-            <div className="p-4 border-b border-gray-600 rounded-tl-lg rounded-tr-lg bg-transparent">
-              <div className="flex items-center justify-between">
-                <h1 className="text-white font-semibold text-lg">
-                  {currentProject?.projectName ||
-                    serverInfo?.projectName ||
-                    "프로젝트"}
-                </h1>
-                <button className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white hover:bg-gray-500">
-                  +
-                </button>
+          {/* 중앙: 채널 목록 (프로젝트 선택 시에만 표시) */}
+          {isProjectSelected && (
+            <div className="w-72 bg-gray-700 flex flex-col rounded-tl-lg rounded-tr-lg overflow-hidden">
+              {/* 프로젝트 헤더 */}
+              <div className="p-4 border-b border-gray-600 rounded-tl-lg rounded-tr-lg bg-transparent">
+                <div className="flex items-center justify-between">
+                  <h1 className="text-white font-semibold text-lg">
+                    {currentProject?.projectName ||
+                      serverInfo?.projectName ||
+                      "프로젝트"}
+                  </h1>
+                  <button
+                    onClick={handleAddChannel}
+                    className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white hover:bg-gray-500 transition-colors"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* 채널 목록 */}
+              <div className="px-4 py-3 flex-1 overflow-y-auto">
+                {loadingChannels ? (
+                  <div className="text-white text-center py-4">
+                    채널 로딩 중...
+                  </div>
+                ) : (
+                  <>
+                    {/* 공지 채널 */}
+                    {noticeChannels.length > 0 && (
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-white text-xs font-semibold uppercase">
+                            공지사항
+                          </h3>
+                        </div>
+                        {noticeChannels.map((channel) => (
+                          <Link
+                            key={channel.channelName}
+                            href={`/${serverId}/projects/${projectId}/channels/${channel.channelName}`}
+                            className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
+                              channelId === channel.channelName
+                                ? "bg-gray-600 text-white"
+                                : "text-gray-300 hover:bg-gray-600 hover:text-white"
+                            }`}
+                          >
+                            <span className="mr-2 text-gray-400">📢</span>
+                            <span className="text-sm">
+                              {channel.channelName}
+                            </span>
+                            {channel.isPrivate && (
+                              <span className="ml-auto text-xs">🔒</span>
+                            )}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 채팅 채널 */}
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-gray-300 text-xs font-semibold uppercase">
+                        채팅 채널
+                      </h3>
+                      <button className="text-gray-400 hover:text-gray-200">
+                        <svg
+                          className="w-4 h-4"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div className="mb-4">
+                      {textChannels.length === 0 ? (
+                        <div className="text-gray-400 text-sm py-2">
+                          채널이 없습니다
+                        </div>
+                      ) : (
+                        textChannels.map((channel) => (
+                          <Link
+                            key={channel.channelName}
+                            href={`/${serverId}/projects/${projectId}/channels/${channel.channelName}`}
+                          >
+                            <div
+                              className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
+                                channelId === channel.channelName
+                                  ? "bg-gray-600 text-white"
+                                  : "text-gray-300 hover:bg-gray-600 hover:text-white"
+                              }`}
+                            >
+                              <span className="mr-2 text-gray-400">#</span>
+                              <span className="text-sm">
+                                {channel.channelName}
+                              </span>
+                              {channel.isPrivate && (
+                                <span className="ml-auto text-xs">🔒</span>
+                              )}
+                            </div>
+                          </Link>
+                        ))
+                      )}
+                    </div>
+
+                    {/* 음성 채널 */}
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-gray-300 text-xs font-semibold uppercase">
+                        음성 채널
+                      </h3>
+                      <button className="text-gray-400 hover:text-gray-200">
+                        <svg
+                          className="w-4 h-4"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="mb-4">
+                      {voiceChannels.length === 0 ? (
+                        <div className="text-gray-400 text-sm py-2">
+                          음성 채널이 없습니다
+                        </div>
+                      ) : (
+                        voiceChannels.map((channel) => (
+                          <Link
+                            key={channel.channelName}
+                            href={`/${serverId}/projects/${projectId}/voice_channels/${channel.channelName}`}
+                          >
+                            <div
+                              className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
+                                channelId === channel.channelName
+                                  ? "bg-gray-600 text-white"
+                                  : "text-gray-300 hover:bg-gray-600 hover:text-white"
+                              }`}
+                            >
+                              <span className="mr-2 text-gray-400">🔊</span>
+                              <span className="text-sm">
+                                {channel.channelName}
+                              </span>
+                              {channel.isPrivate && (
+                                <span className="ml-auto text-xs">🔒</span>
+                              )}
+                            </div>
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
+          )}
+        </div>
 
-            {/* 채널 목록 */}
-            <div className="px-4 py-3 flex-1 overflow-y-auto">
-              {loadingChannels ? (
-                <div className="text-white text-center py-4">
-                  채널 로딩 중...
-                </div>
-              ) : (
-                <>
-                  {/* 공지 채널 */}
-                  {noticeChannels.length > 0 && (
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-white text-xs font-semibold uppercase">
-                          공지사항
-                        </h3>
-                      </div>
-                      {noticeChannels.map((channel) => (
-                        <Link
-                          key={channel.channelName}
-                          href={`/${serverId}/projects/${projectId}/channels/${channel.channelName}`}
-                          className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
-                            channelId === channel.channelName
-                              ? "bg-gray-600 text-white"
-                              : "text-gray-300 hover:bg-gray-600 hover:text-white"
-                          }`}
-                        >
-                          <span className="mr-2 text-gray-400">📢</span>
-                          <span className="text-sm">{channel.channelName}</span>
-                          {channel.isPrivate && (
-                            <span className="ml-auto text-xs">🔒</span>
-                          )}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* 채팅 채널 */}
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-gray-300 text-xs font-semibold uppercase">
-                      채팅 채널
-                    </h3>
-                    <button className="text-gray-400 hover:text-gray-200">
-                      <svg
-                        className="w-4 h-4"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div className="mb-4">
-                    {textChannels.length === 0 ? (
-                      <div className="text-gray-400 text-sm py-2">
-                        채널이 없습니다
-                      </div>
-                    ) : (
-                      textChannels.map((channel) => (
-                        <Link
-                          key={channel.channelName}
-                          href={`/${serverId}/projects/${projectId}/channels/${channel.channelName}`}
-                        >
-                          <div
-                            className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
-                              channelId === channel.channelName
-                                ? "bg-gray-600 text-white"
-                                : "text-gray-300 hover:bg-gray-600 hover:text-white"
-                            }`}
-                          >
-                            <span className="mr-2 text-gray-400">#</span>
-                            <span className="text-sm">
-                              {channel.channelName}
-                            </span>
-                            {channel.isPrivate && (
-                              <span className="ml-auto text-xs">🔒</span>
-                            )}
-                          </div>
-                        </Link>
-                      ))
-                    )}
-                  </div>
-
-                  {/* 음성 채널 */}
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-gray-300 text-xs font-semibold uppercase">
-                      음성 채널
-                    </h3>
-                    <button className="text-gray-400 hover:text-gray-200">
-                      <svg
-                        className="w-4 h-4"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                  <div className="mb-4">
-                    {voiceChannels.length === 0 ? (
-                      <div className="text-gray-400 text-sm py-2">
-                        음성 채널이 없습니다
-                      </div>
-                    ) : (
-                      voiceChannels.map((channel) => (
-                        <Link
-                          key={channel.channelName}
-                          href={`/${serverId}/projects/${projectId}/voice_channels/${channel.channelName}`}
-                        >
-                          <div
-                            className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
-                              channelId === channel.channelName
-                                ? "bg-gray-600 text-white"
-                                : "text-gray-300 hover:bg-gray-600 hover:text-white"
-                            }`}
-                          >
-                            <span className="mr-2 text-gray-400">🔊</span>
-                            <span className="text-sm">
-                              {channel.channelName}
-                            </span>
-                            {channel.isPrivate && (
-                              <span className="ml-auto text-xs">🔒</span>
-                            )}
-                          </div>
-                        </Link>
-                      ))
-                    )}
-                  </div>
-                </>
-              )}
+        {/* 하단: 사용자 정보 (프로젝트+채널 영역에만 제한) */}
+        {isProjectSelected && (
+          <div className="flex bg-gray-800 border-t border-gray-600 rounded-tr-lg mr-2">
+            <div className="w-4"></div>
+            <div className="flex-1 p-4 flex items-center">
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mr-4 relative">
+                <span className="text-gray-800 text-lg font-bold">사</span>
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-gray-800"></div>
+              </div>
+              <div className="flex-1">
+                <div className="text-white text-base font-semibold">사용자</div>
+                <div className="text-gray-300 text-sm">온라인</div>
+              </div>
+              <div className="flex space-x-2">
+                <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
+                  🎤
+                </button>
+                <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
+                  🎧
+                </button>
+                <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
+                  ⚙️
+                </button>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* 하단: 사용자 정보 (프로젝트+채널 영역에만 제한) */}
-      {isProjectSelected && (
-        <div className="flex bg-gray-800 border-t border-gray-600 rounded-tr-lg mr-2">
-          <div className="w-4"></div>
-          <div className="flex-1 p-4 flex items-center">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mr-4 relative">
-              <span className="text-gray-800 text-lg font-bold">사</span>
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-gray-800"></div>
-            </div>
-            <div className="flex-1">
-              <div className="text-white text-base font-semibold">사용자</div>
-              <div className="text-gray-300 text-sm">온라인</div>
-            </div>
-            <div className="flex space-x-2">
-              <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
-                🎤
-              </button>
-              <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
-                🎧
-              </button>
-              <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
-                ⚙️
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      {/* 채널 추가 모달 */}
+      <AddChannelModal />
+    </>
   );
 };

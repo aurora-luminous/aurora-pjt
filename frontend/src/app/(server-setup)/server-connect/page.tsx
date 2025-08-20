@@ -2,37 +2,31 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
 import { useModal } from "../hooks/useModal";
+import { useServer } from "../hooks/useServer";
 import AddServerModal from "../components/AddServerModal";
 
 const ServerConnectPage = () => {
-  const router = useRouter();
   const { openServerAddModal, close, isServerAddModal } = useModal();
+  const {
+    handleGetProjectList,
+    isGettingProjectList,
+    isGettingChannelList,
+    isCreatingChannel,
+    projectListError,
+    channelListError,
+    createChannelError,
+  } = useServer();
 
   const [serverUrl, setServerUrl] = useState("");
   const [serverName, setServerName] = useState("");
-  const [selectedServer, setSelectedServer] = useState("SSAFY 연구반");
-
-  // 서버 이름을 서버 ID로 변환하는 함수
-  const getProjectIdFromServerName = (serverName: string) => {
-    const serverMap: { [key: string]: string } = {
-      "SSAFY 연구반": "ssafy-research",
-      "테스트 서버": "test-server",
-      "개발 서버": "dev-server",
-    };
-    return (
-      serverMap[serverName] || serverName.toLowerCase().replace(/\s+/g, "-")
-    );
-  };
 
   const handleServerAdd = (e: React.FormEvent) => {
     e.preventDefault();
     openServerAddModal();
-    // 서버 추가 로직 구현
   };
 
-  const handleServerJoin = (e: React.FormEvent) => {
+  const handleServerJoin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // 폼 데이터 검증
@@ -42,18 +36,31 @@ const ServerConnectPage = () => {
     }
 
     try {
-      // 실제로는 여기서 서버 연결 API 호출
       console.log("서버 연결 시도:", { serverUrl, serverName });
 
-      // 서버 연결 성공 시 서버 대시보드로 이동 (프로젝트 목록 표시)
-      const serverId = getProjectIdFromServerName(serverName);
-      console.log("서버 이름:", serverName, "→ 서버 ID:", serverId);
-      router.push(`/${serverId}/projects/general/channels/general`);
+      // useServer의 handleGetProjectList 사용
+      await handleGetProjectList(serverUrl, serverName);
     } catch (error) {
       console.error("서버 연결 실패:", error);
-      alert("서버 연결에 실패했습니다. 다시 시도해주세요.");
+
+      // 구체적인 에러 메시지 표시
+      let errorMessage = "서버 연결에 실패했습니다.";
+
+      if (projectListError) {
+        errorMessage = "프로젝트 목록을 가져올 수 없습니다.";
+      } else if (channelListError) {
+        errorMessage = "채널 목록을 가져올 수 없습니다.";
+      } else if (createChannelError) {
+        errorMessage = "채널 생성에 실패했습니다.";
+      }
+
+      alert(`${errorMessage} 다시 시도해주세요.`);
     }
   };
+
+  // 로딩 상태 확인
+  const isLoading =
+    isGettingProjectList || isGettingChannelList || isCreatingChannel;
 
   return (
     <>
@@ -77,12 +84,13 @@ const ServerConnectPage = () => {
                   서버 도메인 URL을 입력해주세요.
                 </label>
                 <input
-                  type="url"
+                  type="text"
                   value={serverUrl}
                   onChange={(e) => setServerUrl(e.target.value)}
                   placeholder="서버 URL"
                   className="w-full px-4 py-3 bg-white border border-white/20 rounded-lg text-gray-500 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent backdrop-blur-sm transition-colors"
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -97,8 +105,19 @@ const ServerConnectPage = () => {
                   placeholder="서버 호스팅 이름"
                   className="w-full px-4 py-3 bg-white border border-gray-500 rounded-lg text-gray-500 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent backdrop-blur-sm transition-colors"
                   required
+                  disabled={isLoading}
                 />
               </div>
+
+              {/* 로딩 상태 표시 */}
+              {isLoading && (
+                <div className="text-center text-white/80 text-sm">
+                  {isGettingProjectList && "📋 프로젝트 목록 조회 중..."}
+                  {isGettingChannelList && "📺 채널 목록 조회 중..."}
+                  {isCreatingChannel && "🔨 기본 채널 생성 중..."}
+                </div>
+              )}
+
               <div className="w-full text-end">
                 <p className="text-xs text-white text-right">
                   서버가 없으신가요?{" "}
@@ -113,9 +132,10 @@ const ServerConnectPage = () => {
 
               <button
                 type="submit"
-                className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                disabled={isLoading}
+                className="w-full bg-purple-500 hover:bg-purple-600 disabled:bg-purple-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-purple-400"
               >
-                서버 입장
+                {isLoading ? "연결 중..." : "서버 입장"}
               </button>
             </form>
           </div>

@@ -15,9 +15,9 @@ export const getDatabaseConfig = (ConfigService: ConfigService): TypeOrmModuleOp
     type: 'postgres',
     host: ConfigService.get('DB_HOST'),
     port: ConfigService.get('DB_PORT'),
-    username: ConfigService.get('DB_USERNAME'),
+    username: ConfigService.get('DB_USER') || ConfigService.get('DB_USERNAME'), // 도커용 우선, 로컬용 fallback
     password: ConfigService.get('DB_PASSWORD'),
-    database: ConfigService.get('DB_DATABASE'),
+    database: ConfigService.get('DB_NAME') || ConfigService.get('DB_DATABASE'), // 도커용 우선, 로컬용 fallback
     entities: [
         User,
         UserOption,

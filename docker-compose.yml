@@ -4,6 +4,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    image: ${IMAGE_REPO}:${TAG}
     ports:
       - 3000:3000
     environment:

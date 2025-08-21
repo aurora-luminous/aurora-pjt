@@ -28,6 +28,10 @@ export interface PendingMemberDto {
     user_email: string;
     profile_image_path: string;
   };
+  serverInfo?: {
+    serverUrl: string;
+    serverName: string;
+  };
 }
 
 export interface UpdateMemberStatusDto {
@@ -171,8 +175,8 @@ export class ServerInvitationService {
     };
   }
 
-  // 초대 링크로 서버 가입 신청
-  async joinServerByInvite(joinDto: JoinServerDto): Promise<PendingMemberDto> {
+  // 초대 링크로 서버 정보 조회
+  async getServerInfoByInvite(joinDto: JoinServerDto): Promise<{ serverUrl: string; serverName: string }> {
     // 1. 해시로 서버 찾기
     const serverPk = await this.getServerPkFromHash(joinDto.inviteHash);
     
@@ -189,7 +193,7 @@ export class ServerInvitationService {
       throw new NotFoundException('Server not found or deleted');
     }
 
-    // 3. 사용자 존재 확인
+    // 3. 사용자 존재 확인 (유효한 사용자인지만 확인)
     const user = await this.userRepository.findOne({
       where: { userPk: joinDto.userPk, isDeleted: false }
     });
@@ -198,45 +202,10 @@ export class ServerInvitationService {
       throw new NotFoundException(`User with ID ${joinDto.userPk} not found`);
     }
 
-    // 4. 이미 서버 멤버인지 확인
-    const existingMember = await this.serverMemberRepository.findOne({
-      where: { serverPk, userPk: joinDto.userPk }
-    });
-
-    if (existingMember) {
-      // 모든 상태에 대해 현재 상태 반환 (프론트에서 처리)
-      return {
-        serverMemberPk: existingMember.serverMemberPk,
-        userPk: existingMember.userPk,
-        status: existingMember.status,
-        userInfo: {
-          user_pk: user.userPk,
-          user_name: user.userName,
-          user_email: user.userEmail,
-          profile_image_path: user.profileImagePath,
-        },
-      };
-    }
-
-    // 5. 가입 신청 생성 (Pending 상태)
-    const serverMember = this.serverMemberRepository.create({
-      serverPk,
-      userPk: joinDto.userPk,
-      status: 'Pending',
-      serverRole: 'member',
-    });
-    const savedMember = await this.serverMemberRepository.save(serverMember);
-
+    // 4. 서버 정보만 반환
     return {
-      serverMemberPk: savedMember.serverMemberPk,
-      userPk: savedMember.userPk,
-      status: savedMember.status,
-      userInfo: {
-        user_pk: user.userPk,
-        user_name: user.userName,
-        user_email: user.userEmail,
-        profile_image_path: user.profileImagePath,
-      },
+      serverUrl: server.serverUrl,
+      serverName: server.serverName
     };
   }
 

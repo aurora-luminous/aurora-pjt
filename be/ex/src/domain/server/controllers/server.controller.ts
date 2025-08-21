@@ -71,23 +71,30 @@ export class ServerController {
   @Get(':serverUrl/join/:inviteHash')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: '초대링크로 서버 가입 신청' })
-  @ApiResponse({ status: 200, description: '가입 신청 성공' })
-  async joinServerByInvite(
+  @ApiOperation({ summary: '초대링크 서버 정보 조회' })
+  @ApiResponse({ status: 200, description: '서버 정보 조회 성공' })
+  async getServerInfoByInvite(
     @Param('serverUrl') serverUrl: string,
     @Param('inviteHash') inviteHash: string,
     @CurrentUser() user: User
-  ): Promise<{ status: 'Pending' | 'Approved' | 'Rejected' }> {
+  ): Promise<{ 
+    serverUrl: string;
+    serverName: string;
+  }> {
     const userPk = user.userPk;
     
-    const result = await this.serverInvitationService.joinServerByInvite({
+    const result = await this.serverInvitationService.getServerInfoByInvite({
       inviteHash,
       userPk
     });
-    return { status: result.status as 'Pending' | 'Approved' | 'Rejected' };
+    
+    return { 
+      serverUrl: result.serverUrl,
+      serverName: result.serverName
+    };
   }
 
-  @Get(':serverUrl/join')
+  @Post(':serverUrl/join')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '직접 서버 가입 신청' })
@@ -95,11 +102,11 @@ export class ServerController {
   async joinServerDirect(
     @Param('serverUrl') serverUrl: string,
     @CurrentUser() user: User
-  ): Promise<{ status: 'Pending' | 'Approved' | 'Rejected' }> {
+  ): Promise<{ status: 'Pending' | 'Approved' | 'Rejected' | 'Banned' }> {
     const userPk = user.userPk;
     
     const result = await this.serverInvitationService.joinServerDirect(serverUrl, userPk);
-    return { status: result.status as 'Pending' | 'Approved' | 'Rejected' };
+    return { status: result.status as 'Pending' | 'Approved' | 'Rejected' | 'Banned' };
   }
 
   @Get(':serverUrl/pending')

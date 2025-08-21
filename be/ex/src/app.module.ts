@@ -1,5 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+
+// crypto polyfill for @nestjs/typeorm (Alpine Linux 호환성)
+const crypto = require('crypto');
+if (!globalThis.crypto) {
+  globalThis.crypto = crypto.webcrypto || crypto;
+}
+
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule } from '@nestjs/axios';
 import { RouterModule } from '@nestjs/core';

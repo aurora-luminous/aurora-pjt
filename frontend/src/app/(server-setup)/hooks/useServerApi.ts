@@ -4,6 +4,7 @@ import { expressClient } from "@/app/lib/axiosClient";
 import { Project } from "../types/Projcets";
 import { useState, useCallback } from "react";
 import { Channel } from "../types/Channel";
+import { ServerAccess, ServerStatus } from "@/app/(servers)/types/ServerAccess";
 
 // 프로젝트 목록 조회 전용 훅
 export const useProjectListApi = (serverUrl: string) => {
@@ -18,6 +19,22 @@ export const useSeverListApi = () => {
   return useApi<ServerResponse[], void>({
     endpoint: "/ex/servers",
     method: "GET",
+    axiosInstance: expressClient,
+  });
+};
+
+export const useServerAccessApi = () => {
+  return useApi<ServerAccess[], void>({
+    endpoint: `/ex/servers/{serverUrl}/pending`,
+    method: "GET",
+    axiosInstance: expressClient,
+  });
+};
+
+export const usePatchServerAccess = () => {
+  return useApi<ServerAccess, void>({
+    endpoint: `/ex/servers/{serverUrl}/status`,
+    method: "PATCH",
     axiosInstance: expressClient,
   });
 };
@@ -144,6 +161,36 @@ export const useServerApi = () => {
     []
   );
 
+  const getServerAccess = async (
+    serverUrl: string
+  ): Promise<ServerAccess[]> => {
+    try {
+      const response = await expressClient.get<ServerAccess[]>(
+        `/ex/servers/${serverUrl}/pending`
+      );
+      return response.data || [];
+    } catch (error) {
+      console.error("❌ 서버 접근 권한 조회 실패:", error);
+      throw error;
+    }
+  };
+
+  const patchServerAccess = async (
+    serverUrl: string,
+    status: ServerStatus
+  ): Promise<ServerAccess> => {
+    try {
+      const response = await expressClient.patch<ServerAccess>(
+        `/ex/servers/${serverUrl}/status`,
+        status
+      );
+      return response.data || {};
+    } catch (error) {
+      console.error("❌ 서버 접근 권한 수정 실패:", error);
+      throw error;
+    }
+  };
+
   return {
     addServer,
     isAddingServer,
@@ -154,5 +201,7 @@ export const useServerApi = () => {
     getChannelList,
     createChannel,
     createProject,
+    getServerAccess,
+    patchServerAccess,
   };
 };

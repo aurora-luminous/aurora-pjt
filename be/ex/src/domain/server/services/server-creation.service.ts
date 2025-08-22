@@ -5,7 +5,7 @@ import { Server } from "../entities/server.entity";
 import { ServerMember } from "../entities/server-member.entity";
 import { User } from "../../user/entities/user.entity";
 import { ProjectCreationService } from "../../project/services/project-creation.service";
-import { CreateServerDto, ServerResponseDto } from "../dto";
+import { CreateServerDto, ServerResponseDto, ServerListDto } from "../dto";
 
 @Injectable()
 export class ServerCreationService {
@@ -64,32 +64,22 @@ export class ServerCreationService {
         };
     }
 
-    async getUserServers(userPk: number): Promise<ServerResponseDto[]> {
+    async getUserServers(userPk: number): Promise<ServerListDto[]> {
         const serverMembers = await this.serverMemberRepository.find({
             where: { 
                 userPk: userPk,
                 status: 'Approved'
             },
-            relations: ['server', 'server.serverMembers', 'server.serverMembers.user'],
+            relations: ['server'],
         });
 
         return serverMembers
             .filter(member => !member.server.isDeletedServer)
-            .map(member => {
-                const server = member.server;
-                const owner = server.serverMembers.find(sm => sm.serverRole === 'owner');
-                
-                return {
-                    serverPk: server.serverPk,
-                    serverName: server.serverName,
-                    serverUrl: server.serverUrl,
-                    isDeletedServer: server.isDeletedServer,
-                    ownerInfo: owner ? {
-                        userName: owner.user.userName,
-                        userEmail: owner.user.userEmail,
-                    } : undefined,
-                };
-            });
+            .map(member => ({
+                serverUrl: member.server.serverUrl,
+                serverName: member.server.serverName,
+                serverRole: member.serverRole,
+            }));
     }
 
     async getAllServers(): Promise<ServerResponseDto[]> {

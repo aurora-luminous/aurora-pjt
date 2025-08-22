@@ -17,6 +17,7 @@ import { ChannelInvitationService } from '../services/channel-invitation.service
 import {
   CreateChannelDto,
   ChannelListDto,
+  ChannelCreateDto,
   BulkInviteToChannelDto,
   ChannelMemberDto,
   ManageMemberDto,
@@ -37,7 +38,7 @@ export class ChannelController {
   @ApiResponse({
     status: 201,
     description: '채널 생성 성공',
-    type: ChannelListDto,
+    type: ChannelCreateDto,
   })
   async createChannel(
     @Param('serverUrl') serverUrl: string, // RouterModule에서 자동 제공
@@ -45,7 +46,7 @@ export class ChannelController {
     @Body()
     createChannelDto: Omit<CreateChannelDto, 'projectPk' | 'creatorUserPk'>,
     @CurrentUser() user: User
-  ): Promise<ChannelListDto> {
+  ): Promise<ChannelCreateDto> {
     const creatorUserPk = user.userPk;
 
     const channelDto: CreateChannelDto = {
@@ -53,13 +54,7 @@ export class ChannelController {
       projectPk: projectPk,
       creatorUserPk: creatorUserPk,
     };
-    const result = await this.channelCreationService.createChannel(channelDto);
-    return {
-      channelName: result.channelName,
-      channelKind: result.channelKind.toLowerCase() as 'text' | 'voice',
-      isPrivate: result.isPrivate,
-      channelRole: 'admin' as 'admin' | 'member', // 생성자는 항상 admin
-    };
+    return await this.channelCreationService.createChannel(channelDto);
   }
 
   @Get()
@@ -78,17 +73,11 @@ export class ChannelController {
   ): Promise<ChannelListDto[]> {
     const requestUserPk = user.userPk;
     // 서버와 프로젝트 컴텍스트 정보 전달
-    const channels = await this.channelCreationService.getChannelsByProject(
+    return await this.channelCreationService.getChannelsByProject(
       projectPk,
       requestUserPk,
       serverUrl,
     );
-    return channels.map((channel) => ({
-      channelName: channel.channelName,
-      channelKind: channel.channelKind.toLowerCase() as 'text' | 'voice',
-      isPrivate: channel.isPrivate,
-      channelRole: 'member' as 'admin' | 'member', // 임시로 member로 설정
-    }));
   }
 
   // === 채널 초대 관련 엔드포인트 ===

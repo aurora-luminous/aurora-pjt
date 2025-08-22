@@ -18,6 +18,9 @@ export class ServerResponseDto {
     userName: string;
     userEmail: string;
   };
+
+  @ApiProperty({ description: '서버 내 유저 역할', enum: ['member', 'admin', 'owner'], required: false })
+  userRole?: 'member' | 'admin' | 'owner';
 }
 
 // 서버 목록 조회용
@@ -27,6 +30,9 @@ export class ServerListDto {
 
   @ApiProperty({ description: '서버명' })
   serverName: string;
+
+  @ApiProperty({ description: '서버 내 유저 역할', enum: ['member', 'admin', 'owner'] })
+  userRole: 'member' | 'admin' | 'owner';
 }
 
 // 서버 생성 응답 DTO

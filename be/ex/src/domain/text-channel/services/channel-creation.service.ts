@@ -10,7 +10,7 @@ import { ChannelMember } from '../entities/channel-member.entity';
 import { Project } from '../../project/entities/project.entity';
 import { ProjectMember } from '../../project/entities/project-member.entity';
 import { User } from '../../user/entities/user.entity';
-import { CreateChannelDto, ChannelResponseDto } from '../dto';
+import { CreateChannelDto, ChannelResponseDto, ChannelListDto, ChannelCreateDto } from '../dto';
 
 @Injectable()
 export class ChannelCreationService {
@@ -29,7 +29,7 @@ export class ChannelCreationService {
 
   async createChannel(
     createChannelDto: CreateChannelDto,
-  ): Promise<ChannelResponseDto> {
+  ): Promise<ChannelCreateDto> {
     // 1. 사용자 존재 확인
     const user = await this.userRepository.findOne({
       where: { userPk: createChannelDto.creatorUserPk, isDeleted: false },
@@ -121,19 +121,9 @@ export class ChannelCreationService {
     }
 
     return {
-      channelPk: savedChannel.channelPk,
-      projectPk: savedChannel.projectPk,
       channelName: savedChannel.channelName,
-      channelKind: savedChannel.channelKind,
-      isDeletedChannel: savedChannel.isDeletedChannel,
+      channelKind: savedChannel.channelKind.toLowerCase() as 'text' | 'voice',
       isPrivate: savedChannel.isPrivate,
-      projectInfo: {
-        projectPk: project.projectPk,
-        projectName: project.projectName,
-      },
-      ownerInfo: {
-        userName: user.userName,
-      },
     };
   }
 
@@ -141,7 +131,7 @@ export class ChannelCreationService {
     projectPk: number,
     requestUserPk?: number,
     serverUrl?: string, // 추가: 서버 컴텍스트 정보
-  ): Promise<ChannelResponseDto[]> {
+  ): Promise<ChannelListDto[]> {
     // 프로젝트 존재 확인
     const project = await this.projectRepository.findOne({
       where: { projectPk, isDeletedProject: false },
@@ -160,8 +150,6 @@ export class ChannelCreationService {
       channels = await this.channelRepository
         .createQueryBuilder('channel')
         .leftJoinAndSelect('channel.channelMembers', 'channelMember')
-        .leftJoinAndSelect('channelMember.user', 'user')
-        .leftJoinAndSelect('channel.project', 'project')
         .where('channel.projectPk = :projectPk', { projectPk })
         .andWhere('channel.isDeletedChannel = false')
         .andWhere(
@@ -174,32 +162,22 @@ export class ChannelCreationService {
       // 요청 사용자 정보가 없으면 Public 채널만 조회
       channels = await this.channelRepository.find({
         where: { projectPk, isDeletedChannel: false, isPrivate: false },
-        relations: ['channelMembers', 'channelMembers.user', 'project'],
+        relations: ['channelMembers'],
       });
     }
 
     return channels.map((channel) => {
-      const owner = channel.channelMembers.find(
-        (member) => member.channelRole === 'owner',
-      );
-
+      // 사용자의 채널 역할 찾기
+      const userChannelMember = requestUserPk 
+        ? channel.channelMembers.find(member => member.userPk === requestUserPk)
+        : null;
+      
       return {
         channelPk: channel.channelPk,
-        projectPk: channel.projectPk,
         channelName: channel.channelName,
-        channelKind: channel.channelKind,
-        isDeletedChannel: channel.isDeletedChannel,
+        channelKind: channel.channelKind.toLowerCase() as 'text' | 'voice',
         isPrivate: channel.isPrivate,
-        projectInfo: {
-          projectPk: channel.project.projectPk,
-          projectName: channel.project.projectName,
-        },
-        ownerInfo: owner
-          ? {
-              
-              userName: owner.user.userName,
-            }
-          : undefined,
+        channelRole: userChannelMember?.channelRole === 'owner' ? 'admin' : 'member',
       };
     });
   }

@@ -8,7 +8,7 @@ import { ServerMember } from "../../server/entities/server-member.entity";
 import { User } from "../../user/entities/user.entity";
 import { Channel } from "../../text-channel/entities/channel.entity";
 import { ChannelMember } from "../../text-channel/entities/channel-member.entity";
-import { CreateProjectDto, ProjectResponseDto } from "../dto";
+import { CreateProjectDto, ProjectResponseDto, ProjectListDto } from "../dto";
 
 @Injectable()
 export class ProjectCreationService {
@@ -117,7 +117,7 @@ export class ProjectCreationService {
         };
     }
 
-    async getProjectsByServerForUser(serverUrl: string, userPk: number): Promise<ProjectResponseDto[]> {
+    async getProjectsByServerForUser(serverUrl: string, userPk: number): Promise<ProjectListDto[]> {
         // 서버 존재 확인
         const server = await this.serverRepository.findOne({
         where: { serverUrl, isDeletedServer: false }
@@ -133,30 +133,15 @@ export class ProjectCreationService {
                 userPk: userPk,
                 pStatus: 'Active'
             },
-            relations: ['project', 'project.projectMembers', 'project.projectMembers.user', 'project.server'],
+            relations: ['project'],
         });
 
         return projectMembers
             .filter(member => member.project.serverPk === server.serverPk && !member.project.isDeletedProject)
-            .map(member => {
-                const project = member.project;
-                const owner = project.projectMembers.find(pm => pm.projectRole === 'owner');
-                
-                return {
-                    projectPk: project.projectPk,
-                    serverPk: project.serverPk,
-                    projectName: project.projectName,
-                    isDeletedProject: project.isDeletedProject,
-                    serverInfo: {
-                        serverPk: project.server.serverPk,
-                        serverName: project.server.serverName,
-                    },
-                    ownerInfo: owner ? {
-                        
-                        userName: owner.user.userName,
-                    } : undefined,
-                };
-            });
+            .map(member => ({
+                projectPk: member.project.projectPk,
+                projectName: member.project.projectName,
+            }));
     }
 
     async getProjectsByServer(serverUrl: string): Promise<ProjectResponseDto[]> {

@@ -79,15 +79,10 @@ export class ProjectController {
   ): Promise<ProjectListDto[]> {
     const requestUserPk = user.userPk;
 
-    const projects =
-      await this.projectCreationService.getProjectsByServerForUser(
-        serverUrl,
-        requestUserPk,
-      );
-    return projects.map((project) => ({
-      projectPk: project.projectPk,
-      projectName: project.projectName,
-    }));
+    return await this.projectCreationService.getProjectsByServerForUser(
+      serverUrl,
+      requestUserPk,
+    );
   }
 
   // === 프로젝트 초대 관련 엔드포인트 ===

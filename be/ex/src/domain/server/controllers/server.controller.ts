@@ -44,11 +44,7 @@ export class ServerController {
   ): Promise<ServerListDto[]> {
     const requestUserPk = user.userPk;
     
-    const servers = await this.serverCreationService.getUserServers(requestUserPk);
-    return servers.map(server => ({
-      serverUrl: server.serverUrl,
-      serverName: server.serverName
-    }));
+    return await this.serverCreationService.getUserServers(requestUserPk);
   }
 
   @Post(':serverUrl/invite')

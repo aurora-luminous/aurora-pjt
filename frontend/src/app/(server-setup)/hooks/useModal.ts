@@ -3,7 +3,13 @@ import { useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "../../lib/store";
 
 // 모달 타입 정의
-export type ModalType = "SERVER_ADD" | "SERVER_EDIT" | "SERVER_DELETE" | null;
+export type ModalType =
+  | "SERVER_ADD"
+  | "SERVER_EDIT"
+  | "SERVER_DELETE"
+  | "CHANNEL_ADD"
+  | "PROJECT_ADD"
+  | null;
 
 // 서버 데이터 타입 정의
 export interface ServerData {
@@ -13,11 +19,27 @@ export interface ServerData {
   description?: string;
 }
 
+// 채널 데이터 타입 정의
+export interface ChannelData {
+  serverUrl: string;
+  projectPk: number;
+  channelName: string;
+  channelKind: "text" | "voice" | "notice";
+  isPrivate: boolean;
+}
+
+// 프로젝트 데이터 타입 정의
+export interface ProjectData {
+  serverUrl: string;
+  projectName: string;
+  projectDescription?: string;
+}
+
 // 모달 상태 인터페이스
 export interface ModalState {
   isOpen: boolean;
   type: ModalType;
-  data: ServerData | null;
+  data: ServerData | ChannelData | ProjectData | null;
   loading: boolean;
   error: string | null;
 }
@@ -39,7 +61,10 @@ const modalSlice = createSlice({
     // 모달 열기
     openModal: (
       state,
-      action: PayloadAction<{ type: ModalType; data?: ServerData }>
+      action: PayloadAction<{
+        type: ModalType;
+        data?: ServerData | ChannelData | ProjectData;
+      }>
     ) => {
       state.isOpen = true;
       state.type = action.payload.type;
@@ -57,7 +82,10 @@ const modalSlice = createSlice({
     },
 
     // 모달 데이터 업데이트
-    updateModalData: (state, action: PayloadAction<ServerData>) => {
+    updateModalData: (
+      state,
+      action: PayloadAction<ServerData | ChannelData | ProjectData>
+    ) => {
       state.data = action.payload;
     },
 
@@ -113,13 +141,23 @@ export const useModal = () => {
       dispatch(openModal({ type: "SERVER_DELETE", data: serverData }));
     },
 
+    // 채널 추가 모달 열기
+    openChannelAddModal: (channelData: ChannelData) => {
+      dispatch(openModal({ type: "CHANNEL_ADD", data: channelData }));
+    },
+
+    // 프로젝트 추가 모달 열기
+    openProjectAddModal: (projectData: ProjectData) => {
+      dispatch(openModal({ type: "PROJECT_ADD", data: projectData }));
+    },
+
     // 모달 닫기
     close: () => {
       dispatch(closeModal());
     },
 
     // 모달 데이터 업데이트
-    updateData: (data: ServerData) => {
+    updateData: (data: ServerData | ChannelData | ProjectData) => {
       dispatch(updateModalData(data));
     },
 
@@ -159,5 +197,7 @@ export const useModal = () => {
     isServerAddModal: modalState.type === "SERVER_ADD",
     isServerEditModal: modalState.type === "SERVER_EDIT",
     isServerDeleteModal: modalState.type === "SERVER_DELETE",
+    isChannelAddModal: modalState.type === "CHANNEL_ADD",
+    isProjectAddModal: modalState.type === "PROJECT_ADD",
   };
 };

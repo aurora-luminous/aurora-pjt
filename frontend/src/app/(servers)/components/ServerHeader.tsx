@@ -1,11 +1,11 @@
 import React from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
 
 interface ServerHeaderProps {
   serverId: string;
   channelId?: string;
-  getServerName: (id: string) => string;
-  getChannelName: (id: string) => string;
   toggleSidebar: () => void;
   isSidebarOpen: boolean;
 }
@@ -13,11 +13,15 @@ interface ServerHeaderProps {
 export const ServerHeader: React.FC<ServerHeaderProps> = ({
   serverId,
   channelId,
-  getServerName,
-  getChannelName,
   toggleSidebar,
   isSidebarOpen,
 }) => {
+  const serverInfo = useCurrentServerInfo();
+
+  // 서버 정보 로딩 중일 때 기본값 사용
+  const serverName = serverInfo?.serverName || "서버";
+  const channelName = serverInfo?.channelName || "채널";
+
   return (
     <div className="h-12 bg-aurora-main flex items-center justify-between px-4">
       {/* 왼쪽: 로고 */}
@@ -36,11 +40,11 @@ export const ServerHeader: React.FC<ServerHeaderProps> = ({
         {channelId ? (
           <span className="text-white text-xl font-semibold flex items-center">
             <span className="text-gray-300 mr-2">#</span>
-            {getChannelName(channelId)}
+            {serverName}
           </span>
         ) : (
           <span className="text-white text-xl font-semibold flex items-center">
-            {getServerName(serverId)}
+            {serverName}
             <svg
               className="w-4 h-4 text-white ml-2 flex-shrink-0"
               fill="currentColor"
@@ -56,13 +60,41 @@ export const ServerHeader: React.FC<ServerHeaderProps> = ({
         )}
       </div>
 
-      {/* 오른쪽: 검색창과 토글 버튼 */}
+      {/* 오른쪽: 검색창, 관리자 메뉴, 토글 버튼 */}
       <div className="flex items-center justify-end flex-1 space-x-3">
         <input
           type="text"
           placeholder="검색하기"
           className="bg-white text-gray-500 placeholder-gray-500 px-3 py-1 rounded text-sm w-48 focus:outline-none focus:bg-blue-400"
         />
+
+        {/* 관리자 메뉴 버튼 */}
+        <Link
+          href={`/${serverId}/admin/join-requests`}
+          className="text-white hover:bg-blue-500 p-2 rounded transition-colors"
+          title="서버 관리"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+        </Link>
+
         {/* 사이드바 토글 버튼 */}
         <button
           onClick={toggleSidebar}

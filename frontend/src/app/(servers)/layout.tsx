@@ -19,8 +19,6 @@ export default function ServersLayout({
     directMessages,
     onlineUsers,
     isSidebarOpen,
-    getServerName,
-    getChannelName,
     isProjectActive,
     isProjectSelected,
     toggleSidebar,
@@ -35,8 +33,6 @@ export default function ServersLayout({
         <ServerHeader
           serverId={serverId}
           channelId={channelId}
-          getServerName={getServerName}
-          getChannelName={getChannelName}
           toggleSidebar={toggleSidebar}
           isSidebarOpen={isSidebarOpen}
         />

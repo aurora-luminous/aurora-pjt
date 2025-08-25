@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useServerAccessQuery } from "@/app/(server-setup)/hooks/useServerMutation";
+import { useAdminSidebar } from "@/app/(servers)/hooks/useAdmin";
+import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
 
 interface AdminSidebarProps {
   serverId: string;
@@ -11,19 +12,10 @@ interface AdminSidebarProps {
 
 const AdminSidebar: React.FC<AdminSidebarProps> = ({ serverId }) => {
   const pathname = usePathname();
+  const serverInfo = useCurrentServerInfo();
+  const serverName = serverInfo?.serverName;
 
-  // ✅ Query 사용: 자동으로 데이터 조회, 캐싱, refetch
-  const {
-    data: serverAccessList = [],
-    isLoading,
-    error,
-  } = useServerAccessQuery(serverId);
-
-  // 대기 중인 요청 수 계산
-  const pendingRequestsCount = useMemo(() => {
-    return serverAccessList.filter((access) => access.status === "Pending")
-      .length;
-  }, [serverAccessList]);
+  const { isLoading, error, pendingRequestsCount } = useAdminSidebar();
 
   const menuItems = [
     {
@@ -68,12 +60,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ serverId }) => {
       {/* 헤더 */}
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-            <span className="text-white font-semibold text-sm">MS</span>
-          </div>
           <div>
-            <h2 className="text-white font-semibold">Meeting ssafy</h2>
-            <p className="text-gray-400 text-sm">서버 관리</p>
+            <h2 className="text-white font-semibold">
+              {serverName || "서버 이름"}
+            </h2>
           </div>
         </div>
       </div>
@@ -135,24 +125,25 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ serverId }) => {
       </div>
 
       {/* 하단 사용자 정보 */}
-      <div className="p-4 border-t border-gray-700">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center relative">
-            <span className="text-white text-xs font-semibold">김</span>
-            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-800"></div>
+      <div className="flex bg-gray-800 border-t border-gray-600 rounded-tr-lg mr-2">
+        <div className="w-4"></div>
+        <div className="flex-1 p-4 flex items-center">
+          <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mr-4 relative">
+            <span className="text-gray-800 text-lg font-bold">사</span>
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-gray-800"></div>
           </div>
           <div className="flex-1">
-            <p className="text-white text-sm font-medium">김코딩</p>
-            <p className="text-gray-400 text-xs">온라인</p>
+            <div className="text-white text-base font-semibold">사용자</div>
+            <div className="text-gray-300 text-sm">온라인</div>
           </div>
-          <div className="flex space-x-1">
-            <button className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-600">
-              🎧
-            </button>
-            <button className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-600">
+          <div className="flex space-x-2">
+            <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
               🎤
             </button>
-            <button className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-600">
+            <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
+              🎧
+            </button>
+            <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
               ⚙️
             </button>
           </div>

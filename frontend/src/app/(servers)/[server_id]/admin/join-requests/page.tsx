@@ -1,167 +1,33 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { useParams } from "next/navigation";
-import JoinRequestItem, { JoinRequest } from "../components/JoinRequestItem";
-import {
-  useServerAccessQuery,
-  usePatchServerAccessMutation,
-} from "@/app/(server-setup)/hooks/useServerMutation";
-import { ServerAccess } from "@/app/(servers)/types/ServerAccess";
-
-// ServerAccess를 JoinRequest로 변환하는 함수
-const mapServerAccessToJoinRequest = (
-  serverAccess: ServerAccess
-): JoinRequest => {
-  // status 매핑: Pending -> pending, Approved -> approved, Banned -> rejected
-  const statusMap: Record<string, "pending" | "approved" | "rejected"> = {
-    Pending: "pending",
-    Approved: "approved",
-    Banned: "rejected",
-  };
-
-  return {
-    id: serverAccess.userInfo.user_email, // 이메일을 ID로 사용
-    userName: serverAccess.userInfo.user_name,
-    userAvatar: serverAccess.userInfo.profile_image_path || undefined,
-    message: `${serverAccess.userInfo.user_name}님이 서버 가입을 요청했습니다.`, // 기본 메시지
-    requestDate: new Date().toISOString(), // 현재 시간으로 설정 (실제로는 API에서 받아야 함)
-    status: statusMap[serverAccess.status] || "pending",
-  };
-};
+import React from "react";
+import JoinRequestItem from "../components/JoinRequestItem";
+import { useJoinRequestsPage } from "@/app/(servers)/hooks/useAdmin";
 
 export default function JoinRequestsPage() {
-  const params = useParams();
-  const serverUrl = params.server_id as string;
-
-  const [selectedAll, setSelectedAll] = useState(false);
-  const [selectedRequests, setSelectedRequests] = useState<Set<string>>(
-    new Set()
-  );
-  const [filterStatus, setFilterStatus] = useState<
-    "all" | "pending" | "approved" | "rejected"
-  >("all");
-
-  // ✅ Query 사용: 자동으로 데이터 조회, 캐싱, refetch
   const {
-    data: serverAccessList = [],
+    // 상태
+    selectedAll,
+    selectedRequests,
+    filterStatus,
+
+    // 데이터
+    filteredRequests,
+    pendingCount,
     isLoading,
     error,
+    isProcessing,
+
+    // 핸들러
+    handleApprove,
+    handleReject,
+    handleBulkApprove,
+    handleBulkReject,
+    handleSelectRequest,
+    handleSelectAll,
+    handleFilterChange,
     refetch,
-  } = useServerAccessQuery(serverUrl);
-
-  // ✅ Mutation 사용: 데이터 변경 (승인/거절)
-  const patchServerAccessMutation = usePatchServerAccessMutation();
-
-  // ServerAccess[] -> JoinRequest[]로 변환
-  const requests = useMemo(() => {
-    return serverAccessList.map(mapServerAccessToJoinRequest);
-  }, [serverAccessList]);
-
-  // 필터링된 요청 목록
-  const filteredRequests = useMemo(() => {
-    if (filterStatus === "all") return requests;
-    return requests.filter((request) => request.status === filterStatus);
-  }, [requests, filterStatus]);
-
-  // 대기 중인 요청 수
-  const pendingCount = requests.filter(
-    (request) => request.status === "pending"
-  ).length;
-
-  // 가입 요청 승인
-  const handleApprove = async (requestId: string) => {
-    try {
-      console.log("가입 요청 승인:", requestId);
-
-      await patchServerAccessMutation.mutateAsync({
-        serverUrl,
-        status: { status: "Approved" },
-      });
-
-      // 성공 후 데이터 재조회
-      refetch();
-
-      console.log("✅ 가입 요청 승인 완료");
-    } catch (error) {
-      console.error("❌ 가입 요청 승인 실패:", error);
-    }
-  };
-
-  // 가입 요청 거절
-  const handleReject = async (requestId: string) => {
-    try {
-      console.log("가입 요청 거절:", requestId);
-
-      await patchServerAccessMutation.mutateAsync({
-        serverUrl,
-        status: { status: "Banned" },
-      });
-
-      // 성공 후 데이터 재조회
-      refetch();
-
-      console.log("✅ 가입 요청 거절 완료");
-    } catch (error) {
-      console.error("❌ 가입 요청 거절 실패:", error);
-    }
-  };
-
-  // 일괄 승인
-  const handleBulkApprove = async () => {
-    const selectedIds = Array.from(selectedRequests);
-
-    try {
-      // 선택된 모든 요청에 대해 승인 처리
-      await Promise.all(selectedIds.map((id) => handleApprove(id)));
-
-      setSelectedRequests(new Set());
-      setSelectedAll(false);
-
-      console.log("✅ 일괄 승인 완료");
-    } catch (error) {
-      console.error("❌ 일괄 승인 실패:", error);
-    }
-  };
-
-  // 일괄 거절
-  const handleBulkReject = async () => {
-    const selectedIds = Array.from(selectedRequests);
-
-    try {
-      // 선택된 모든 요청에 대해 거절 처리
-      await Promise.all(selectedIds.map((id) => handleReject(id)));
-
-      setSelectedRequests(new Set());
-      setSelectedAll(false);
-
-      console.log("✅ 일괄 거절 완료");
-    } catch (error) {
-      console.error("❌ 일괄 거절 실패:", error);
-    }
-  };
-
-  // 개별 요청 선택 처리
-  const handleSelectRequest = (requestId: string, selected: boolean) => {
-    setSelectedRequests((prev) => {
-      const newSet = new Set(prev);
-      if (selected) {
-        newSet.add(requestId);
-      } else {
-        newSet.delete(requestId);
-        setSelectedAll(false);
-      }
-      return newSet;
-    });
-  };
-
-  // 로딩 상태 (조회 또는 변경 중)
-  const isProcessing = isLoading || patchServerAccessMutation.isPending;
-
-  // 에러 발생 시 로그 출력
-  if (error) {
-    console.error("❌ 서버 가입 요청 목록 조회 실패:", error);
-  }
+  } = useJoinRequestsPage();
 
   return (
     <div className="p-6">
@@ -202,20 +68,7 @@ export default function JoinRequestsPage() {
             <input
               type="checkbox"
               checked={selectedAll}
-              onChange={(e) => {
-                setSelectedAll(e.target.checked);
-                if (e.target.checked) {
-                  setSelectedRequests(
-                    new Set(
-                      filteredRequests
-                        .filter((r) => r.status === "pending")
-                        .map((r) => r.id)
-                    )
-                  );
-                } else {
-                  setSelectedRequests(new Set());
-                }
-              }}
+              onChange={(e) => handleSelectAll(e.target.checked)}
               className="w-4 h-4 text-blue-600 bg-gray-600 border-gray-500 rounded focus:ring-blue-500"
             />
             <span className="text-white text-sm">전체 선택</span>
@@ -227,7 +80,7 @@ export default function JoinRequestsPage() {
             <select
               value={filterStatus}
               onChange={(e) =>
-                setFilterStatus(
+                handleFilterChange(
                   e.target.value as "all" | "pending" | "approved" | "rejected"
                 )
               }

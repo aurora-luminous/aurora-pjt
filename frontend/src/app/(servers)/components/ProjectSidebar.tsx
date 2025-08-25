@@ -39,14 +39,11 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
 
   // Redux를 통한 채널 관리
   const {
-    channels,
     loading: loadingChannels,
     loadChannels,
     textChannels,
     voiceChannels,
     noticeChannels,
-    resetChannels,
-    currentProjectPk,
   } = useChannels();
 
   const [projects, setProjects] = useState<Project[]>([]);

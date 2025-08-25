@@ -1,21 +1,16 @@
-import React, { useState } from "react";
+import React from "react";
 import Image from "next/image";
-
-export interface JoinRequest {
-  id: string;
-  userName: string;
-  userAvatar?: string;
-  message: string;
-  requestDate: string;
-  status: "pending" | "approved" | "rejected";
-}
+import {
+  useJoinRequestItem,
+  JoinRequest,
+} from "@/app/(servers)/hooks/useAdmin";
 
 interface JoinRequestItemProps {
   request: JoinRequest;
   isSelected?: boolean;
   onSelect?: (requestId: string, selected: boolean) => void;
-  onApprove: (requestId: string) => void;
-  onReject: (requestId: string) => void;
+  onApprove: (requestId: string) => Promise<void>;
+  onReject: (requestId: string) => Promise<void>;
 }
 
 const JoinRequestItem: React.FC<JoinRequestItemProps> = ({
@@ -25,40 +20,15 @@ const JoinRequestItem: React.FC<JoinRequestItemProps> = ({
   onApprove,
   onReject,
 }) => {
-  const [isProcessing, setIsProcessing] = useState(false);
+  const {
+    isProcessing,
+    handleApprove,
+    handleReject,
+    handleCheckboxChange,
+    getStatusBadge,
+  } = useJoinRequestItem(request, onApprove, onReject, onSelect);
 
-  const handleApprove = async () => {
-    setIsProcessing(true);
-    try {
-      await onApprove(request.id);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleReject = async () => {
-    setIsProcessing(true);
-    try {
-      await onReject(request.id);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onSelect?.(request.id, e.target.checked);
-  };
-
-  const getStatusBadge = () => {
-    switch (request.status) {
-      case "approved":
-        return <span className="text-green-400 text-sm">✅ 승인됨</span>;
-      case "rejected":
-        return <span className="text-red-400 text-sm">❌ 거절됨</span>;
-      default:
-        return null;
-    }
-  };
+  const statusBadge = getStatusBadge();
 
   return (
     <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
@@ -92,7 +62,11 @@ const JoinRequestItem: React.FC<JoinRequestItemProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2">
               <h3 className="text-white font-medium">{request.userName}</h3>
-              {getStatusBadge()}
+              {statusBadge && (
+                <span className={statusBadge.className}>
+                  {statusBadge.text}
+                </span>
+              )}
             </div>
             <p className="text-gray-300 text-sm mt-1 break-words">
               {request.message}

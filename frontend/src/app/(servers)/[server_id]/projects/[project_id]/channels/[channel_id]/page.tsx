@@ -12,7 +12,6 @@ const ChannelPage = () => {
     messages,
     getChannelName,
     handleSendMessage,
-    currentChannel,
     loadingChannels,
   } = useChannelPage();
 

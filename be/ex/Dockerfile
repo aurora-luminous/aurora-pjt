@@ -9,22 +9,23 @@ FROM node:18-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build   # 예: tsc → dist/ 생성
+RUN npm run build   # tsc → dist/ 생성
 
-# 3) 런타임 (가볍고 안전)
+# 3) 런타임 (슬림 & 비루트)
 FROM node:18-alpine AS runner
 ENV NODE_ENV=production
 WORKDIR /app
 
-RUN addgroup -S nodejs && adduser -S node -G nodejs
+# 디렉토리 권한만 보장
+RUN chown -R node:node /app
 USER node
 
 # 프로덕션 의존성만
-COPY package*.json ./
+COPY --chown=node:node package*.json ./
 RUN npm ci --omit=dev
 
 # 빌드 결과물만 복사
-COPY --from=build /app/dist ./dist
+COPY --from=build --chown=node:node /app/dist ./dist
 
 EXPOSE 3001
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/main.js"]   # ← Nest 엔트리포인트

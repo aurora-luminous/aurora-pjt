@@ -1,5 +1,5 @@
 import { useApi } from "react-easy-api";
-import { ServerRequest, ServerResponse } from "../types/Server";
+import { ServerRequest, ServerResponse, ServerListItem } from "../types/Server";
 import { expressClient } from "@/app/lib/axiosClient";
 import { Project } from "../types/Projcets";
 import { useState, useCallback } from "react";
@@ -16,7 +16,7 @@ export const useProjectListApi = (serverUrl: string) => {
 };
 
 export const useSeverListApi = () => {
-  return useApi<ServerResponse[], void>({
+  return useApi<ServerListItem[], void>({
     endpoint: "/ex/servers",
     method: "GET",
     axiosInstance: expressClient,
@@ -33,7 +33,7 @@ export const useServerAccessApi = () => {
 
 export const usePatchServerAccess = () => {
   return useApi<ServerAccess, void>({
-    endpoint: `/ex/servers/{serverUrl}/status`,
+    endpoint: `/ex/servers/{serverUrl}/members/{serverMemberPk}/status`,
     method: "PATCH",
     axiosInstance: expressClient,
   });
@@ -175,13 +175,29 @@ export const useServerApi = () => {
     }
   };
 
+  // 사용자 본인의 서버 가입 상태 조회 (승인 대기 페이지용)
+  const getServerJoinStatus = async (
+    serverUrl: string
+  ): Promise<ServerAccess[]> => {
+    try {
+      const response = await expressClient.post<ServerAccess[]>(
+        `/ex/servers/${serverUrl}/join`
+      );
+      return response.data || [];
+    } catch (error) {
+      console.error("❌ 서버 가입 상태 조회 실패:", error);
+      throw error;
+    }
+  };
+
   const patchServerAccess = async (
     serverUrl: string,
-    status: ServerStatus
+    status: ServerStatus,
+    serverMemberPk: number
   ): Promise<ServerAccess> => {
     try {
       const response = await expressClient.patch<ServerAccess>(
-        `/ex/servers/${serverUrl}/status`,
+        `/ex/servers/${serverUrl}/status/${serverMemberPk}`,
         status
       );
       return response.data || {};
@@ -190,6 +206,19 @@ export const useServerApi = () => {
       throw error;
     }
   };
+
+  // 사용자가 속한 서버 목록 조회
+  const getServerList = useCallback(async (): Promise<ServerListItem[]> => {
+    try {
+      console.log("사용자 서버 목록 조회 시작");
+      const response = await expressClient.get<ServerListItem[]>("/ex/servers");
+      console.log("✅ 서버 목록 조회 성공:", response.data);
+      return response.data || [];
+    } catch (error) {
+      console.error("❌ 서버 목록 조회 실패:", error);
+      throw error;
+    }
+  }, []);
 
   return {
     addServer,
@@ -202,6 +231,8 @@ export const useServerApi = () => {
     createChannel,
     createProject,
     getServerAccess,
+    getServerJoinStatus,
     patchServerAccess,
+    getServerList,
   };
 };

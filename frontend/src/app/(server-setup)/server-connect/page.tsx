@@ -3,20 +3,22 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useModal } from "../hooks/useModal";
-import { useServer } from "../hooks/useServer";
+import { useServerFlow } from "../hooks/useServerFlow";
 import AddServerModal from "../components/AddServerModal";
 
 const ServerConnectPage = () => {
   const { openServerAddModal, close, isServerAddModal } = useModal();
   const {
-    handleGetProjectList,
-    isGettingProjectList,
-    isGettingChannelList,
+    handleServerConnection,
+    isValidatingAccess,
+    isLoadingProjects,
+    isLoadingChannels,
     isCreatingChannel,
-    projectListError,
-    channelListError,
+    validationError,
+    projectError,
+    channelError,
     createChannelError,
-  } = useServer();
+  } = useServerFlow();
 
   const [serverUrl, setServerUrl] = useState("");
   const [serverName, setServerName] = useState("");
@@ -38,17 +40,19 @@ const ServerConnectPage = () => {
     try {
       console.log("서버 연결 시도:", { serverUrl, serverName });
 
-      // useServer의 handleGetProjectList 사용
-      await handleGetProjectList(serverUrl, serverName);
+      // useServerFlow의 handleServerConnection 사용
+      await handleServerConnection(serverUrl, serverName);
     } catch (error) {
       console.error("서버 연결 실패:", error);
 
       // 구체적인 에러 메시지 표시
       let errorMessage = "서버 연결에 실패했습니다.";
 
-      if (projectListError) {
+      if (validationError) {
+        errorMessage = "서버 목록을 가져올 수 없습니다.";
+      } else if (projectError) {
         errorMessage = "프로젝트 목록을 가져올 수 없습니다.";
-      } else if (channelListError) {
+      } else if (channelError) {
         errorMessage = "채널 목록을 가져올 수 없습니다.";
       } else if (createChannelError) {
         errorMessage = "채널 생성에 실패했습니다.";
@@ -60,7 +64,10 @@ const ServerConnectPage = () => {
 
   // 로딩 상태 확인
   const isLoading =
-    isGettingProjectList || isGettingChannelList || isCreatingChannel;
+    isValidatingAccess ||
+    isLoadingProjects ||
+    isLoadingChannels ||
+    isCreatingChannel;
 
   return (
     <>
@@ -112,9 +119,19 @@ const ServerConnectPage = () => {
               {/* 로딩 상태 표시 */}
               {isLoading && (
                 <div className="text-center text-white/80 text-sm">
-                  {isGettingProjectList && "📋 프로젝트 목록 조회 중..."}
-                  {isGettingChannelList && "📺 채널 목록 조회 중..."}
-                  {isCreatingChannel && "🔨 기본 채널 생성 중..."}
+                  {isValidatingAccess && "🔍 서버 접근 권한 확인 중..."}
+                  {!isValidatingAccess &&
+                    isLoadingProjects &&
+                    "📋 프로젝트 목록 조회 중..."}
+                  {!isValidatingAccess &&
+                    !isLoadingProjects &&
+                    isLoadingChannels &&
+                    "📺 채널 목록 조회 중..."}
+                  {!isValidatingAccess &&
+                    !isLoadingProjects &&
+                    !isLoadingChannels &&
+                    isCreatingChannel &&
+                    "🔨 기본 채널 생성 중..."}
                 </div>
               )}
 

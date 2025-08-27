@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useModal } from "../hooks/useModal";
-import { useServer } from "../hooks/useServer";
+import { useServerFlow } from "../hooks/useServerFlow";
 
 const AddServerModal = () => {
   const { isOpen, isServerAddModal, close } = useModal();
@@ -11,17 +11,19 @@ const AddServerModal = () => {
     handleAddServer,
     isAddingServer,
     isAddServerSuccess,
-    isAddServerError,
     addServerError,
     resetAddServer,
-  } = useServer();
+  } = useServerFlow();
   const [serverUrl, setServerUrl] = useState("");
   const [serverName, setServerName] = useState("");
+
+  // 에러 상태는 addServerError 존재 여부로 판단
+  const isAddServerError = !!addServerError;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // useServer의 통합된 서버 추가 함수 사용
+    // useServerFlow의 통합된 서버 추가 함수 사용
     handleAddServer({
       serverUrl: serverUrl,
       serverName: serverName,

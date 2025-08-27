@@ -4,9 +4,18 @@ import React from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useAuth } from "../(auth)/hooks/useAuth";
+import { usePathname } from "next/navigation";
 
 const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
   const { handleLogout } = useAuth();
+  const pathname = usePathname();
+
+  // pending 페이지일 때는 전체 화면 레이아웃 사용
+  const isPendingPage = pathname.includes("/pending");
+
+  if (isPendingPage) {
+    return <div className="min-h-screen">{children}</div>;
+  }
 
   return (
     <div className="min-h-screen flex relative bg-aurora-blue-gradient-diagonal">

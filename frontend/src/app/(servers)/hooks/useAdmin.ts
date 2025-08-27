@@ -172,6 +172,7 @@ export const useJoinRequestsPage = () => {
         await patchServerAccessMutation.mutateAsync({
           serverUrl,
           status: { status: "Approved" },
+          serverMemberPk: 1,
         });
 
         refetch();
@@ -191,6 +192,7 @@ export const useJoinRequestsPage = () => {
         await patchServerAccessMutation.mutateAsync({
           serverUrl,
           status: { status: "Banned" },
+          serverMemberPk: 1,
         });
 
         refetch();

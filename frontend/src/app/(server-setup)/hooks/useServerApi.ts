@@ -33,7 +33,7 @@ export const useServerAccessApi = () => {
 
 export const usePatchServerAccess = () => {
   return useApi<ServerAccess, void>({
-    endpoint: `/ex/servers/{serverUrl}/members/{serverMemberPk}/status`,
+    endpoint: `/ex/servers/{serverUrl}/members/`,
     method: "PATCH",
     axiosInstance: expressClient,
   });
@@ -193,12 +193,15 @@ export const useServerApi = () => {
   const patchServerAccess = async (
     serverUrl: string,
     status: ServerStatus,
-    serverMemberPk: number
+    userEmail: string
   ): Promise<ServerAccess> => {
     try {
       const response = await expressClient.patch<ServerAccess>(
-        `/ex/servers/${serverUrl}/status/${serverMemberPk}`,
-        status
+        `/ex/servers/${serverUrl}/members`,
+        {
+          status: status,
+          userEmail,
+        }
       );
       return response.data || {};
     } catch (error) {

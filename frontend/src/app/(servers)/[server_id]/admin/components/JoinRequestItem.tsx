@@ -1,16 +1,13 @@
 import React from "react";
 import Image from "next/image";
-import {
-  useJoinRequestItem,
-  JoinRequest,
-} from "@/app/(servers)/hooks/useAdmin";
+import { useJoinRequestItem, JoinRequest } from "@/app/(servers)/hooks/useAdmin";
 
 interface JoinRequestItemProps {
   request: JoinRequest;
   isSelected?: boolean;
-  onSelect?: (requestId: string, selected: boolean) => void;
-  onApprove: (requestId: string) => Promise<void>;
-  onReject: (requestId: string) => Promise<void>;
+  onSelect?: (userEmail: string, selected: boolean) => void;
+  onApprove: (userEmail: string) => Promise<void>;
+  onReject: (userEmail: string) => Promise<void>;
 }
 
 const JoinRequestItem: React.FC<JoinRequestItemProps> = ({
@@ -68,6 +65,9 @@ const JoinRequestItem: React.FC<JoinRequestItemProps> = ({
                 </span>
               )}
             </div>
+            <p className="text-gray-300 text-sm mt-1 break-words">
+              {request.userEmail}
+            </p>
             <p className="text-gray-300 text-sm mt-1 break-words">
               {request.message}
             </p>

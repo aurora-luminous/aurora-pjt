@@ -186,13 +186,13 @@ export const usePatchServerAccessMutation = () => {
     mutationFn: async ({
       serverUrl,
       status,
-      serverMemberPk,
+      userEmail,
     }: {
       serverUrl: string;
       status: ServerStatus;
-      serverMemberPk: number;
+      userEmail: string;
     }) => {
-      const result = await patchServerAccess(serverUrl, status, serverMemberPk);
+      const result = await patchServerAccess(serverUrl, status, userEmail);
       return result;
     },
     onSuccess: (data) => {

@@ -38,6 +38,23 @@ export const useGetProjectListMutation = () => {
   });
 };
 
+export const useGetServerListMutation = () => {
+  const { getServerList } = useServerApi();
+
+  return useMutation({
+    mutationFn: async () => {
+      const result = await getServerList();
+      return result;
+    },
+    onSuccess: (data) => {
+      console.log("🎉 서버 목록 조회 성공:", data);
+    },
+    onError: (error) => {
+      console.error("❌ 서버 목록 조회 실패:", error);
+    },
+  });
+};
+
 export const useGetChannelListMutation = () => {
   const { getChannelList } = useServerApi();
 
@@ -112,7 +129,7 @@ export const useCreateProjectMutation = () => {
   });
 };
 
-// 🔄 Query: 서버 접근 권한 조회 (GET)
+// 🔄 Query: 서버 접근 권한 조회 (GET) - 관리자용
 export const useServerAccessQuery = (serverUrl: string) => {
   const { getServerAccess } = useServerApi();
 
@@ -122,6 +139,24 @@ export const useServerAccessQuery = (serverUrl: string) => {
     enabled: !!serverUrl, // serverUrl이 있을 때만 실행
     staleTime: 5 * 60 * 1000, // 5분간 fresh
     gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
+  });
+};
+
+// 🔄 Query: 사용자 본인의 서버 가입 상태 조회 (POST) - 승인 대기 페이지용
+export const useServerJoinStatusQuery = (
+  serverUrl: string,
+  approvalStatus?: "pending" | "approved" | "rejected" | "checking"
+) => {
+  const { getServerJoinStatus } = useServerApi();
+
+  return useQuery({
+    queryKey: ["serverJoinStatus", serverUrl],
+    queryFn: () => getServerJoinStatus(serverUrl),
+    enabled: !!serverUrl && approvalStatus !== "approved", // serverUrl이 있고 승인되지 않았을 때만 실행
+    staleTime: 0, // 항상 최신 데이터 확인
+    gcTime: 1 * 60 * 1000, // 1분간 캐시 유지
+    refetchInterval: 5000, // 5초마다 자동 refetch
+    refetchIntervalInBackground: false, // 백그라운드에서는 refetch 안함
   });
 };
 
@@ -151,11 +186,13 @@ export const usePatchServerAccessMutation = () => {
     mutationFn: async ({
       serverUrl,
       status,
+      userEmail,
     }: {
       serverUrl: string;
       status: ServerStatus;
+      userEmail: string;
     }) => {
-      const result = await patchServerAccess(serverUrl, status);
+      const result = await patchServerAccess(serverUrl, status, userEmail);
       return result;
     },
     onSuccess: (data) => {

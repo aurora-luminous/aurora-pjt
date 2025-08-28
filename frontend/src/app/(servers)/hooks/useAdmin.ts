@@ -14,6 +14,7 @@ export interface JoinRequest {
   userAvatar?: string;
   message: string;
   requestDate: string;
+  userEmail: string;
   status: "pending" | "approved" | "rejected";
 }
 
@@ -34,6 +35,7 @@ const mapServerAccessToJoinRequest = (
     message: `${serverAccess.userInfo.user_name}님이 서버 가입을 요청했습니다.`,
     requestDate: new Date().toISOString(),
     status: statusMap[serverAccess.status] || "pending",
+    userEmail: serverAccess.userInfo.user_email || "",
   };
 };
 
@@ -165,13 +167,14 @@ export const useJoinRequestsPage = () => {
 
   // 핸들러 함수들
   const handleApprove = useCallback(
-    async (requestId: string) => {
+    async (userEmail: string) => {
       try {
-        console.log("가입 요청 승인:", requestId);
+        console.log("가입 요청 승인:", userEmail);
 
         await patchServerAccessMutation.mutateAsync({
           serverUrl,
-          status: { status: "Approved" },
+          status: "Approved",
+          userEmail: userEmail,
         });
 
         refetch();
@@ -184,13 +187,14 @@ export const useJoinRequestsPage = () => {
   );
 
   const handleReject = useCallback(
-    async (requestId: string) => {
+    async (userEmail: string) => {
       try {
-        console.log("가입 요청 거절:", requestId);
+        console.log("가입 요청 거절:", userEmail);
 
         await patchServerAccessMutation.mutateAsync({
           serverUrl,
-          status: { status: "Banned" },
+          status: "Banned",
+          userEmail: userEmail,
         });
 
         refetch();

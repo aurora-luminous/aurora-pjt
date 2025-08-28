@@ -9,7 +9,5 @@ export interface UserInfo {
   profile_image_path: string;
 }
 
-
-export interface ServerStatus {
-    status : "Approved" | "Pending" | "Banned";
-}
+// ServerStatus를 단순한 문자열 유니온 타입으로 변경
+export type ServerStatus = "Approved" | "Pending" | "Banned";

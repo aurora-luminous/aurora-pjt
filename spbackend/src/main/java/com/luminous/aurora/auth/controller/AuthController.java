@@ -1,6 +1,7 @@
 package com.luminous.aurora.auth.controller;
 
 
+import com.luminous.aurora.auth.dto.AuthInfo;
 import com.luminous.aurora.auth.dto.LoginRequest;
 import com.luminous.aurora.auth.dto.SignUpRequest;
 import com.luminous.aurora.auth.dto.TokenResponse;
@@ -136,6 +137,22 @@ public class AuthController {
                     .accessToken("")
                     .refreshToken("")
                     .build());
+        }
+    }
+
+    @GetMapping("/info")
+    public ResponseEntity<AuthInfo> getUserInfo(@CookieValue("access_token") String token) {
+        log.info("사용자 정보 조회 요청");
+
+        try {
+            String userEmail = jwtTokenProvider.getUserEmailFromToken(token);
+
+            AuthInfo userInfo = authService.getUserInfo(userEmail);
+
+            return ResponseEntity.ok(userInfo);
+        } catch (Exception e) {
+            log.error("사용자 정보 조회 실패 : {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
         }
     }
 

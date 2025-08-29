@@ -1,6 +1,7 @@
 package com.luminous.aurora.auth.service;
 
 
+import com.luminous.aurora.auth.dto.AuthInfo;
 import com.luminous.aurora.auth.dto.LoginRequest;
 import com.luminous.aurora.auth.dto.SignUpRequest;
 import com.luminous.aurora.auth.dto.TokenResponse;
@@ -71,5 +72,17 @@ public class AuthServiceImpl implements AuthService {
     public void logout(String userEmail) {
         tokenService.logout(userEmail);
         log.info("로그아웃 완료: userEmail ={}",userEmail);
+    }
+
+    @Override
+    public AuthInfo getUserInfo(String userEmail) {
+        Users user = userRepository.findByUserEmail(userEmail)
+                .orElseThrow(()-> new RuntimeException("사용자를 찾을 수 없습니다."));
+
+        return AuthInfo.builder()
+                .userName(user.getUserName())
+                .userEmail(user.getUserEmail())
+                .profileImagePath(user.getProfileImagePath())
+                .build();
     }
 }

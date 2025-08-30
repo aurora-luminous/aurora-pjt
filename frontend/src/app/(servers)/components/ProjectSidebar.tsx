@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
 import { useServerApi } from "@/app/(server-setup)/hooks/useServerApi";
 import { Project } from "@/app/(server-setup)/types/Projcets";
@@ -7,6 +8,8 @@ import { useModal } from "@/app/(server-setup)/hooks/useModal";
 import AddChannelModal from "@/app/(server-setup)/components/AddChannelModal";
 import AddProjectModal from "@/app/(server-setup)/components/AddProjectModal";
 import { useChannels } from "../hooks/useChannels";
+import { useAdminSidebar } from "../hooks/useAdmin";
+import { UserInfo } from "./UserInfo";
 
 interface ProjectSidebarProps {
   serverId: string;
@@ -23,9 +26,53 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   isProjectActive,
   isProjectSelected,
 }) => {
+  const pathname = usePathname();
   const serverInfo = useCurrentServerInfo();
   const { getProjectList } = useServerApi();
   const { openChannelAddModal, openProjectAddModal } = useModal();
+
+  // Admin 페이지인지 확인
+  const isAdminPage = pathname.includes("/admin");
+  const {
+    isLoading: adminLoading,
+    error: adminError,
+    pendingRequestsCount,
+  } = useAdminSidebar();
+
+  // Admin 메뉴 아이템들
+  const adminMenuItems = [
+    {
+      href: `/${serverId}/admin/join-requests`,
+      label: "서버 가입 요청",
+      icon: "👥",
+      badge: pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
+    },
+    {
+      href: `/${serverId}/admin/members`,
+      label: "사람과 사용자",
+      icon: "👤",
+    },
+    {
+      href: `/${serverId}/admin/roles`,
+      label: "역할",
+      icon: "🏷️",
+    },
+    {
+      href: `/${serverId}/admin/invitations`,
+      label: "초대",
+      icon: "📨",
+    },
+    {
+      href: `/${serverId}/admin/settings`,
+      label: "서버 삭제",
+      icon: "🗑️",
+    },
+  ];
+
+  // 현재 admin 링크가 활성화된 상태인지 확인
+  const isActiveAdminLink = (href: string) => {
+    return pathname === href;
+  };
 
   // URL 인코딩된 channelId를 디코딩
   const decodedChannelId = useMemo(() => {
@@ -218,29 +265,64 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
             </div>
           </div>
 
-          {/* 중앙: 채널 목록 (프로젝트 선택 시에만 표시) */}
-          {isProjectSelected && (
+          {/* 중앙: 채널 목록 (프로젝트 선택 시) 또는 관리자 메뉴 (admin 페이지) */}
+          {(isProjectSelected || isAdminPage) && (
             <div className="w-72 bg-gray-700 flex flex-col rounded-tl-lg rounded-tr-lg overflow-hidden">
               {/* 프로젝트 헤더 */}
               <div className="p-4 border-b border-gray-600 rounded-tl-lg rounded-tr-lg bg-transparent">
                 <div className="flex items-center justify-between">
                   <h1 className="text-white font-semibold text-lg">
-                    {currentProject?.projectName ||
-                      serverInfo?.projectName ||
-                      "프로젝트"}
+                    {isAdminPage
+                      ? `${serverInfo?.serverName || "서버"} 관리`
+                      : currentProject?.projectName ||
+                        serverInfo?.projectName ||
+                        "프로젝트"}
                   </h1>
-                  <button
-                    onClick={handleAddChannel}
-                    className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white hover:bg-gray-500 transition-colors"
-                  >
-                    +
-                  </button>
+                  {!isAdminPage && (
+                    <button
+                      onClick={handleAddChannel}
+                      className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white hover:bg-gray-500 transition-colors"
+                    >
+                      +
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* 채널 목록 */}
+              {/* 채널 목록 또는 관리자 메뉴 */}
               <div className="px-4 py-3 flex-1 overflow-y-auto">
-                {loadingChannels ? (
+                {isAdminPage ? (
+                  /* 관리자 메뉴 */
+                  adminLoading ? (
+                    <div className="text-white text-center py-4">
+                      로딩 중...
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {adminMenuItems.map((item) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={`flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+                            isActiveAdminLink(item.href)
+                              ? "bg-blue-600 text-white"
+                              : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <span>{item.icon}</span>
+                            <span>{item.label}</span>
+                          </div>
+                          {item.badge && (
+                            <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                              {item.badge}
+                            </span>
+                          )}
+                        </Link>
+                      ))}
+                    </div>
+                  )
+                ) : loadingChannels ? (
                   <div className="text-white text-center py-4">
                     채널 로딩 중...
                   </div>
@@ -384,32 +466,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
         </div>
 
         {/* 하단: 사용자 정보 (프로젝트+채널 영역에만 제한) */}
-        {isProjectSelected && (
-          <div className="flex bg-gray-800 border-t border-gray-600 rounded-tr-lg mr-2">
-            <div className="w-4"></div>
-            <div className="flex-1 p-4 flex items-center">
-              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mr-4 relative">
-                <span className="text-gray-800 text-lg font-bold">사</span>
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-gray-800"></div>
-              </div>
-              <div className="flex-1">
-                <div className="text-white text-base font-semibold">사용자</div>
-                <div className="text-gray-300 text-sm">온라인</div>
-              </div>
-              <div className="flex space-x-2">
-                <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
-                  🎤
-                </button>
-                <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
-                  🎧
-                </button>
-                <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
-                  ⚙️
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <UserInfo />
       </div>
 
       {/* 모달들 */}

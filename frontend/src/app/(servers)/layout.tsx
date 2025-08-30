@@ -27,36 +27,46 @@ export default function ServersLayout({
   const { isFullscreen } = useFullscreen();
 
   return (
-    <div className="h-screen flex flex-col bg-white">
-      {/* 상단 헤더 */}
+    <div
+      className="h-screen flex flex-col bg-white overflow-hidden"
+      style={{ overscrollBehavior: "none" }}
+    >
+      {/* 상단 헤더 - 고정 */}
       {!isFullscreen && (
-        <ServerHeader
-          serverId={serverId}
-          channelId={channelId}
-          toggleSidebar={toggleSidebar}
-          isSidebarOpen={isSidebarOpen}
-        />
+        <div className="flex-shrink-0">
+          <ServerHeader
+            serverId={serverId}
+            channelId={channelId}
+            toggleSidebar={toggleSidebar}
+            isSidebarOpen={isSidebarOpen}
+          />
+        </div>
       )}
 
-      <div className="flex flex-1 bg-aurora-main">
-        {/* 왼쪽+중앙: 프로젝트 목록과 채널 목록을 포함하는 사이드바 영역 */}
+      {/* 메인 영역: 사이드바 + 콘텐츠 */}
+      <div className="flex flex-1 bg-aurora-main min-h-0">
+        {/* 왼쪽: 프로젝트 사이드바 - 고정 */}
         {!isFullscreen && (
-          <ProjectSidebar
-            serverId={serverId}
-            projectId={projectId}
-            channelId={channelId}
-            isProjectActive={isProjectActive}
-            isProjectSelected={isProjectSelected}
-          />
+          <div className="flex-shrink-0">
+            <ProjectSidebar
+              serverId={serverId}
+              projectId={projectId}
+              channelId={channelId}
+              isProjectActive={isProjectActive}
+              isProjectSelected={isProjectSelected}
+            />
+          </div>
         )}
 
-        {/* 오른쪽: 메인 콘텐츠 영역 */}
-        <div className="flex-1 bg-gray-800 relative">{children}</div>
+        {/* 중앙: 메인 콘텐츠 - 스크롤 가능 */}
+        <div className="flex-1 bg-gray-800 relative overflow-auto">
+          {children}
+        </div>
 
-        {/* 사이드바 with 슬라이드 애니메이션 */}
+        {/* 오른쪽: 유저 사이드바 - 고정 */}
         {!isFullscreen && (
           <div
-            className={`bg-gray-600 flex flex-col rounded-tl-lg transition-all duration-300 ease-in-out overflow-hidden ${
+            className={`bg-gray-600 flex flex-col rounded-tl-lg transition-all duration-300 ease-in-out overflow-hidden flex-shrink-0 ${
               isSidebarOpen ? "w-64 opacity-100" : "w-0 opacity-0"
             }`}
           >

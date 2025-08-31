@@ -35,7 +35,7 @@ export const usePending = () => {
 
   // 사용자의 승인 상태 확인 (이메일 필터링 불필요)
   useEffect(() => {
-    if (!serverAccessList.length || !serverUrl) return;
+    if (!serverAccessList?.length || !serverUrl) return;
 
     // /join API는 현재 사용자의 상태만 반환하므로 첫 번째 항목 사용
     const currentUserAccess = serverAccessList[0];

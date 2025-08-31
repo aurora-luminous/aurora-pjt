@@ -8,13 +8,17 @@ import { useRouter } from "next/navigation";
 
 const AddProjectModal = () => {
   const { isOpen, isProjectAddModal, close, data } = useModal();
-  const createProjectMutation = useCreateProjectMutation();
   const router = useRouter();
 
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
 
   const projectData = data as ProjectData;
+
+  // useServerMutation 사용
+  const createProjectMutation = useCreateProjectMutation(
+    projectData?.serverUrl || ""
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,10 +33,13 @@ const AddProjectModal = () => {
 
       console.log("🚀 프로젝트 생성 시작:", newProjectData);
 
-      const newProject = await createProjectMutation.mutateAsync({
-        serverUrl: projectData.serverUrl,
-        projectData: newProjectData,
-      });
+      const newProject = await createProjectMutation.mutateAsync(
+        newProjectData
+      );
+
+      if (!newProject) {
+        throw new Error("프로젝트 생성에 실패했습니다.");
+      }
 
       console.log("✅ 서버에서 프로젝트 생성 성공:", newProject);
 
@@ -116,7 +123,6 @@ const AddProjectModal = () => {
                     placeholder="프로젝트 이름을 입력하세요"
                     className="w-full pl-10 pr-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     required
-                    disabled={createProjectMutation.isPending}
                   />
                 </div>
               </div>
@@ -132,7 +138,6 @@ const AddProjectModal = () => {
                   placeholder="프로젝트에 대한 간단한 설명을 입력하세요"
                   rows={3}
                   className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  disabled={createProjectMutation.isPending}
                 />
               </div>
 
@@ -155,20 +160,15 @@ const AddProjectModal = () => {
                   type="button"
                   onClick={handleClose}
                   className="px-4 py-2 text-white hover:underline transition-colors"
-                  disabled={createProjectMutation.isPending}
                 >
                   취소
                 </button>
                 <button
                   type="submit"
-                  disabled={
-                    !projectName.trim() || createProjectMutation.isPending
-                  }
+                  disabled={!projectName.trim()}
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
                 >
-                  {createProjectMutation.isPending
-                    ? "생성 중..."
-                    : "프로젝트 만들기"}
+                  프로젝트 만들기
                 </button>
               </div>
             </form>

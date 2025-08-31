@@ -120,7 +120,7 @@ export default function JoinRequestsPage() {
 
       {/* 요청 목록 */}
       <div className="space-y-4">
-        {!error && filteredRequests.length === 0 && !isLoading ? (
+        {!error && filteredRequests?.length === 0 && !isLoading ? (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-2">
               <svg
@@ -147,7 +147,7 @@ export default function JoinRequestsPage() {
             </p>
           </div>
         ) : (
-          filteredRequests.map((request) => (
+          filteredRequests?.map((request) => (
             <JoinRequestItem
               key={request.id}
               request={request}
@@ -161,7 +161,7 @@ export default function JoinRequestsPage() {
       </div>
 
       {/* 페이지네이션 */}
-      {filteredRequests.length > 0 && (
+      {filteredRequests?.length && filteredRequests?.length > 0 && (
         <div className="flex items-center justify-center space-x-2 mt-8">
           <div className="flex items-center space-x-1">
             <button className="w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded text-white text-sm">

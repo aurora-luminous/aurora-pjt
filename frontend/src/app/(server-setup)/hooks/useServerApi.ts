@@ -1,5 +1,10 @@
 import { useApi } from "react-easy-api";
-import { ServerRequest, ServerResponse, ServerListItem } from "../types/Server";
+import {
+  ServerRequest,
+  ServerResponse,
+  ServerListItem,
+  InviteCode,
+} from "../types/Server";
 import { expressClient } from "@/app/lib/axiosClient";
 import { Project } from "../types/Projcets";
 import { Channel } from "../types/Channel";
@@ -91,7 +96,7 @@ export const usePatchServerAccessApi = (serverUrl: string) => {
 
 // 초대 코드 생성
 export const useCreateInviteCodeApi = (serverUrl: string) => {
-  return useApi<string, void>({
+  return useApi<InviteCode, void>({
     endpoint: `/ex/servers/${serverUrl}/invite`,
     method: "POST",
     axiosInstance: expressClient,

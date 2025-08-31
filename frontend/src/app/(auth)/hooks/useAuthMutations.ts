@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuthApi } from "./useAuthApi";
 import { SignUpRequest } from "../types/SignUp";
 import { LoginRequest } from "../types/Login";
@@ -56,5 +56,17 @@ export const useLogoutMutation = () => {
       await logout();
     },
     onSuccess: () => {},
+  });
+};
+
+export const useGetUserInfoQuery = () => {
+  const { getUserInfo } = useAuthApi();
+
+  return useQuery({
+    queryKey: ["userInfo"],
+    queryFn: async () => {
+      const result = await getUserInfo();
+      return result;
+    },
   });
 };

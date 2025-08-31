@@ -8,6 +8,7 @@ import {
 } from "@/app/lib/tokenStorage";
 import { SignUpRequest } from "../types/SignUp";
 import { LoginRequest, LoginResponse } from "../types/Login";
+import { UserInfo } from "../types/UserInfo";
 
 /**
  * 인증 관련 API 호출을 처리하는 커스텀 훅
@@ -52,6 +53,16 @@ export const useAuthApi = () => {
   } = useApi<string, void>({
     endpoint: "/jv/logout",
     method: "POST",
+    axiosInstance: springClient,
+  });
+
+  const {
+    execute: getUserInfoApi,
+    loading: isGettingUserInfo,
+    error: getUserInfoError,
+  } = useApi<UserInfo, void>({
+    endpoint: "/jv/info",
+    method: "GET",
     axiosInstance: springClient,
   });
 
@@ -154,6 +165,16 @@ export const useAuthApi = () => {
     }
   };
 
+  const getUserInfo = async (): Promise<UserInfo> => {
+    try {
+      const response = await getUserInfoApi();
+      return response || { userName: "", userEmail: "", profileImagePath: "" };
+    } catch (error) {
+      console.error("❌ 사용자 정보 조회 실패:", error);
+      throw error;
+    }
+  };
+
   return {
     signUp,
     login,
@@ -167,5 +188,8 @@ export const useAuthApi = () => {
     logout,
     isLoggingOut,
     logoutError,
+    getUserInfo,
+    isGettingUserInfo,
+    getUserInfoError,
   };
 };

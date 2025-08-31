@@ -10,12 +10,9 @@ export default function AdminLayout({
   children: React.ReactNode;
   params: Promise<{ server_id: string }>;
 }) {
-  const { server_id } = use(params);
-
   return (
-    <div className="flex h-screen bg-gray-900">
+    <div className="flex h-screen bg-gray-900 overflow-hidden">
       {/* 관리 사이드바 */}
-      <AdminSidebar serverId={server_id} />
 
       {/* 메인 콘텐츠 */}
       <div className="flex-1 flex flex-col">

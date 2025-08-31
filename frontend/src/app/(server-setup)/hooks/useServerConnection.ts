@@ -1,11 +1,19 @@
 import { useRouter } from "next/navigation";
-import { useGetServerListMutation } from "./useServerMutation";
+import { useServerListQuery } from "./useServerMutation";
+import { useState } from "react";
+import {
+  checkServerAccess,
+  createPendingPageUrl,
+} from "../utils/serverAccessUtils";
+
+import { ServerListItem } from "../types/Server";
 
 /**
  * 서버 연결 및 접근 권한 확인을 담당하는 훅
  */
 export const useServerConnection = () => {
-  const getServerListMutation = useGetServerListMutation();
+  const [isValidating, setIsValidating] = useState(false);
+  const serverListQuery = useServerListQuery(false); // 기본적으로 비활성화
   const router = useRouter();
 
   /**
@@ -16,23 +24,26 @@ export const useServerConnection = () => {
     serverName: string
   ): Promise<boolean> => {
     try {
+      setIsValidating(true);
       console.log("🔍 사용자 서버 목록 조회 중...");
-      const serverList = await getServerListMutation.mutateAsync();
 
-      const isServerAvailable = serverList.some(
-        (server) =>
-          server.serverUrl === serverUrl || server.serverName === serverName
-      );
+      // 서버 목록 조회 실행
+      console.log("📡 서버 목록 refetch 실행");
+      const result = await serverListQuery.refetch();
+      const serverList = result.data;
 
-      if (!isServerAvailable) {
+      if (!serverList) {
+        throw new Error("서버 목록을 가져올 수 없습니다.");
+      }
+
+      const hasAccess = checkServerAccess(serverList, serverUrl, serverName);
+
+      if (!hasAccess) {
         console.log(
           "❌ 서버에 접근 권한이 없습니다. 승인 대기 페이지로 이동합니다."
         );
-        router.push(
-          `/pending?serverUrl=${encodeURIComponent(
-            serverUrl
-          )}&serverName=${encodeURIComponent(serverName)}`
-        );
+        const pendingUrl = createPendingPageUrl(serverUrl, serverName);
+        router.push(pendingUrl);
         return false;
       }
 
@@ -41,12 +52,14 @@ export const useServerConnection = () => {
     } catch (error) {
       console.error("❌ 서버 접근 권한 확인 실패:", error);
       throw error;
+    } finally {
+      setIsValidating(false);
     }
   };
 
   return {
     validateServerAccess,
-    isValidating: getServerListMutation.isPending,
-    validationError: getServerListMutation.error,
+    isValidating,
+    validationError: serverListQuery.error,
   };
 };

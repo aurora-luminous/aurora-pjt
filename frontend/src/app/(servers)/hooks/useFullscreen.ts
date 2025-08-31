@@ -120,9 +120,9 @@ export const useFullscreen = (options: UseFullscreenOptions = {}) => {
 
     return !!(
       document.fullscreenEnabled ||
-      (document as any).webkitFullscreenEnabled ||
-      (document as any).mozFullScreenEnabled ||
-      (document as any).msFullscreenEnabled
+      (document as unknown as { webkitFullscreenEnabled: boolean }).webkitFullscreenEnabled ||
+      (document as unknown as { mozFullScreenEnabled: boolean }).mozFullScreenEnabled ||
+      (document as unknown as { msFullscreenEnabled: boolean }).msFullscreenEnabled
     );
   }, []);
 

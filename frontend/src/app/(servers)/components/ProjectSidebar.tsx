@@ -1,12 +1,19 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
-import { useServerApi } from "@/app/(server-setup)/hooks/useServerApi";
+import {
+  useProjectListQuery,
+  useChannelListQuery,
+} from "@/app/(server-setup)/hooks/useServerMutation";
 import { Project } from "@/app/(server-setup)/types/Projcets";
+import { Channel } from "@/app/(server-setup)/types/Channel";
+import { createChannelUrl } from "@/app/(server-setup)/utils/serverAccessUtils";
 import { useModal } from "@/app/(server-setup)/hooks/useModal";
 import AddChannelModal from "@/app/(server-setup)/components/AddChannelModal";
 import AddProjectModal from "@/app/(server-setup)/components/AddProjectModal";
-import { useChannels } from "../hooks/useChannels";
+import { useAdminSidebar } from "../hooks/useAdmin";
+import { UserInfo } from "./UserInfo";
 
 interface ProjectSidebarProps {
   serverId: string;
@@ -23,11 +30,57 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   isProjectActive,
   isProjectSelected,
 }) => {
+  const pathname = usePathname();
   const serverInfo = useCurrentServerInfo();
-  const { getProjectList } = useServerApi();
+  const serverUrl = serverInfo?.serverUrl;
+  console.log("serverUrl", serverUrl);
+  const projectListQuery = useProjectListQuery(serverUrl || "");
   const { openChannelAddModal, openProjectAddModal } = useModal();
 
-  // URL 인코딩된 channelId를 디코딩
+  // Admin 페이지인지 확인
+  const isAdminPage = pathname.includes("/admin");
+  const {
+    isLoading: adminLoading,
+    error: adminError,
+    pendingRequestsCount,
+  } = useAdminSidebar();
+
+  // Admin 메뉴 아이템들
+  const adminMenuItems = [
+    {
+      href: `/${serverId}/admin/join-requests`,
+      label: "서버 가입 요청",
+      icon: "👥",
+      badge: pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
+    },
+    {
+      href: `/${serverId}/admin/members`,
+      label: "구성원",
+      icon: "👤",
+    },
+    {
+      href: `/${serverId}/admin/roles`,
+      label: "역할",
+      icon: "🏷️",
+    },
+    {
+      href: `/${serverId}/admin/invitations`,
+      label: "초대",
+      icon: "✉️",
+    },
+    {
+      href: `/${serverId}/admin/settings`,
+      label: "서버 설정",
+      icon: "⚙️",
+    },
+  ];
+
+  // 현재 admin 링크가 활성화된 상태인지 확인
+  const isActiveAdminLink = (href: string) => {
+    return pathname === href;
+  };
+
+  // 디코딩된 채널 ID
   const decodedChannelId = useMemo(() => {
     try {
       return decodeURIComponent(channelId);
@@ -37,98 +90,72 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     }
   }, [channelId]);
 
-  // Redux를 통한 채널 관리
-  const {
-    loading: loadingChannels,
-    loadChannels,
-    textChannels,
-    voiceChannels,
-    noticeChannels,
-  } = useChannels();
-
+  // 상태 선언
   const [projects, setProjects] = useState<Project[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
 
-  // 프로젝트 목록 로딩
+  // 간단한 React Query로 채널 목록 조회
+  const channelListQuery = useChannelListQuery(
+    serverInfo?.serverUrl || "",
+    currentProject?.projectPk || 0
+  );
+
+  // 채널 목록을 타입별로 필터링
+  const channels = channelListQuery.data || [];
+  const textChannels = channels.filter(
+    (c: Channel) => c.channelKind === "text"
+  );
+  const voiceChannels = channels.filter(
+    (c: Channel) => c.channelKind === "voice"
+  );
+  const noticeChannels = channels.filter(
+    (c: Channel) => c.channelKind === "notice"
+  );
+
+  // 프로젝트 목록 로딩 - React Query 사용
   useEffect(() => {
-    const loadProjects = async () => {
-      if (!serverInfo?.serverUrl) return;
-
-      setLoadingProjects(true);
-      try {
-        const projectList = await getProjectList(serverInfo.serverUrl);
-        setProjects(projectList);
-
-        // 현재 프로젝트 찾기 - projectPk 기반 매칭
-        let currentProj: Project | null = null;
-
-        if (projectId) {
-          // projectId를 숫자로 변환해서 projectPk와 매칭
-          const projectPkFromUrl = parseInt(projectId, 10);
-
-          if (!isNaN(projectPkFromUrl)) {
-            currentProj =
-              projectList.find((p) => p.projectPk === projectPkFromUrl) || null;
-
-            console.log("🔍 [프로젝트 매칭]:");
-            console.log("  - URL projectId:", projectId);
-            console.log("  - 변환된 projectPk:", projectPkFromUrl);
-            console.log("  - 찾은 프로젝트:", currentProj);
-            console.log(
-              "  - 전체 프로젝트 목록:",
-              projectList.map((p) => `${p.projectName}(PK:${p.projectPk})`)
-            );
-          } else {
-            console.log("❌ projectId를 숫자로 변환 실패:", projectId);
-          }
-        }
-
-        // 매칭되지 않으면 첫 번째 프로젝트 사용
-        if (!currentProj && projectList.length > 0) {
-          currentProj = projectList[0];
-          console.log("📋 매칭 실패, 첫 번째 프로젝트 사용:", currentProj);
-        }
-
-        setCurrentProject(currentProj);
-      } catch (error) {
-        console.error("프로젝트 목록 로딩 실패:", error);
-      } finally {
-        setLoadingProjects(false);
-      }
-    };
-
-    loadProjects();
-  }, [serverInfo?.serverUrl, projectId, getProjectList]);
-
-  // 채널 목록 로딩 - projectId 변경 직접 감지
-  useEffect(() => {
-    console.log("🔍 [채널 로딩] useEffect 실행됨:");
-    console.log("  - projectId:", projectId);
-    console.log("  - serverInfo?.serverUrl:", serverInfo?.serverUrl);
-    console.log("  - isProjectSelected:", isProjectSelected);
-    console.log("  - currentProject:", currentProject);
-
-    if (
-      serverInfo?.serverUrl &&
-      projectId &&
-      isProjectSelected &&
-      currentProject?.projectPk
-    ) {
-      console.log(
-        `📋 채널 목록 로드: ${projectId} (PK: ${currentProject.projectPk})`
-      );
-      loadChannels(serverInfo.serverUrl, currentProject.projectPk);
-    } else {
-      console.log("🗑️ 채널 로딩 조건 불충족");
+    if (!projectListQuery.data && !projectListQuery.isLoading) {
+      return;
     }
-  }, [
-    projectId, // URL에서 직접 가져온 projectId 변경 감지
-    serverInfo?.serverUrl,
-    isProjectSelected,
-    currentProject?.projectPk, // currentProject가 설정되면 실행
-    loadChannels,
-  ]);
+
+    const projectList = projectListQuery.data || [];
+    setProjects(projectList);
+
+    // 현재 프로젝트 찾기 - projectPk 기반 매칭
+    let currentProj: Project | null = null;
+
+    if (projectId) {
+      // projectId를 숫자로 변환해서 projectPk와 매칭
+      const projectPkFromUrl = parseInt(projectId, 10);
+
+      if (!isNaN(projectPkFromUrl)) {
+        currentProj =
+          projectList?.find((p: Project) => p.projectPk === projectPkFromUrl) ||
+          null;
+
+        console.log("🔍 [프로젝트 매칭]:");
+        console.log("  - URL projectId:", projectId);
+        console.log("  - 변환된 projectPk:", projectPkFromUrl);
+        console.log("  - 찾은 프로젝트:", currentProj);
+        console.log(
+          "  - 전체 프로젝트 목록:",
+          projectList?.map(
+            (p: Project) => `${p.projectName}(PK:${p.projectPk})`
+          )
+        );
+      } else {
+        console.log("❌ projectId를 숫자로 변환 실패:", projectId);
+      }
+    }
+
+    // 매칭되지 않으면 첫 번째 프로젝트 사용
+    if (!currentProj && projectList && projectList.length > 0) {
+      currentProj = projectList[0] || null;
+      console.log("📋 매칭 실패, 첫 번째 프로젝트 사용:", currentProj);
+    }
+
+    setCurrentProject(currentProj);
+  }, [projectListQuery.data, projectListQuery.isLoading, projectId]);
 
   // 채널 추가 모달 열기
   const handleAddChannel = () => {
@@ -154,11 +181,14 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     });
   };
 
-  // 채널 링크 생성 함수 (채널 타입별 경로 구분)
-  const createChannelLink = (channelName: string, isVoice: boolean = false) => {
-    const encodedChannelName = encodeURIComponent(channelName);
-    const channelType = isVoice ? "voice_channels" : "channels";
-    return `/${serverId}/projects/${currentProject?.projectPk}/${channelType}/${encodedChannelName}`;
+  // 채널 링크 생성 함수 (채널 타입별 경로 구분) - 유틸 함수 사용
+  const createChannelLink = (channel: Channel) => {
+    return createChannelUrl(
+      serverId,
+      currentProject?.projectPk || 0,
+      channel.channelName,
+      channel.channelKind
+    );
   };
 
   // 현재 채널인지 확인하는 함수 (디코딩된 이름으로 비교)
@@ -174,7 +204,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
           <div className="w-16 bg-gray-800 flex flex-col py-3">
             {/* 프로젝트 목록 */}
             <div className="flex-1 overflow-y-auto px-2">
-              {loadingProjects ? (
+              {projectListQuery.isLoading ? (
                 <div className="text-white text-xs text-center py-4">
                   로딩중...
                 </div>
@@ -218,32 +248,63 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
             </div>
           </div>
 
-          {/* 중앙: 채널 목록 (프로젝트 선택 시에만 표시) */}
-          {isProjectSelected && (
+          {/* 중앙: 채널 목록 (프로젝트 선택 시) 또는 관리자 메뉴 (admin 페이지) */}
+          {(isProjectSelected || isAdminPage) && (
             <div className="w-72 bg-gray-700 flex flex-col rounded-tl-lg rounded-tr-lg overflow-hidden">
               {/* 프로젝트 헤더 */}
               <div className="p-4 border-b border-gray-600 rounded-tl-lg rounded-tr-lg bg-transparent">
                 <div className="flex items-center justify-between">
                   <h1 className="text-white font-semibold text-lg">
-                    {currentProject?.projectName ||
-                      serverInfo?.projectName ||
-                      "프로젝트"}
+                    {isAdminPage
+                      ? `${serverInfo?.serverName || "서버"} 관리`
+                      : currentProject?.projectName ||
+                        serverInfo?.projectName ||
+                        "프로젝트"}
                   </h1>
-                  <button
-                    onClick={handleAddChannel}
-                    className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white hover:bg-gray-500 transition-colors"
-                  >
-                    +
-                  </button>
+                  {!isAdminPage && (
+                    <button
+                      onClick={handleAddChannel}
+                      className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white hover:bg-gray-500 transition-colors"
+                    >
+                      +
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* 채널 목록 */}
+              {/* 채널 목록 또는 관리자 메뉴 */}
               <div className="px-4 py-3 flex-1 overflow-y-auto">
-                {loadingChannels ? (
-                  <div className="text-white text-center py-4">
-                    채널 로딩 중...
-                  </div>
+                {isAdminPage ? (
+                  /* 관리자 메뉴 */
+                  adminLoading ? (
+                    <div className="text-white text-center py-4">
+                      로딩 중...
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {adminMenuItems.map((item) => (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={`flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+                            isActiveAdminLink(item.href)
+                              ? "bg-blue-600 text-white"
+                              : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <span>{item.icon}</span>
+                            <span>{item.label}</span>
+                          </div>
+                          {item.badge && (
+                            <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                              {item.badge}
+                            </span>
+                          )}
+                        </Link>
+                      ))}
+                    </div>
+                  )
                 ) : (
                   <>
                     {/* 공지 채널 */}
@@ -254,14 +315,14 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                             공지사항
                           </h3>
                         </div>
-                        {noticeChannels.map((channel) => (
+                        {noticeChannels.map((channel: Channel) => (
                           <Link
                             key={channel.channelName}
-                            href={createChannelLink(channel.channelName)}
+                            href={createChannelLink(channel)}
                             className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
                               isCurrentChannel(channel.channelName)
                                 ? "bg-gray-600 text-white"
-                                : "text-gray-300 hover:bg-gray-600 hover:text-white"
+                                : "text-gray-300 hover:bg-gray-700 hover:text-white"
                             }`}
                           >
                             <span className="mr-2 text-gray-400">📢</span>
@@ -302,10 +363,10 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                           채널이 없습니다
                         </div>
                       ) : (
-                        textChannels.map((channel) => (
+                        textChannels.map((channel: Channel) => (
                           <Link
                             key={channel.channelName}
-                            href={createChannelLink(channel.channelName)}
+                            href={createChannelLink(channel)}
                           >
                             <div
                               className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
@@ -352,10 +413,10 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                           음성 채널이 없습니다
                         </div>
                       ) : (
-                        voiceChannels.map((channel) => (
+                        voiceChannels.map((channel: Channel) => (
                           <Link
                             key={channel.channelName}
-                            href={createChannelLink(channel.channelName, true)}
+                            href={createChannelLink(channel)}
                           >
                             <div
                               className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
@@ -384,35 +445,10 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
         </div>
 
         {/* 하단: 사용자 정보 (프로젝트+채널 영역에만 제한) */}
-        {isProjectSelected && (
-          <div className="flex bg-gray-800 border-t border-gray-600 rounded-tr-lg mr-2">
-            <div className="w-4"></div>
-            <div className="flex-1 p-4 flex items-center">
-              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mr-4 relative">
-                <span className="text-gray-800 text-lg font-bold">사</span>
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-gray-800"></div>
-              </div>
-              <div className="flex-1">
-                <div className="text-white text-base font-semibold">사용자</div>
-                <div className="text-gray-300 text-sm">온라인</div>
-              </div>
-              <div className="flex space-x-2">
-                <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
-                  🎤
-                </button>
-                <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
-                  🎧
-                </button>
-                <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
-                  ⚙️
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <UserInfo />
       </div>
 
-      {/* 모달들 */}
+      {/* 모달들 - 원래 방식으로 사용 */}
       <AddChannelModal />
       <AddProjectModal />
     </>

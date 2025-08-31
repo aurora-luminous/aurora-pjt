@@ -9,11 +9,6 @@ import {
 } from "./useServerMutation";
 import { createChannelUrl } from "../utils/serverAccessUtils";
 
-interface ProjectNavigationResult {
-  serverUrl: string;
-  serverName: string;
-  firstProject: Project;
-}
 
 /**
  * 프로젝트 조회 및 채널 입장을 담당하는 훅

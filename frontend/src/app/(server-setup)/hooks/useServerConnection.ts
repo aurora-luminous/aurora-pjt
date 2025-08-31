@@ -6,8 +6,6 @@ import {
   createPendingPageUrl,
 } from "../utils/serverAccessUtils";
 
-import { ServerListItem } from "../types/Server";
-
 /**
  * 서버 연결 및 접근 권한 확인을 담당하는 훅
  */

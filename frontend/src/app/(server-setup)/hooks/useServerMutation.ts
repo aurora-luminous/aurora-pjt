@@ -1,11 +1,22 @@
-import { useServerApi } from "./useServerApi";
 import { ServerRequest } from "../types/Server";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Channel } from "../types/Channel";
 import { ServerStatus } from "@/app/(servers)/types/ServerAccess";
+import {
+  useAddServerApi,
+  useServerListApi,
+  useProjectListApi,
+  useChannelListApi,
+  useCreateChannelApi,
+  useCreateProjectApi,
+  useServerAccessApi,
+  useServerJoinStatusApi,
+  usePatchServerAccessApi,
+  useCreateInviteCodeApi,
+} from "./useServerApi";
 
 export const useAddServerMutation = () => {
-  const { addServer } = useServerApi();
+  const { execute: addServer } = useAddServerApi();
 
   return useMutation({
     mutationFn: async (data: ServerRequest) => {
@@ -21,81 +32,71 @@ export const useAddServerMutation = () => {
   });
 };
 
-export const useGetProjectListMutation = () => {
-  const { getProjectList } = useServerApi();
+// 🔄 Query: 프로젝트 목록 조회 (GET)
+export const useProjectListQuery = (serverUrl: string) => {
+  const { execute: getProjectList } = useProjectListApi(serverUrl);
 
-  return useMutation({
-    mutationFn: async (serverUrl: string) => {
-      const result = await getProjectList(serverUrl);
-      return result;
-    },
-    onSuccess: (data) => {
-      console.log("🎉 프로젝트 목록 조회 성공:", data);
-    },
-    onError: (error) => {
-      console.error("❌ 프로젝트 목록 조회 실패:", error);
-    },
+  return useQuery({
+    queryKey: ["projectList", serverUrl],
+    queryFn: () => getProjectList(),
+    enabled:
+      !!serverUrl &&
+      serverUrl.trim() !== "" &&
+      serverUrl !== "DISABLED" &&
+      serverUrl !== "null" &&
+      serverUrl !== "undefined" &&
+      !serverUrl.includes("undefined"),
+    staleTime: 5 * 60 * 1000, // 5분간 fresh
+    gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
   });
 };
 
-export const useGetServerListMutation = () => {
-  const { getServerList } = useServerApi();
+// 🔄 Query: 서버 목록 조회 (GET)
+export const useServerListQuery = (enabled: boolean = false) => {
+  const { execute: getServerList } = useServerListApi();
 
-  return useMutation({
-    mutationFn: async () => {
-      const result = await getServerList();
-      return result;
-    },
-    onSuccess: (data) => {
-      console.log("🎉 서버 목록 조회 성공:", data);
-    },
-    onError: (error) => {
-      console.error("❌ 서버 목록 조회 실패:", error);
-    },
+  return useQuery({
+    queryKey: ["serverList"],
+    queryFn: () => getServerList(),
+    enabled: enabled, // 명시적으로 enabled가 true일 때만 실행
+    staleTime: 5 * 60 * 1000, // 5분간 fresh
+    gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
   });
 };
 
-export const useGetChannelListMutation = () => {
-  const { getChannelList } = useServerApi();
+// 🔄 Query: 채널 목록 조회 (GET)
+export const useChannelListQuery = (serverUrl: string, projectPk: number) => {
+  const { execute: getChannelList } = useChannelListApi(serverUrl, projectPk);
 
-  return useMutation({
-    mutationFn: async ({
-      serverUrl,
-      projectPk,
-    }: {
-      serverUrl: string;
-      projectPk: number;
-    }) => {
-      const result = await getChannelList(serverUrl, projectPk);
-      return result;
-    },
-    onSuccess: (data) => {
-      console.log("🎉 채널 목록 조회 성공:", data);
-    },
-    onError: (error) => {
-      console.error("❌ 채널 목록 조회 실패:", error);
-    },
+  return useQuery({
+    queryKey: ["channelList", serverUrl, projectPk],
+    queryFn: () => getChannelList(),
+    enabled: !!serverUrl && !serverUrl.includes("undefined") && !!projectPk,
+    staleTime: 2 * 60 * 1000, // 2분간 fresh
+    gcTime: 5 * 60 * 1000, // 5분간 캐시 유지
   });
 };
 
-export const useCreateChannelMutation = () => {
-  const { createChannel } = useServerApi();
+export const useCreateChannelMutation = (
+  serverUrl: string,
+  projectPk: number
+) => {
+  const { execute: createChannel } = useCreateChannelApi(serverUrl, projectPk);
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      serverUrl,
-      projectPk,
-      channelData,
-    }: {
-      serverUrl: string;
-      projectPk: number;
-      channelData: Omit<Channel, "channelName"> & { channelName?: string };
-    }) => {
-      const result = await createChannel(serverUrl, projectPk, channelData);
+    mutationFn: async (
+      channelData: Omit<Channel, "channelName"> & { channelName?: string }
+    ) => {
+      const result = await createChannel(channelData);
       return result;
     },
     onSuccess: (data) => {
       console.log("🎉 채널 생성 성공:", data);
+      // 채널 목록 쿼리 무효화하여 즉시 반영
+      queryClient.invalidateQueries({
+        queryKey: ["channelList", serverUrl, projectPk],
+      });
     },
     onError: (error) => {
       console.error("❌ 채널 생성 실패:", error);
@@ -103,25 +104,24 @@ export const useCreateChannelMutation = () => {
   });
 };
 
-export const useCreateProjectMutation = () => {
-  const { createProject } = useServerApi();
+export const useCreateProjectMutation = (serverUrl: string) => {
+  const { execute: createProject } = useCreateProjectApi(serverUrl);
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      serverUrl,
-      projectData,
-    }: {
-      serverUrl: string;
-      projectData: {
-        projectName: string;
-        projectDescription?: string;
-      };
+    mutationFn: async (projectData: {
+      projectName: string;
+      projectDescription?: string;
     }) => {
-      const result = await createProject(serverUrl, projectData);
+      const result = await createProject(projectData);
       return result;
     },
     onSuccess: (data) => {
       console.log("🎉 프로젝트 생성 성공:", data);
+      // 프로젝트 목록 쿼리 무효화하여 즉시 반영
+      queryClient.invalidateQueries({
+        queryKey: ["projectList", serverUrl],
+      });
     },
     onError: (error) => {
       console.error("❌ 프로젝트 생성 실패:", error);
@@ -131,11 +131,11 @@ export const useCreateProjectMutation = () => {
 
 // 🔄 Query: 서버 접근 권한 조회 (GET) - 관리자용
 export const useServerAccessQuery = (serverUrl: string) => {
-  const { getServerAccess } = useServerApi();
+  const { execute: getServerAccess } = useServerAccessApi(serverUrl);
 
   return useQuery({
     queryKey: ["serverAccess", serverUrl],
-    queryFn: () => getServerAccess(serverUrl),
+    queryFn: () => getServerAccess(),
     enabled: !!serverUrl, // serverUrl이 있을 때만 실행
     staleTime: 5 * 60 * 1000, // 5분간 fresh
     gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
@@ -147,11 +147,11 @@ export const useServerJoinStatusQuery = (
   serverUrl: string,
   approvalStatus?: "pending" | "approved" | "rejected" | "checking"
 ) => {
-  const { getServerJoinStatus } = useServerApi();
+  const { execute: getServerJoinStatus } = useServerJoinStatusApi(serverUrl);
 
   return useQuery({
     queryKey: ["serverJoinStatus", serverUrl],
-    queryFn: () => getServerJoinStatus(serverUrl),
+    queryFn: () => getServerJoinStatus(),
     enabled: !!serverUrl && approvalStatus !== "approved", // serverUrl이 있고 승인되지 않았을 때만 실행
     staleTime: 0, // 항상 최신 데이터 확인
     gcTime: 1 * 60 * 1000, // 1분간 캐시 유지
@@ -160,39 +160,19 @@ export const useServerJoinStatusQuery = (
   });
 };
 
-// ⚠️ 하위 호환성을 위해 유지 (deprecated)
-export const useServerStatusMutation = () => {
-  const { getServerAccess } = useServerApi();
-
-  return useMutation({
-    mutationFn: async ({ serverUrl }: { serverUrl: string }) => {
-      const result = await getServerAccess(serverUrl);
-      return result;
-    },
-    onSuccess: (data) => {
-      console.log("🎉 서버 접근 권한 조회 성공:", data);
-    },
-    onError: (error) => {
-      console.error("❌ 서버 접근 권한 조회 실패:", error);
-    },
-  });
-};
-
 // ✅ Mutation: 서버 접근 권한 수정 (PATCH)
-export const usePatchServerAccessMutation = () => {
-  const { patchServerAccess } = useServerApi();
+export const usePatchServerAccessMutation = (serverUrl: string) => {
+  const { execute: patchServerAccess } = usePatchServerAccessApi(serverUrl);
 
   return useMutation({
     mutationFn: async ({
-      serverUrl,
       status,
       userEmail,
     }: {
-      serverUrl: string;
       status: ServerStatus;
       userEmail: string;
     }) => {
-      const result = await patchServerAccess(serverUrl, status, userEmail);
+      const result = await patchServerAccess({ status, userEmail });
       return result;
     },
     onSuccess: (data) => {
@@ -200,6 +180,24 @@ export const usePatchServerAccessMutation = () => {
     },
     onError: (error) => {
       console.error("❌ 서버 접근 권한 수정 실패:", error);
+    },
+  });
+};
+
+// ✅ Mutation: 초대 코드 생성
+export const useCreateInviteCodeMutation = (serverUrl: string) => {
+  const { execute: createInviteCode } = useCreateInviteCodeApi(serverUrl);
+
+  return useMutation({
+    mutationFn: async () => {
+      const result = await createInviteCode();
+      return result;
+    },
+    onSuccess: (data) => {
+      console.log("🎉 초대 코드 생성 성공:", data);
+    },
+    onError: (error) => {
+      console.error("❌ 초대 코드 생성 실패:", error);
     },
   });
 };

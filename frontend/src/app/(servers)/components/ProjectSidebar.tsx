@@ -2,12 +2,16 @@ import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
-import { useServerApi } from "@/app/(server-setup)/hooks/useServerApi";
+import {
+  useProjectListQuery,
+  useChannelListQuery,
+} from "@/app/(server-setup)/hooks/useServerMutation";
 import { Project } from "@/app/(server-setup)/types/Projcets";
+import { Channel } from "@/app/(server-setup)/types/Channel";
+import { createChannelUrl } from "@/app/(server-setup)/utils/serverAccessUtils";
 import { useModal } from "@/app/(server-setup)/hooks/useModal";
 import AddChannelModal from "@/app/(server-setup)/components/AddChannelModal";
 import AddProjectModal from "@/app/(server-setup)/components/AddProjectModal";
-import { useChannels } from "../hooks/useChannels";
 import { useAdminSidebar } from "../hooks/useAdmin";
 import { UserInfo } from "./UserInfo";
 
@@ -28,7 +32,9 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
 }) => {
   const pathname = usePathname();
   const serverInfo = useCurrentServerInfo();
-  const { getProjectList } = useServerApi();
+  const serverUrl = serverInfo?.serverUrl;
+  console.log("serverUrl", serverUrl);
+  const projectListQuery = useProjectListQuery(serverUrl || "");
   const { openChannelAddModal, openProjectAddModal } = useModal();
 
   // Admin 페이지인지 확인
@@ -49,7 +55,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     },
     {
       href: `/${serverId}/admin/members`,
-      label: "사람과 사용자",
+      label: "구성원",
       icon: "👤",
     },
     {
@@ -60,12 +66,12 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     {
       href: `/${serverId}/admin/invitations`,
       label: "초대",
-      icon: "📨",
+      icon: "✉️",
     },
     {
       href: `/${serverId}/admin/settings`,
-      label: "서버 삭제",
-      icon: "🗑️",
+      label: "서버 설정",
+      icon: "⚙️",
     },
   ];
 
@@ -74,7 +80,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     return pathname === href;
   };
 
-  // URL 인코딩된 channelId를 디코딩
+  // 디코딩된 채널 ID
   const decodedChannelId = useMemo(() => {
     try {
       return decodeURIComponent(channelId);
@@ -84,98 +90,72 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     }
   }, [channelId]);
 
-  // Redux를 통한 채널 관리
-  const {
-    loading: loadingChannels,
-    loadChannels,
-    textChannels,
-    voiceChannels,
-    noticeChannels,
-  } = useChannels();
-
+  // 상태 선언
   const [projects, setProjects] = useState<Project[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
 
-  // 프로젝트 목록 로딩
+  // 간단한 React Query로 채널 목록 조회
+  const channelListQuery = useChannelListQuery(
+    serverInfo?.serverUrl || "",
+    currentProject?.projectPk || 0
+  );
+
+  // 채널 목록을 타입별로 필터링
+  const channels = channelListQuery.data || [];
+  const textChannels = channels.filter(
+    (c: Channel) => c.channelKind === "text"
+  );
+  const voiceChannels = channels.filter(
+    (c: Channel) => c.channelKind === "voice"
+  );
+  const noticeChannels = channels.filter(
+    (c: Channel) => c.channelKind === "notice"
+  );
+
+  // 프로젝트 목록 로딩 - React Query 사용
   useEffect(() => {
-    const loadProjects = async () => {
-      if (!serverInfo?.serverUrl) return;
-
-      setLoadingProjects(true);
-      try {
-        const projectList = await getProjectList(serverInfo.serverUrl);
-        setProjects(projectList);
-
-        // 현재 프로젝트 찾기 - projectPk 기반 매칭
-        let currentProj: Project | null = null;
-
-        if (projectId) {
-          // projectId를 숫자로 변환해서 projectPk와 매칭
-          const projectPkFromUrl = parseInt(projectId, 10);
-
-          if (!isNaN(projectPkFromUrl)) {
-            currentProj =
-              projectList.find((p) => p.projectPk === projectPkFromUrl) || null;
-
-            console.log("🔍 [프로젝트 매칭]:");
-            console.log("  - URL projectId:", projectId);
-            console.log("  - 변환된 projectPk:", projectPkFromUrl);
-            console.log("  - 찾은 프로젝트:", currentProj);
-            console.log(
-              "  - 전체 프로젝트 목록:",
-              projectList.map((p) => `${p.projectName}(PK:${p.projectPk})`)
-            );
-          } else {
-            console.log("❌ projectId를 숫자로 변환 실패:", projectId);
-          }
-        }
-
-        // 매칭되지 않으면 첫 번째 프로젝트 사용
-        if (!currentProj && projectList.length > 0) {
-          currentProj = projectList[0];
-          console.log("📋 매칭 실패, 첫 번째 프로젝트 사용:", currentProj);
-        }
-
-        setCurrentProject(currentProj);
-      } catch (error) {
-        console.error("프로젝트 목록 로딩 실패:", error);
-      } finally {
-        setLoadingProjects(false);
-      }
-    };
-
-    loadProjects();
-  }, [serverInfo?.serverUrl, projectId, getProjectList]);
-
-  // 채널 목록 로딩 - projectId 변경 직접 감지
-  useEffect(() => {
-    console.log("🔍 [채널 로딩] useEffect 실행됨:");
-    console.log("  - projectId:", projectId);
-    console.log("  - serverInfo?.serverUrl:", serverInfo?.serverUrl);
-    console.log("  - isProjectSelected:", isProjectSelected);
-    console.log("  - currentProject:", currentProject);
-
-    if (
-      serverInfo?.serverUrl &&
-      projectId &&
-      isProjectSelected &&
-      currentProject?.projectPk
-    ) {
-      console.log(
-        `📋 채널 목록 로드: ${projectId} (PK: ${currentProject.projectPk})`
-      );
-      loadChannels(serverInfo.serverUrl, currentProject.projectPk);
-    } else {
-      console.log("🗑️ 채널 로딩 조건 불충족");
+    if (!projectListQuery.data && !projectListQuery.isLoading) {
+      return;
     }
-  }, [
-    projectId, // URL에서 직접 가져온 projectId 변경 감지
-    serverInfo?.serverUrl,
-    isProjectSelected,
-    currentProject?.projectPk, // currentProject가 설정되면 실행
-    loadChannels,
-  ]);
+
+    const projectList = projectListQuery.data || [];
+    setProjects(projectList);
+
+    // 현재 프로젝트 찾기 - projectPk 기반 매칭
+    let currentProj: Project | null = null;
+
+    if (projectId) {
+      // projectId를 숫자로 변환해서 projectPk와 매칭
+      const projectPkFromUrl = parseInt(projectId, 10);
+
+      if (!isNaN(projectPkFromUrl)) {
+        currentProj =
+          projectList?.find((p: Project) => p.projectPk === projectPkFromUrl) ||
+          null;
+
+        console.log("🔍 [프로젝트 매칭]:");
+        console.log("  - URL projectId:", projectId);
+        console.log("  - 변환된 projectPk:", projectPkFromUrl);
+        console.log("  - 찾은 프로젝트:", currentProj);
+        console.log(
+          "  - 전체 프로젝트 목록:",
+          projectList?.map(
+            (p: Project) => `${p.projectName}(PK:${p.projectPk})`
+          )
+        );
+      } else {
+        console.log("❌ projectId를 숫자로 변환 실패:", projectId);
+      }
+    }
+
+    // 매칭되지 않으면 첫 번째 프로젝트 사용
+    if (!currentProj && projectList && projectList.length > 0) {
+      currentProj = projectList[0] || null;
+      console.log("📋 매칭 실패, 첫 번째 프로젝트 사용:", currentProj);
+    }
+
+    setCurrentProject(currentProj);
+  }, [projectListQuery.data, projectListQuery.isLoading, projectId]);
 
   // 채널 추가 모달 열기
   const handleAddChannel = () => {
@@ -201,11 +181,14 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     });
   };
 
-  // 채널 링크 생성 함수 (채널 타입별 경로 구분)
-  const createChannelLink = (channelName: string, isVoice: boolean = false) => {
-    const encodedChannelName = encodeURIComponent(channelName);
-    const channelType = isVoice ? "voice_channels" : "channels";
-    return `/${serverId}/projects/${currentProject?.projectPk}/${channelType}/${encodedChannelName}`;
+  // 채널 링크 생성 함수 (채널 타입별 경로 구분) - 유틸 함수 사용
+  const createChannelLink = (channel: Channel) => {
+    return createChannelUrl(
+      serverId,
+      currentProject?.projectPk || 0,
+      channel.channelName,
+      channel.channelKind
+    );
   };
 
   // 현재 채널인지 확인하는 함수 (디코딩된 이름으로 비교)
@@ -221,7 +204,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
           <div className="w-16 bg-gray-800 flex flex-col py-3">
             {/* 프로젝트 목록 */}
             <div className="flex-1 overflow-y-auto px-2">
-              {loadingProjects ? (
+              {projectListQuery.isLoading ? (
                 <div className="text-white text-xs text-center py-4">
                   로딩중...
                 </div>
@@ -322,10 +305,6 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                       ))}
                     </div>
                   )
-                ) : loadingChannels ? (
-                  <div className="text-white text-center py-4">
-                    채널 로딩 중...
-                  </div>
                 ) : (
                   <>
                     {/* 공지 채널 */}
@@ -336,14 +315,14 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                             공지사항
                           </h3>
                         </div>
-                        {noticeChannels.map((channel) => (
+                        {noticeChannels.map((channel: Channel) => (
                           <Link
                             key={channel.channelName}
-                            href={createChannelLink(channel.channelName)}
+                            href={createChannelLink(channel)}
                             className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
                               isCurrentChannel(channel.channelName)
                                 ? "bg-gray-600 text-white"
-                                : "text-gray-300 hover:bg-gray-600 hover:text-white"
+                                : "text-gray-300 hover:bg-gray-700 hover:text-white"
                             }`}
                           >
                             <span className="mr-2 text-gray-400">📢</span>
@@ -384,10 +363,10 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                           채널이 없습니다
                         </div>
                       ) : (
-                        textChannels.map((channel) => (
+                        textChannels.map((channel: Channel) => (
                           <Link
                             key={channel.channelName}
-                            href={createChannelLink(channel.channelName)}
+                            href={createChannelLink(channel)}
                           >
                             <div
                               className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
@@ -434,10 +413,10 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                           음성 채널이 없습니다
                         </div>
                       ) : (
-                        voiceChannels.map((channel) => (
+                        voiceChannels.map((channel: Channel) => (
                           <Link
                             key={channel.channelName}
-                            href={createChannelLink(channel.channelName, true)}
+                            href={createChannelLink(channel)}
                           >
                             <div
                               className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
@@ -469,7 +448,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
         <UserInfo />
       </div>
 
-      {/* 모달들 */}
+      {/* 모달들 - 원래 방식으로 사용 */}
       <AddChannelModal />
       <AddProjectModal />
     </>

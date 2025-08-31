@@ -12,3 +12,7 @@ export interface ServerListItem {
   serverUrl: string;
   serverRole: string;
 }
+
+export interface InviteCode {
+  inviteLink: string;
+}

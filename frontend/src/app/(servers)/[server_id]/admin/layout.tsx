@@ -1,11 +1,9 @@
 "use client";
 
-import React, { use } from "react";
-import AdminSidebar from "./components/AdminSidebar";
+import React from "react";
 
 export default function AdminLayout({
   children,
-  params,
 }: {
   children: React.ReactNode;
   params: Promise<{ server_id: string }>;

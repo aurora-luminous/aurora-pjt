@@ -147,20 +147,22 @@ export const useJoinRequestsPage = () => {
     refetch,
   } = useServerAccessQuery(serverUrl);
 
-  const patchServerAccessMutation = usePatchServerAccessMutation();
+  const patchServerAccessMutation = usePatchServerAccessMutation(serverUrl);
 
   // 데이터 변환 및 계산
   const requests = useMemo(() => {
-    return serverAccessList.map(mapServerAccessToJoinRequest);
+    return serverAccessList?.map(mapServerAccessToJoinRequest);
   }, [serverAccessList]);
 
   const filteredRequests = useMemo(() => {
     if (filterStatus === "all") return requests;
-    return requests.filter((request) => request.status === filterStatus);
+    return requests?.filter((request) => request.status === filterStatus);
   }, [requests, filterStatus]);
 
   const pendingCount = useMemo(() => {
-    return requests.filter((request) => request.status === "pending").length;
+    return (
+      requests?.filter((request) => request.status === "pending").length || 0
+    );
   }, [requests]);
 
   const isProcessing = useMemo(() => {
@@ -174,7 +176,6 @@ export const useJoinRequestsPage = () => {
         console.log("가입 요청 승인:", userEmail);
 
         await patchServerAccessMutation.mutateAsync({
-          serverUrl,
           status: "Approved",
           userEmail: userEmail,
         });
@@ -194,7 +195,6 @@ export const useJoinRequestsPage = () => {
         console.log("가입 요청 거절:", userEmail);
 
         await patchServerAccessMutation.mutateAsync({
-          serverUrl,
           status: "Banned",
           userEmail: userEmail,
         });
@@ -257,7 +257,7 @@ export const useJoinRequestsPage = () => {
         setSelectedRequests(
           new Set(
             filteredRequests
-              .filter((r) => r.status === "pending")
+              ?.filter((r) => r.status === "pending")
               .map((r) => r.id)
           )
         );

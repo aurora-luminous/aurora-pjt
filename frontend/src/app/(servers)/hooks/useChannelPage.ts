@@ -23,13 +23,12 @@ export const useChannelPage = () => {
 
   const serverInfo = useCurrentServerInfo();
 
-  // Redux를 통한 채널 관리
   const {
     channels,
     loading: loadingChannels,
     loadChannels,
     findChannel,
-  } = useChannels();
+  } = useChannels(serverInfo?.serverUrl, serverInfo?.projectPk);
 
   // 상태 관리
   const [newMessage, setNewMessage] = useState("");

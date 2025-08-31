@@ -55,8 +55,10 @@ export const useAdminSidebar = () => {
   } = useServerAccessQuery(serverUrl);
 
   const pendingRequestsCount = useMemo(() => {
-    return serverAccessList.filter((access) => access.status === "Pending")
-      .length;
+    return (
+      serverAccessList?.filter((access) => access.status === "Pending")
+        .length || 0
+    );
   }, [serverAccessList]);
 
   return {

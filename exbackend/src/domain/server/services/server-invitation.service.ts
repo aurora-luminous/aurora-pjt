@@ -8,6 +8,7 @@ import { ServerMember } from '../entities/server-member.entity';
 import { User } from '../../user/entities/user.entity';
 import { UserService } from '../../user/services/user.service';
 import { ServerRoleUtils, ServerRoleType } from '../../../common/enums/member-role.enum';
+import { MemberStatus, ServerMemberStatus, MemberStatusUtils } from '../../../common/enums/member-status.enum';
 import { Project } from '../../project/entities/project.entity';
 import { Channel } from '../../text-channel/entities/channel.entity';
 
@@ -52,7 +53,7 @@ export interface ServerMemberInfoDto {
 }
 
 export interface ServerMemberDetailDto extends ServerMemberInfoDto {
-  status: 'Active' | 'Inactive' | 'Banned';
+  status: MemberStatus;
   serverRole: ServerRoleType;
 }
 
@@ -617,7 +618,7 @@ export class ServerInvitationService {
     if (isAdmin) {
       // Admin/Owner: 상세 정보 포함
       return activeMembers.map(member => ({
-        status: 'Active' as const,
+        status: MemberStatusUtils.serverToMemberStatus(member.status as ServerMemberStatus),
         serverRole: member.serverRole,
         userInfo: {
           userName: member.user.userName,

@@ -41,7 +41,7 @@ export class ProjectMember {
 
   @ApiProperty({ 
     description: '프로젝트 역할', 
-    enum: ['member', 'admin', 'owner'], 
+    enum: ['member', 'admin'], 
     default: 'member' 
   })
   @Column({ 
@@ -49,7 +49,7 @@ export class ProjectMember {
     length: 20, 
     default: 'member'
   })
-  projectRole: 'member' | 'admin' | 'owner';
+  projectRole: 'member' | 'admin';
 
   @ApiProperty({ description: '마지막 접속 채널 (외래키)', required: false })
   @Column({ nullable: true })

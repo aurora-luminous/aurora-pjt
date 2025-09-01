@@ -88,12 +88,12 @@ export class ChannelCreationService {
     });
     const savedChannel = await this.channelRepository.save(channel);
 
-    // 6. 생성자를 채널 owner로 추가
+    // 6. 생성자를 채널 admin으로 추가
     const channelMember = this.channelMemberRepository.create({
       channelPk: savedChannel.channelPk,
       userPk: createChannelDto.creatorUserPk,
       cStatus: 'Active', // 기본 상태
-      channelRole: 'owner',
+      channelRole: 'admin',
     });
     await this.channelMemberRepository.save(channelMember);
 
@@ -177,7 +177,7 @@ export class ChannelCreationService {
         channelName: channel.channelName,
         channelKind: channel.channelKind.toLowerCase() as 'text' | 'voice',
         isPrivate: channel.isPrivate,
-        channelRole: userChannelMember?.channelRole === 'owner' ? 'admin' : 'member',
+        channelRole: userChannelMember?.channelRole === 'admin' ? 'admin' : 'member',
       };
     });
   }
@@ -196,8 +196,8 @@ export class ChannelCreationService {
       throw new NotFoundException(`Channel with ID ${channelPk} not found`);
     }
 
-    const owner = channel.channelMembers.find(
-      (member) => member.channelRole === 'owner',
+    const admin = channel.channelMembers.find(
+      (member) => member.channelRole === 'admin',
     );
 
     return {
@@ -211,10 +211,9 @@ export class ChannelCreationService {
         projectPk: channel.project.projectPk,
         projectName: channel.project.projectName,
       },
-      ownerInfo: owner
+      adminInfo: admin
         ? {
-            
-            userName: owner.user.userName,
+            userName: admin.user.userName,
           }
         : undefined,
     };

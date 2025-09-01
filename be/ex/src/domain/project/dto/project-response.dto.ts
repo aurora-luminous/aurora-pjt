@@ -22,8 +22,8 @@ export class ProjectResponseDto {
     serverName: string;
   };
 
-  @ApiProperty({ description: '소유자 정보', required: false })
-  ownerInfo?: {
+  @ApiProperty({ description: '관리자 정보', required: false })
+  adminInfo?: {
     userName: string;
   };
 }

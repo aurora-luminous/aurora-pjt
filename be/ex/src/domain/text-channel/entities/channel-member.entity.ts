@@ -44,7 +44,7 @@ export class ChannelMember {
 
   @ApiProperty({
     description: '채널 역할',
-    enum: ['member', 'admin', 'owner'],
+    enum: ['member', 'admin'],
     default: 'member',
   })
   @Column({
@@ -52,7 +52,7 @@ export class ChannelMember {
     length: 20,
     default: 'member'
   })
-  channelRole: 'member' | 'admin' | 'owner';
+  channelRole: 'member' | 'admin';
 
   @ApiProperty({ description: '음소거 여부', default: false })
   @Column({ type: 'boolean', default: false })

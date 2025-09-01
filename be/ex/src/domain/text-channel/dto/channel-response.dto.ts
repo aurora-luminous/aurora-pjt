@@ -25,8 +25,8 @@ export class ChannelResponseDto {
     projectName: string;
   };
 
-  @ApiProperty({ description: '채널 소유자 정보', required: false })
-  ownerInfo?: {
+  @ApiProperty({ description: '채널 관리자 정보', required: false })
+  adminInfo?: {
     userName: string;
   };
 }

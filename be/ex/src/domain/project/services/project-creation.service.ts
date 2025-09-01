@@ -9,6 +9,7 @@ import { User } from "../../user/entities/user.entity";
 import { Channel } from "../../text-channel/entities/channel.entity";
 import { ChannelMember } from "../../text-channel/entities/channel-member.entity";
 import { CreateProjectDto, ProjectResponseDto, ProjectListDto } from "../dto";
+import { ServerRoleUtils } from "../../../common/enums/member-role.enum";
 
 @Injectable()
 export class ProjectCreationService {
@@ -65,7 +66,7 @@ export class ProjectCreationService {
         }
 
         // 3. 관리자 권한 확인 (admin 또는 owner만 프로젝트 생성 가능)
-        if (!['admin', 'owner'].includes(serverMember.serverRole)) {
+        if (!ServerRoleUtils.hasAdminPermission(serverMember.serverRole)) {
         throw new ForbiddenException('Only admin or owner can create projects');
         }
 
@@ -76,12 +77,12 @@ export class ProjectCreationService {
         });
         const savedProject = await this.projectRepository.save(project);
 
-        // 5. 생성자를 프로젝트 owner로 추가
+        // 5. 생성자를 프로젝트 admin으로 추가
         const projectMember = this.projectMemberRepository.create({
         projectPk: savedProject.projectPk,
         userPk: createProjectDto.creatorUserPk,
         pStatus: 'Active', // 기본 상태
-        projectRole: 'owner',
+        projectRole: 'admin',
         });
         await this.projectMemberRepository.save(projectMember);
 
@@ -98,7 +99,7 @@ export class ProjectCreationService {
         channelPk: savedChannel.channelPk,
         userPk: createProjectDto.creatorUserPk,
         cStatus: 'Active',
-        channelRole: 'owner',
+        channelRole: 'admin',
         });
         await this.channelMemberRepository.save(channelMember);
 
@@ -111,7 +112,7 @@ export class ProjectCreationService {
             serverPk: server.serverPk,
             serverName: server.serverName,
         },
-        ownerInfo: {
+        adminInfo: {
             userName: serverMember.user.userName,
         },
         };
@@ -160,7 +161,7 @@ export class ProjectCreationService {
         });
 
         return projects.map(project => {
-            const owner = project.projectMembers.find(member => member.projectRole === 'owner');
+            const admin = project.projectMembers.find(member => member.projectRole === 'admin');
         
             return {
                 projectPk: project.projectPk,
@@ -171,9 +172,9 @@ export class ProjectCreationService {
                 serverPk: project.server.serverPk,
                 serverName: project.server.serverName,
                 },
-                ownerInfo: owner ? {
+                adminInfo: admin ? {
                 
-                userName: owner.user.userName,
+                userName: admin.user.userName,
                 } : undefined,
             };
         });
@@ -189,7 +190,7 @@ export class ProjectCreationService {
         throw new NotFoundException(`Project with ID ${projectPk} not found`);
         }
 
-        const owner = project.projectMembers.find(member => member.projectRole === 'owner');
+        const admin = project.projectMembers.find(member => member.projectRole === 'admin');
 
         return {
         projectPk: project.projectPk,
@@ -200,9 +201,9 @@ export class ProjectCreationService {
             serverPk: project.server.serverPk,
             serverName: project.server.serverName,
         },
-        ownerInfo: owner ? {
+        adminInfo: admin ? {
             
-            userName: owner.user.userName,
+            userName: admin.user.userName,
         } : undefined,
         };
     }

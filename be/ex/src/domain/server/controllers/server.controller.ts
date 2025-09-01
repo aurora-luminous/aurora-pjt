@@ -98,11 +98,25 @@ export class ServerController {
   async joinServerDirect(
     @Param('serverUrl') serverUrl: string,
     @CurrentUser() user: User
-  ): Promise<{ status: 'Pending' | 'Approved' | 'Rejected' | 'Banned' }> {
+  ): Promise<{
+    status: 'Pending' | 'Approved' | 'Rejected' | 'Banned';
+    defaultProject?: {
+      projectPk: number;
+      projectName: string;
+    };
+    defaultChannel?: {
+      channelPk: number;
+      channelName: string;
+    };
+  }> {
     const userPk = user.userPk;
     
     const result = await this.serverInvitationService.joinServerDirect(serverUrl, userPk);
-    return { status: result.status as 'Pending' | 'Approved' | 'Rejected' | 'Banned' };
+    return {
+      status: result.status,
+      ...(result.defaultProject && { defaultProject: result.defaultProject }),
+      ...(result.defaultChannel && { defaultChannel: result.defaultChannel }),
+    };
   }
 
   @Get(':serverUrl/pending')

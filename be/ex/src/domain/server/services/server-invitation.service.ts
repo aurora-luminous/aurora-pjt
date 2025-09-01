@@ -8,6 +8,8 @@ import { ServerMember } from '../entities/server-member.entity';
 import { User } from '../../user/entities/user.entity';
 import { UserService } from '../../user/services/user.service';
 import { ServerRoleUtils } from '../../../common/enums/member-role.enum';
+import { Project } from '../../project/entities/project.entity';
+import { Channel } from '../../text-channel/entities/channel.entity';
 
 export interface JoinServerDto {
   inviteHash: string;
@@ -21,7 +23,7 @@ export interface ServerInviteDto {
 }
 
 export interface PendingMemberDto {
-  status: string;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Banned';
   userInfo: {
     user_name: string;
     user_email: string;
@@ -30,6 +32,14 @@ export interface PendingMemberDto {
   serverInfo?: {
     serverUrl: string;
     serverName: string;
+  };
+  defaultProject?: {
+    projectPk: number;
+    projectName: string;
+  };
+  defaultChannel?: {
+    channelPk: number;
+    channelName: string;
   };
 }
 
@@ -50,6 +60,10 @@ export class ServerInvitationService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly userService: UserService,
+    @InjectRepository(Project)
+    private readonly projectRepository: Repository<Project>,
+    @InjectRepository(Channel)
+    private readonly channelRepository: Repository<Channel>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -139,14 +153,51 @@ export class ServerInvitationService {
     });
 
     if (existingMember) {
-      // 모든 상태에 대해 현재 상태 반환 (프론트에서 처리)
+      // Approved 상태인 경우 기본 프로젝트와 채널 정보도 함께 반환
+      let defaultProject, defaultChannel;
+      if (existingMember.status === 'Approved') {
+        // 기본 "일반" 프로젝트 조회
+        const project = await this.projectRepository.findOne({
+          where: { 
+            serverPk: server.serverPk, 
+            projectName: '일반',
+            isDeletedProject: false 
+          }
+        });
+
+        if (project) {
+          defaultProject = {
+            projectPk: project.projectPk,
+            projectName: project.projectName
+          };
+
+          // 해당 프로젝트의 기본 "일반" 채널 조회
+          const channel = await this.channelRepository.findOne({
+            where: { 
+              projectPk: project.projectPk, 
+              channelName: '일반',
+              isDeletedChannel: false 
+            }
+          });
+
+          if (channel) {
+            defaultChannel = {
+              channelPk: channel.channelPk,
+              channelName: channel.channelName
+            };
+          }
+        }
+      }
+
       return {
         status: existingMember.status,
         userInfo: {
-            user_name: user.userName,
+          user_name: user.userName,
           user_email: user.userEmail,
           profile_image_path: user.profileImagePath,
         },
+        ...(defaultProject && { defaultProject }),
+        ...(defaultChannel && { defaultChannel }),
       };
     }
 

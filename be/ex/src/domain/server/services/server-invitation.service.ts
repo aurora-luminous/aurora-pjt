@@ -6,6 +6,8 @@ import * as crypto from 'crypto';
 import { Server } from '../entities/server.entity';
 import { ServerMember } from '../entities/server-member.entity';
 import { User } from '../../user/entities/user.entity';
+import { UserService } from '../../user/services/user.service';
+import { ServerRoleUtils } from '../../../common/enums/member-role.enum';
 
 export interface JoinServerDto {
   inviteHash: string;
@@ -19,11 +21,8 @@ export interface ServerInviteDto {
 }
 
 export interface PendingMemberDto {
-  serverMemberPk: number;
-  userPk: number;
   status: string;
   userInfo: {
-    user_pk: number;
     user_name: string;
     user_email: string;
     profile_image_path: string;
@@ -50,6 +49,7 @@ export class ServerInvitationService {
     private readonly serverMemberRepository: Repository<ServerMember>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly userService: UserService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -97,7 +97,7 @@ export class ServerInvitationService {
       }
     });
 
-    if (!serverMember || !['admin', 'owner'].includes(serverMember.serverRole)) {
+    if (!serverMember || !ServerRoleUtils.hasAdminPermission(serverMember.serverRole)) {
       throw new ForbiddenException('Only server admin or owner can generate invite links');
     }
 
@@ -141,12 +141,9 @@ export class ServerInvitationService {
     if (existingMember) {
       // 모든 상태에 대해 현재 상태 반환 (프론트에서 처리)
       return {
-        serverMemberPk: existingMember.serverMemberPk,
-        userPk: existingMember.userPk,
         status: existingMember.status,
         userInfo: {
-          user_pk: user.userPk,
-          user_name: user.userName,
+            user_name: user.userName,
           user_email: user.userEmail,
           profile_image_path: user.profileImagePath,
         },
@@ -163,11 +160,8 @@ export class ServerInvitationService {
     const savedMember = await this.serverMemberRepository.save(serverMember);
 
     return {
-      serverMemberPk: savedMember.serverMemberPk,
-      userPk: savedMember.userPk,
       status: savedMember.status,
       userInfo: {
-        user_pk: user.userPk,
         user_name: user.userName,
         user_email: user.userEmail,
         profile_image_path: user.profileImagePath,
@@ -229,7 +223,7 @@ export class ServerInvitationService {
       }
     });
 
-    if (!requestMember || !['admin', 'owner'].includes(requestMember.serverRole)) {
+    if (!requestMember || !ServerRoleUtils.hasAdminPermission(requestMember.serverRole)) {
       throw new ForbiddenException('Only server admin or owner can view pending members');
     }
 
@@ -241,8 +235,6 @@ export class ServerInvitationService {
     });
 
     return pendingMembers.map(member => ({
-      serverMemberPk: member.serverMemberPk,
-      userPk: member.userPk,
       status: member.status,
       userInfo: {
         user_pk: member.user.userPk,
@@ -277,7 +269,7 @@ export class ServerInvitationService {
       }
     });
 
-    if (!adminMember || !['admin', 'owner'].includes(adminMember.serverRole)) {
+    if (!adminMember || !ServerRoleUtils.hasAdminPermission(adminMember.serverRole)) {
       throw new ForbiddenException('Only server admin or owner can approve/reject members');
     }
 
@@ -296,11 +288,8 @@ export class ServerInvitationService {
     const updatedMember = await this.serverMemberRepository.save(serverMember);
 
     return {
-      serverMemberPk: updatedMember.serverMemberPk,
-      userPk: updatedMember.userPk,
       status: updatedMember.status,
       userInfo: {
-        user_pk: serverMember.user.userPk,
         user_name: serverMember.user.userName,
         user_email: serverMember.user.userEmail,
         profile_image_path: serverMember.user.profileImagePath,
@@ -315,13 +304,7 @@ export class ServerInvitationService {
     adminUserPk: number
   ): Promise<PendingMemberDto> {
     // 1. userEmail로 사용자 찾기
-    const user = await this.userRepository.findOne({
-      where: { userEmail, isDeleted: false }
-    });
-
-    if (!user) {
-      throw new NotFoundException(`User with email ${userEmail} not found`);
-    }
+    const user = await this.userService.findByEmailOrThrow(userEmail);
 
     // 2. 서버 멤버 찾기
     const serverMember = await this.serverMemberRepository.findOne({
@@ -342,7 +325,7 @@ export class ServerInvitationService {
       }
     });
 
-    if (!adminMember || !['admin', 'owner'].includes(adminMember.serverRole)) {
+    if (!adminMember || !ServerRoleUtils.hasAdminPermission(adminMember.serverRole)) {
       throw new ForbiddenException('Only server admin or owner can approve/reject members');
     }
 
@@ -356,11 +339,8 @@ export class ServerInvitationService {
     const updatedMember = await this.serverMemberRepository.save(serverMember);
 
     return {
-      serverMemberPk: updatedMember.serverMemberPk,
-      userPk: updatedMember.userPk,
       status: updatedMember.status,
       userInfo: {
-        user_pk: user.userPk,
         user_name: user.userName,
         user_email: user.userEmail,
         profile_image_path: user.profileImagePath,
@@ -400,8 +380,6 @@ export class ServerInvitationService {
     });
 
     return activeMembers.map(member => ({
-      serverMemberPk: member.serverMemberPk,
-      userPk: member.userPk,
       status: member.status,
       userInfo: {
         user_pk: member.user.userPk,
@@ -432,7 +410,7 @@ export class ServerInvitationService {
       }
     });
 
-    if (!requestMember || !['admin', 'owner'].includes(requestMember.serverRole)) {
+    if (!requestMember || !ServerRoleUtils.hasAdminPermission(requestMember.serverRole)) {
       throw new ForbiddenException('Only server admin or owner can view banned members');
     }
 
@@ -444,8 +422,6 @@ export class ServerInvitationService {
     });
 
     return bannedMembers.map(member => ({
-      serverMemberPk: member.serverMemberPk,
-      userPk: member.userPk,
       status: member.status,
       userInfo: {
         user_pk: member.user.userPk,
@@ -486,11 +462,8 @@ export class ServerInvitationService {
     const unbannedMember = await this.serverMemberRepository.save(bannedMember);
 
     return {
-      serverMemberPk: unbannedMember.serverMemberPk,
-      userPk: unbannedMember.userPk,
       status: unbannedMember.status,
       userInfo: {
-        user_pk: bannedMember.user.userPk,
         user_name: bannedMember.user.userName,
         user_email: bannedMember.user.userEmail,
         profile_image_path: bannedMember.user.profileImagePath,
@@ -521,7 +494,7 @@ export class ServerInvitationService {
       where: { serverPk, userPk: adminUserPk, status: 'Approved' }
     });
 
-    if (!adminMember || !['admin', 'owner'].includes(adminMember.serverRole)) {
+    if (!adminMember || !ServerRoleUtils.hasAdminPermission(adminMember.serverRole)) {
       throw new ForbiddenException('Only server admin or owner can kick members');
     }
 

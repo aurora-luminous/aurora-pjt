@@ -6,6 +6,8 @@ import { ChannelMember } from '../entities/channel-member.entity';
 import { Project } from '../../project/entities/project.entity';
 import { ProjectMember } from '../../project/entities/project-member.entity';
 import { User } from '../../user/entities/user.entity';
+import { UserService } from '../../user/services/user.service';
+import { MemberRoleUtils } from '../../../common/enums/member-role.enum';
 
 export interface InviteToChannelDto {
   channelPk: number;
@@ -25,15 +27,12 @@ export interface BulkInviteToChannelDto {
 }
 
 export interface ChannelMemberDto {
-  channelMemberPk: number;
   channelPk: number;
-  userPk: number;
   cStatus: 'Active' | 'Inactive' | 'Banned';
-  channelRole: 'member' | 'admin' | 'owner';
+  channelRole: 'member' | 'admin';
   isMute: boolean;
   lastReadMessage?: number;
   userInfo: {
-    userPk: number;
     userName: string;
     userEmail: string;
     profileImagePath: string;
@@ -59,6 +58,7 @@ export class ChannelInvitationService {
     private readonly projectMemberRepository: Repository<ProjectMember>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly userService: UserService,
   ) {}
 
   // 이메일로 채널에 사용자 초대 (직접 추가)
@@ -79,13 +79,7 @@ export class ChannelInvitationService {
     }
 
     // 3. 초대하려는 사용자 존재 확인 (이메일로)
-    const targetUser = await this.userRepository.findOne({
-      where: { userEmail: inviteDto.userEmail, isDeleted: false }
-    });
-
-    if (!targetUser) {
-      throw new NotFoundException(`User with email ${inviteDto.userEmail} not found`);
-    }
+    const targetUser = await this.userService.findByEmailOrThrow(inviteDto.userEmail);
 
     // 4. 초대자가 해당 채널의 관리자인지 확인
     const inviterMember = await this.channelMemberRepository.findOne({
@@ -96,7 +90,7 @@ export class ChannelInvitationService {
       }
     });
 
-    if (!inviterMember || !['admin', 'owner'].includes(inviterMember.channelRole)) {
+    if (!inviterMember || !MemberRoleUtils.hasAdminPermission(inviterMember.channelRole)) {
       throw new ForbiddenException('Only channel admin or owner can invite users to private channels');
     }
 
@@ -104,7 +98,6 @@ export class ChannelInvitationService {
     const projectMember = await this.projectMemberRepository.findOne({
       where: { 
         projectPk: channel.projectPk, 
-        userPk: targetUser.userPk,
         pStatus: 'Active'
       }
     });
@@ -130,15 +123,12 @@ export class ChannelInvitationService {
         const reactivatedMember = await this.channelMemberRepository.save(existingMember);
         
         return {
-          channelMemberPk: reactivatedMember.channelMemberPk,
           channelPk: reactivatedMember.channelPk,
-          userPk: reactivatedMember.userPk,
           cStatus: reactivatedMember.cStatus,
           channelRole: reactivatedMember.channelRole,
           isMute: reactivatedMember.isMute,
           lastReadMessage: reactivatedMember.lastReadMessage,
           userInfo: {
-            userPk: targetUser.userPk,
             userName: targetUser.userName,
             userEmail: targetUser.userEmail,
             profileImagePath: targetUser.profileImagePath,
@@ -157,15 +147,12 @@ export class ChannelInvitationService {
     const savedMember = await this.channelMemberRepository.save(channelMember);
 
     return {
-      channelMemberPk: savedMember.channelMemberPk,
       channelPk: savedMember.channelPk,
-      userPk: savedMember.userPk,
       cStatus: savedMember.cStatus,
       channelRole: savedMember.channelRole,
       isMute: savedMember.isMute,
       lastReadMessage: savedMember.lastReadMessage,
       userInfo: {
-        userPk: targetUser.userPk,
         userName: targetUser.userName,
         userEmail: targetUser.userEmail,
         profileImagePath: targetUser.profileImagePath,
@@ -228,15 +215,12 @@ export class ChannelInvitationService {
         const reactivatedMember = await this.channelMemberRepository.save(existingMember);
         
         return {
-          channelMemberPk: reactivatedMember.channelMemberPk,
           channelPk: reactivatedMember.channelPk,
-          userPk: reactivatedMember.userPk,
           cStatus: reactivatedMember.cStatus,
           channelRole: reactivatedMember.channelRole,
           isMute: reactivatedMember.isMute,
           lastReadMessage: reactivatedMember.lastReadMessage,
           userInfo: {
-            userPk: user.userPk,
             userName: user.userName,
             userEmail: user.userEmail,
             profileImagePath: user.profileImagePath,
@@ -255,15 +239,12 @@ export class ChannelInvitationService {
     const savedMember = await this.channelMemberRepository.save(channelMember);
 
     return {
-      channelMemberPk: savedMember.channelMemberPk,
       channelPk: savedMember.channelPk,
-      userPk: savedMember.userPk,
       cStatus: savedMember.cStatus,
       channelRole: savedMember.channelRole,
       isMute: savedMember.isMute,
       lastReadMessage: savedMember.lastReadMessage,
       userInfo: {
-        userPk: user.userPk,
         userName: user.userName,
         userEmail: user.userEmail,
         profileImagePath: user.profileImagePath,
@@ -318,7 +299,6 @@ export class ChannelInvitationService {
     });
 
     return channelMembers.map(member => ({
-      channelMemberPk: member.channelMemberPk,
       channelPk: member.channelPk,
       userPk: member.userPk,
       cStatus: member.cStatus,
@@ -368,18 +348,13 @@ export class ChannelInvitationService {
         }
       });
 
-      if (!adminMember || !['admin', 'owner'].includes(adminMember.channelRole)) {
+      if (!adminMember || !MemberRoleUtils.hasAdminPermission(adminMember.channelRole)) {
         throw new ForbiddenException('Only channel admin or owner can remove members');
       }
 
-      // 4. Owner는 제거할 수 없음
-      if (targetMember.channelRole === 'owner') {
-        throw new ForbiddenException('Cannot remove channel owner');
-      }
-
-      // 5. Admin끼리는 제거 불가 (Owner만 Admin 제거 가능)
-      if (targetMember.channelRole === 'admin' && adminMember.channelRole !== 'owner') {
-        throw new ForbiddenException('Only channel owner can remove admin members');
+      // 4. Admin끼리는 제거 불가
+      if (targetMember.channelRole === 'admin') {
+        throw new ForbiddenException('Cannot remove admin members');
       }
     }
 
@@ -417,18 +392,13 @@ export class ChannelInvitationService {
       }
     });
 
-    if (!adminMember || !['admin', 'owner'].includes(adminMember.channelRole)) {
+    if (!adminMember || !MemberRoleUtils.hasAdminPermission(adminMember.channelRole)) {
       throw new ForbiddenException('Only channel admin or owner can ban members');
     }
 
-    // 4. Owner는 차단할 수 없음
-    if (targetMember.channelRole === 'owner') {
-      throw new ForbiddenException('Cannot ban channel owner');
-    }
-
-    // 5. Admin끼리는 차단 불가 (Owner만 Admin 차단 가능)
-    if (targetMember.channelRole === 'admin' && adminMember.channelRole !== 'owner') {
-      throw new ForbiddenException('Only channel owner can ban admin members');
+    // 4. Admin끼리는 차단 불가
+    if (targetMember.channelRole === 'admin') {
+      throw new ForbiddenException('Cannot ban admin members');
     }
 
     // 6. 상태를 Banned로 변경
@@ -436,8 +406,8 @@ export class ChannelInvitationService {
     await this.channelMemberRepository.save(targetMember);
   }
 
-  // 채널에서 차단 해제 (Owner만 가능)
-  async unbanUserFromChannel(channelPk: number, targetUserPk: number, ownerUserPk: number): Promise<ChannelMemberDto> {
+  // 채널에서 차단 해제 (Admin만 가능)
+  async unbanUserFromChannel(channelPk: number, targetUserPk: number, adminUserPk: number): Promise<ChannelMemberDto> {
     // 1. 차단된 멤버 확인
     const bannedMember = await this.channelMemberRepository.findOne({
       where: { channelPk, userPk: targetUserPk, cStatus: 'Banned' },
@@ -448,18 +418,17 @@ export class ChannelInvitationService {
       throw new NotFoundException('Banned member not found');
     }
 
-    // 2. Owner 권한 확인
-    const ownerMember = await this.channelMemberRepository.findOne({
+    // 2. Admin 권한 확인
+    const adminMember = await this.channelMemberRepository.findOne({
       where: { 
         channelPk, 
-        userPk: ownerUserPk,
-        cStatus: 'Active',
-        channelRole: 'owner'
+        userPk: adminUserPk,
+        cStatus: 'Active'
       }
     });
 
-    if (!ownerMember) {
-      throw new ForbiddenException('Only channel owner can unban members');
+    if (!adminMember || !MemberRoleUtils.hasAdminPermission(adminMember.channelRole)) {
+      throw new ForbiddenException('Only channel admin can unban members');
     }
 
     // 3. 상태를 Active로 복구
@@ -467,15 +436,12 @@ export class ChannelInvitationService {
     const unbannedMember = await this.channelMemberRepository.save(bannedMember);
 
     return {
-      channelMemberPk: unbannedMember.channelMemberPk,
       channelPk: unbannedMember.channelPk,
-      userPk: unbannedMember.userPk,
       cStatus: unbannedMember.cStatus,
       channelRole: unbannedMember.channelRole,
       isMute: unbannedMember.isMute,
       lastReadMessage: unbannedMember.lastReadMessage,
       userInfo: {
-        userPk: bannedMember.user.userPk,
         userName: bannedMember.user.userName,
         userEmail: bannedMember.user.userEmail,
         profileImagePath: bannedMember.user.profileImagePath,
@@ -518,7 +484,7 @@ export class ChannelInvitationService {
         }
       });
 
-      if (!adminMember || !['admin', 'owner'].includes(adminMember.channelRole)) {
+      if (!adminMember || !MemberRoleUtils.hasAdminPermission(adminMember.channelRole)) {
         throw new ForbiddenException('Only channel admin or owner can mute/unmute other members');
       }
     }
@@ -528,15 +494,12 @@ export class ChannelInvitationService {
     const updatedMember = await this.channelMemberRepository.save(targetMember);
 
     return {
-      channelMemberPk: updatedMember.channelMemberPk,
       channelPk: updatedMember.channelPk,
-      userPk: updatedMember.userPk,
       cStatus: updatedMember.cStatus,
       channelRole: updatedMember.channelRole,
       isMute: updatedMember.isMute,
       lastReadMessage: updatedMember.lastReadMessage,
       userInfo: {
-        userPk: targetMember.user.userPk,
         userName: targetMember.user.userName,
         userEmail: targetMember.user.userEmail,
         profileImagePath: targetMember.user.profileImagePath,
@@ -571,13 +534,7 @@ export class ChannelInvitationService {
     adminUserPk: number
   ): Promise<void> {
     // 이메일로 사용자 찾기
-    const targetUser = await this.userRepository.findOne({
-      where: { userEmail: targetUserEmail, isDeleted: false }
-    });
-
-    if (!targetUser) {
-      throw new NotFoundException(`User with email ${targetUserEmail} not found`);
-    }
+    const targetUser = await this.userService.findByEmailOrThrow(targetUserEmail);
 
     const removeDto: RemoveFromChannelDto = {
       channelPk,
@@ -594,13 +551,7 @@ export class ChannelInvitationService {
     adminUserPk: number
   ): Promise<{ message: string }> {
     // 이메일로 사용자 찾기
-    const targetUser = await this.userRepository.findOne({
-      where: { userEmail: targetUserEmail, isDeleted: false }
-    });
-
-    if (!targetUser) {
-      throw new NotFoundException(`User with email ${targetUserEmail} not found`);
-    }
+    const targetUser = await this.userService.findByEmailOrThrow(targetUserEmail);
 
     await this.banUserFromChannel(channelPk, targetUser.userPk, adminUserPk);
     return { message: '사용자가 차단되었습니다.' };
@@ -612,13 +563,7 @@ export class ChannelInvitationService {
     ownerUserPk: number
   ): Promise<void> {
     // 이메일로 사용자 찾기
-    const targetUser = await this.userRepository.findOne({
-      where: { userEmail: userEmail, isDeleted: false }
-    });
-
-    if (!targetUser) {
-      throw new NotFoundException(`User with email ${userEmail} not found`);
-    }
+    const targetUser = await this.userService.findByEmailOrThrow(userEmail);
 
     await this.unbanUserFromChannel(channelPk, targetUser.userPk, ownerUserPk);
   }

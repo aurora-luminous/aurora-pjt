@@ -4,10 +4,12 @@ import { Repository } from 'typeorm';
 import { Project } from '../entities/project.entity';
 import { ProjectMember } from '../entities/project-member.entity';
 import { User } from '../../user/entities/user.entity';
+import { UserService } from '../../user/services/user.service';
 import { Server } from '../../server/entities/server.entity';
 import { ServerMember } from '../../server/entities/server-member.entity';
 import { Channel } from '../../text-channel/entities/channel.entity';
 import { ChannelMember } from '../../text-channel/entities/channel-member.entity';
+import { MemberRoleUtils, ServerRoleUtils } from '../../../common/enums/member-role.enum';
 
 export interface InviteToProjectDto {
   projectPk: number;
@@ -27,13 +29,10 @@ export interface BulkInviteToProjectDto {
 }
 
 export interface ProjectMemberDto {
-  projectMemberPk: number;
   projectPk: number;
-  userPk: number;
   pStatus: 'Active' | 'Inactive' | 'Banned';
-  projectRole: 'member' | 'admin' | 'owner';
+  projectRole: 'member' | 'admin';
   userInfo: {
-    userPk: number;
     userName: string;
     userEmail: string;
     profileImagePath: string;
@@ -55,6 +54,7 @@ export class ProjectInvitationService {
     private readonly projectMemberRepository: Repository<ProjectMember>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly userService: UserService,
     @InjectRepository(Server)
     private readonly serverRepository: Repository<Server>,
     @InjectRepository(ServerMember)
@@ -78,13 +78,7 @@ export class ProjectInvitationService {
     }
 
     // 2. 초대하려는 사용자 존재 확인 (이메일로)
-    const targetUser = await this.userRepository.findOne({
-      where: { userEmail: inviteDto.userEmail, isDeleted: false }
-    });
-
-    if (!targetUser) {
-      throw new NotFoundException(`User with email ${inviteDto.userEmail} not found`);
-    }
+    const targetUser = await this.userService.findByEmailOrThrow(inviteDto.userEmail);
 
     // 3. 초대자가 해당 프로젝트의 관리자인지 확인
     const inviterMember = await this.projectMemberRepository.findOne({
@@ -95,15 +89,14 @@ export class ProjectInvitationService {
       }
     });
 
-    if (!inviterMember || !['admin', 'owner'].includes(inviterMember.projectRole)) {
-      throw new ForbiddenException('Only project admin or owner can invite users');
+    if (!inviterMember || !MemberRoleUtils.hasAdminPermission(inviterMember.projectRole)) {
+      throw new ForbiddenException('Only project admin can invite users');
     }
 
     // 4. 초대할 사용자가 해당 서버의 멤버인지 확인
     const serverMember = await this.serverMemberRepository.findOne({
       where: { 
         serverPk: project.serverPk, 
-        userPk: targetUser.userPk,
         status: 'Approved'
       }
     });
@@ -132,13 +125,10 @@ export class ProjectInvitationService {
         await this.addMemberToPublicChannels(inviteDto.projectPk, targetUser.userPk);
         
         return {
-          projectMemberPk: reactivatedMember.projectMemberPk,
           projectPk: reactivatedMember.projectPk,
-          userPk: reactivatedMember.userPk,
           pStatus: reactivatedMember.pStatus,
           projectRole: reactivatedMember.projectRole,
           userInfo: {
-            userPk: targetUser.userPk,
             userName: targetUser.userName,
             userEmail: targetUser.userEmail,
             profileImagePath: targetUser.profileImagePath,
@@ -160,13 +150,10 @@ export class ProjectInvitationService {
     await this.addMemberToPublicChannels(inviteDto.projectPk, targetUser.userPk);
 
     return {
-      projectMemberPk: savedMember.projectMemberPk,
       projectPk: savedMember.projectPk,
-      userPk: savedMember.userPk,
       pStatus: savedMember.pStatus,
       projectRole: savedMember.projectRole,
       userInfo: {
-        userPk: targetUser.userPk,
         userName: targetUser.userName,
         userEmail: targetUser.userEmail,
         profileImagePath: targetUser.profileImagePath,
@@ -225,13 +212,10 @@ export class ProjectInvitationService {
     });
 
     return projectMembers.map(member => ({
-      projectMemberPk: member.projectMemberPk,
       projectPk: member.projectPk,
-      userPk: member.userPk,
       pStatus: member.pStatus,
       projectRole: member.projectRole,
       userInfo: {
-        userPk: member.user.userPk,
         userName: member.user.userName,
         userEmail: member.user.userEmail,
         profileImagePath: member.user.profileImagePath,
@@ -272,18 +256,13 @@ export class ProjectInvitationService {
       }
     });
 
-    if (!adminMember || !['admin', 'owner'].includes(adminMember.projectRole)) {
-      throw new ForbiddenException('Only project admin or owner can remove members');
+    if (!adminMember || !MemberRoleUtils.hasAdminPermission(adminMember.projectRole)) {
+      throw new ForbiddenException('Only project admin can remove members');
     }
 
-    // 4. Owner는 제거할 수 없음
-    if (targetMember.projectRole === 'owner') {
-      throw new ForbiddenException('Cannot remove project owner');
-    }
-
-    // 5. Admin끼리는 제거 불가 (Owner만 Admin 제거 가능)
-    if (targetMember.projectRole === 'admin' && adminMember.projectRole !== 'owner') {
-      throw new ForbiddenException('Only project owner can remove admin members');
+    // 4. Admin끼리는 제거 불가
+    if (targetMember.projectRole === 'admin') {
+      throw new ForbiddenException('Cannot remove admin members');
     }
 
     // 6. 상태를 Inactive로 변경 (soft delete)
@@ -320,18 +299,13 @@ export class ProjectInvitationService {
       }
     });
 
-    if (!adminMember || !['admin', 'owner'].includes(adminMember.projectRole)) {
-      throw new ForbiddenException('Only project admin or owner can ban members');
+    if (!adminMember || !MemberRoleUtils.hasAdminPermission(adminMember.projectRole)) {
+      throw new ForbiddenException('Only project admin can ban members');
     }
 
-    // 4. Owner는 차단할 수 없음
-    if (targetMember.projectRole === 'owner') {
-      throw new ForbiddenException('Cannot ban project owner');
-    }
-
-    // 5. Admin끼리는 차단 불가 (Owner만 Admin 차단 가능)
-    if (targetMember.projectRole === 'admin' && adminMember.projectRole !== 'owner') {
-      throw new ForbiddenException('Only project owner can ban admin members');
+    // 4. Admin끼리는 차단 불가
+    if (targetMember.projectRole === 'admin') {
+      throw new ForbiddenException('Cannot ban admin members');
     }
 
     // 6. 상태를 Banned로 변경
@@ -339,8 +313,8 @@ export class ProjectInvitationService {
     await this.projectMemberRepository.save(targetMember);
   }
 
-  // 프로젝트에서 차단 해제 (Owner만 가능)
-  async unbanUserFromProject(projectPk: number, targetUserPk: number, ownerUserPk: number): Promise<ProjectMemberDto> {
+  // 프로젝트에서 차단 해제 (Admin만 가능)
+  async unbanUserFromProject(projectPk: number, targetUserPk: number, adminUserPk: number): Promise<ProjectMemberDto> {
     // 1. 차단된 멤버 확인
     const bannedMember = await this.projectMemberRepository.findOne({
       where: { projectPk, userPk: targetUserPk, pStatus: 'Banned' },
@@ -351,18 +325,17 @@ export class ProjectInvitationService {
       throw new NotFoundException('Banned member not found');
     }
 
-    // 2. Owner 권한 확인
-    const ownerMember = await this.projectMemberRepository.findOne({
+    // 2. Admin 권한 확인
+    const adminMember = await this.projectMemberRepository.findOne({
       where: { 
         projectPk, 
-        userPk: ownerUserPk,
-        pStatus: 'Active',
-        projectRole: 'owner'
+        userPk: adminUserPk,
+        pStatus: 'Active'
       }
     });
 
-    if (!ownerMember) {
-      throw new ForbiddenException('Only project owner can unban members');
+    if (!adminMember || !MemberRoleUtils.hasAdminPermission(adminMember.projectRole)) {
+      throw new ForbiddenException('Only project admin can unban members');
     }
 
     // 3. 상태를 Active로 복구
@@ -373,13 +346,10 @@ export class ProjectInvitationService {
     await this.addMemberToPublicChannels(projectPk, targetUserPk);
 
     return {
-      projectMemberPk: unbannedMember.projectMemberPk,
       projectPk: unbannedMember.projectPk,
-      userPk: unbannedMember.userPk,
       pStatus: unbannedMember.pStatus,
       projectRole: unbannedMember.projectRole,
       userInfo: {
-        userPk: bannedMember.user.userPk,
         userName: bannedMember.user.userName,
         userEmail: bannedMember.user.userEmail,
         profileImagePath: bannedMember.user.profileImagePath,
@@ -423,13 +393,7 @@ export class ProjectInvitationService {
     adminUserPk: number
   ): Promise<void> {
     // 이메일로 사용자 찾기
-    const targetUser = await this.userRepository.findOne({
-      where: { userEmail: targetUserEmail, isDeleted: false }
-    });
-
-    if (!targetUser) {
-      throw new NotFoundException(`User with email ${targetUserEmail} not found`);
-    }
+    const targetUser = await this.userService.findByEmailOrThrow(targetUserEmail);
 
     const removeDto: RemoveFromProjectDto = {
       projectPk,
@@ -446,13 +410,7 @@ export class ProjectInvitationService {
     adminUserPk: number
   ): Promise<{ message: string }> {
     // 이메일로 사용자 찾기
-    const targetUser = await this.userRepository.findOne({
-      where: { userEmail: targetUserEmail, isDeleted: false }
-    });
-
-    if (!targetUser) {
-      throw new NotFoundException(`User with email ${targetUserEmail} not found`);
-    }
+    const targetUser = await this.userService.findByEmailOrThrow(targetUserEmail);
 
     await this.banUserFromProject(projectPk, targetUser.userPk, adminUserPk);
     return { message: '사용자가 차단되었습니다.' };
@@ -461,17 +419,11 @@ export class ProjectInvitationService {
   async unbanUserFromProjectByEmail(
     projectPk: number,
     targetUserEmail: string,
-    ownerUserPk: number
+    adminUserPk: number
   ): Promise<void> {
     // 이메일로 사용자 찾기
-    const targetUser = await this.userRepository.findOne({
-      where: { userEmail: targetUserEmail, isDeleted: false }
-    });
+    const targetUser = await this.userService.findByEmailOrThrow(targetUserEmail);
 
-    if (!targetUser) {
-      throw new NotFoundException(`User with email ${targetUserEmail} not found`);
-    }
-
-    await this.unbanUserFromProject(projectPk, targetUser.userPk, ownerUserPk);
+    await this.unbanUserFromProject(projectPk, targetUser.userPk, adminUserPk);
   }
 }

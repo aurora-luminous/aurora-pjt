@@ -1,7 +1,7 @@
 import { Controller, Post, Get, Body, Param, ParseIntPipe, Patch, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ServerCreationService } from '../services/server-creation.service';
-import { ServerInvitationService } from '../services/server-invitation.service';
+import { ServerInvitationService, ServerMemberInfoDto, ServerMemberDetailDto } from '../services/server-invitation.service';
 import { CreateServerDto, ServerListDto, ServerCreateResponseDto } from '../dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CurrentUser } from '../../auth/current-user.decorator';
@@ -193,6 +193,20 @@ export class ServerController {
         profile_image_path: result.userInfo.profile_image_path
       }
     };
+  }
+
+  @Get(':serverUrl/members')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '서버 멤버 목록 조회' })
+  @ApiResponse({ status: 200, description: '멤버 목록 조회 성공' })
+  async getServerMembers(
+    @Param('serverUrl') serverUrl: string,
+    @CurrentUser() user: User
+  ): Promise<ServerMemberInfoDto[] | ServerMemberDetailDto[]> {
+    const requestUserPk = user.userPk;
+    
+    return await this.serverInvitationService.getServerMembersByUrl(serverUrl, requestUserPk);
   }
 
 }

@@ -7,7 +7,8 @@ import { Server } from '../entities/server.entity';
 import { ServerMember } from '../entities/server-member.entity';
 import { User } from '../../user/entities/user.entity';
 import { UserService } from '../../user/services/user.service';
-import { ServerRoleUtils } from '../../../common/enums/member-role.enum';
+import { ServerRoleUtils, ServerRoleType } from '../../../common/enums/member-role.enum';
+import { MemberStatus, ServerMemberStatus, MemberStatusUtils } from '../../../common/enums/member-status.enum';
 import { Project } from '../../project/entities/project.entity';
 import { Channel } from '../../text-channel/entities/channel.entity';
 
@@ -41,6 +42,19 @@ export interface PendingMemberDto {
     channelPk: number;
     channelName: string;
   };
+}
+
+export interface ServerMemberInfoDto {
+  userInfo: {
+    userName: string;
+    userEmail: string;
+    profileImagePath: string;
+  };
+}
+
+export interface ServerMemberDetailDto extends ServerMemberInfoDto {
+  status: MemberStatus;
+  serverRole: ServerRoleType;
 }
 
 export interface UpdateMemberStatusDto {
@@ -562,5 +576,65 @@ export class ServerInvitationService {
     // 6. 논리적 삭제 (상태를 'Banned'로 변경)
     targetMember.status = 'Banned';
     await this.serverMemberRepository.save(targetMember);
+  }
+
+  // serverUrl로 서버 멤버 목록 조회 (권한에 따라 다른 정보 반환)
+  async getServerMembersByUrl(
+    serverUrl: string, 
+    requestUserPk: number
+  ): Promise<ServerMemberInfoDto[] | ServerMemberDetailDto[]> {
+    // 1. 서버 존재 확인
+    const server = await this.serverRepository.findOne({
+      where: { serverUrl, isDeletedServer: false }
+    });
+
+    if (!server) {
+      throw new NotFoundException(`Server with URL ${serverUrl} not found`);
+    }
+
+    // 2. 요청자의 서버 멤버 정보 확인
+    const requestMember = await this.serverMemberRepository.findOne({
+      where: { 
+        serverPk: server.serverPk, 
+        userPk: requestUserPk, 
+        status: 'Approved'
+      }
+    });
+
+    if (!requestMember) {
+      throw new ForbiddenException('Only server members can view member list');
+    }
+
+    // 3. 승인된 멤버 목록 조회
+    const activeMembers = await this.serverMemberRepository.find({
+      where: { serverPk: server.serverPk, status: 'Approved' },
+      relations: ['user'],
+      order: { serverMemberPk: 'ASC' },
+    });
+
+    // 4. 권한에 따라 다른 정보 반환
+    const isAdmin = ServerRoleUtils.hasAdminPermission(requestMember.serverRole);
+
+    if (isAdmin) {
+      // Admin/Owner: 상세 정보 포함
+      return activeMembers.map(member => ({
+        status: MemberStatusUtils.serverToMemberStatus(member.status as ServerMemberStatus),
+        serverRole: member.serverRole,
+        userInfo: {
+          userName: member.user.userName,
+          userEmail: member.user.userEmail,
+          profileImagePath: member.user.profileImagePath,
+        },
+      }));
+    } else {
+      // Member: 기본 정보만
+      return activeMembers.map(member => ({
+        userInfo: {
+          userName: member.user.userName,
+          userEmail: member.user.userEmail,
+          profileImagePath: member.user.profileImagePath,
+        },
+      }));
+    }
   }
 }

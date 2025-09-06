@@ -4,6 +4,8 @@ import {
   ServerResponse,
   ServerListItem,
   InviteCode,
+  MemberInfo,
+  MemberEmail,
 } from "../types/Server";
 import { expressClient } from "@/app/lib/axiosClient";
 import { Project } from "../types/Projcets";
@@ -102,3 +104,21 @@ export const useCreateInviteCodeApi = (serverUrl: string) => {
     axiosInstance: expressClient,
   });
 };
+
+// 서버 멤버 조회
+export const useUserMemberListApi = (serverUrl: string) => {
+  return useApi<MemberInfo[], void>({
+    endpoint: `/ex/servers/${serverUrl}/members`,
+    method: "GET",
+    axiosInstance: expressClient,
+  });
+};
+
+export const useInviteProjectApi = (serverUrl: string, projectPk: number) => {
+  return useApi<{ message: string }, MemberEmail[] | string[]>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/invite`,
+    method: "POST",
+    axiosInstance: expressClient,
+  });
+};
+

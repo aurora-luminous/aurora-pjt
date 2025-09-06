@@ -8,6 +8,7 @@ export interface ServerInfo {
   projectName: string;
   projectPk: number;
   channelName: string;
+  role: string;
 }
 
 /**

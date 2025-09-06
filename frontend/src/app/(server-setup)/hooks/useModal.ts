@@ -9,6 +9,7 @@ export type ModalType =
   | "SERVER_DELETE"
   | "CHANNEL_ADD"
   | "PROJECT_ADD"
+  | "PROJECT_INVITE"
   | null;
 
 // 서버 데이터 타입 정의
@@ -35,11 +36,18 @@ export interface ProjectData {
   projectDescription?: string;
 }
 
+// 프로젝트 초대 데이터 타입 정의
+export interface ProjectInviteData {
+  serverUrl: string;
+  projectPk: number;
+  projectName: string;
+}
+
 // 모달 상태 인터페이스
 export interface ModalState {
   isOpen: boolean;
   type: ModalType;
-  data: ServerData | ChannelData | ProjectData | null;
+  data: ServerData | ChannelData | ProjectData | ProjectInviteData | null;
   loading: boolean;
   error: string | null;
 }
@@ -63,7 +71,7 @@ const modalSlice = createSlice({
       state,
       action: PayloadAction<{
         type: ModalType;
-        data?: ServerData | ChannelData | ProjectData;
+        data?: ServerData | ChannelData | ProjectData | ProjectInviteData;
       }>
     ) => {
       state.isOpen = true;
@@ -84,7 +92,9 @@ const modalSlice = createSlice({
     // 모달 데이터 업데이트
     updateModalData: (
       state,
-      action: PayloadAction<ServerData | ChannelData | ProjectData>
+      action: PayloadAction<
+        ServerData | ChannelData | ProjectData | ProjectInviteData
+      >
     ) => {
       state.data = action.payload;
     },
@@ -151,13 +161,20 @@ export const useModal = () => {
       dispatch(openModal({ type: "PROJECT_ADD", data: projectData }));
     },
 
+    // 프로젝트 초대 모달 열기
+    openProjectInviteModal: (projectInviteData: ProjectInviteData) => {
+      dispatch(openModal({ type: "PROJECT_INVITE", data: projectInviteData }));
+    },
+
     // 모달 닫기
     close: () => {
       dispatch(closeModal());
     },
 
     // 모달 데이터 업데이트
-    updateData: (data: ServerData | ChannelData | ProjectData) => {
+    updateData: (
+      data: ServerData | ChannelData | ProjectData | ProjectInviteData
+    ) => {
       dispatch(updateModalData(data));
     },
 
@@ -199,5 +216,6 @@ export const useModal = () => {
     isServerDeleteModal: modalState.type === "SERVER_DELETE",
     isChannelAddModal: modalState.type === "CHANNEL_ADD",
     isProjectAddModal: modalState.type === "PROJECT_ADD",
+    isProjectInviteModal: modalState.type === "PROJECT_INVITE",
   };
 };

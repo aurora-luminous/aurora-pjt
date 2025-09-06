@@ -19,15 +19,15 @@ const MemberFilters: React.FC<MemberFiltersProps> = ({
 }) => {
   const roles = [
     { value: "all", label: "모든 역할" },
-    { value: "Owner", label: "Owner" },
-    { value: "Admin", label: "Admin" },
-    { value: "Member", label: "Member" },
+    { value: "owner", label: "소유자" },
+    { value: "admin", label: "관리자" },
+    { value: "member", label: "멤버" },
   ];
 
   const statuses = [
     { value: "all", label: "모든 상태" },
-    { value: "online", label: "온라인" },
-    { value: "away", label: "자리비움" },
+    { value: "active", label: "활동중" },
+    { value: "inactive", label: "자리비움" },
     { value: "dnd", label: "방해금지" },
     { value: "offline", label: "오프라인" },
   ];

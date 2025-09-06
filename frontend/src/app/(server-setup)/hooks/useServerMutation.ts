@@ -13,6 +13,8 @@ import {
   useServerJoinStatusApi,
   usePatchServerAccessApi,
   useCreateInviteCodeApi,
+  useUserMemberListApi,
+  useInviteProjectApi,
 } from "./useServerApi";
 
 export const useAddServerMutation = () => {
@@ -130,13 +132,16 @@ export const useCreateProjectMutation = (serverUrl: string) => {
 };
 
 // 🔄 Query: 서버 접근 권한 조회 (GET) - 관리자용
-export const useServerAccessQuery = (serverUrl: string) => {
+export const useServerAccessQuery = (
+  serverUrl: string,
+  options?: { enabled?: boolean }
+) => {
   const { execute: getServerAccess } = useServerAccessApi(serverUrl);
 
   return useQuery({
     queryKey: ["serverAccess", serverUrl],
     queryFn: () => getServerAccess(),
-    enabled: !!serverUrl, // serverUrl이 있을 때만 실행
+    enabled: !!serverUrl && options?.enabled !== false, // serverUrl이 있고 enabled가 false가 아닐 때만 실행
     staleTime: 5 * 60 * 1000, // 5분간 fresh
     gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
   });
@@ -198,6 +203,39 @@ export const useCreateInviteCodeMutation = (serverUrl: string) => {
     },
     onError: (error) => {
       console.error("❌ 초대 코드 생성 실패:", error);
+    },
+  });
+};
+
+export const useUserMemberListQuery = (serverUrl: string) => {
+  const { execute: getMemberList } = useUserMemberListApi(serverUrl);
+
+  return useQuery({
+    queryKey: ["memberList", serverUrl],
+    queryFn: () => getMemberList(),
+    enabled: !!serverUrl,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+};
+
+export const useInviteProjectMutation = (
+  serverUrl: string,
+  projectPk: number
+) => {
+  const { execute: inviteProject } = useInviteProjectApi(serverUrl, projectPk);
+
+  return useMutation({
+    mutationFn: async (userEmails: string[]) => {
+      const memberEmails = userEmails.map((userEmail) => ({ userEmail }));
+      const result = await inviteProject(memberEmails);
+      return result;
+    },
+    onSuccess: (data) => {
+      console.log("🎉 프로젝트 초대 성공:", data);
+    },
+    onError: (error) => {
+      console.error("❌ 프로젝트 초대 실패:", error);
     },
   });
 };

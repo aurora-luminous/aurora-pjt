@@ -12,6 +12,7 @@ import { createChannelUrl } from "@/app/(server-setup)/utils/serverAccessUtils";
 import { useModal } from "@/app/(server-setup)/hooks/useModal";
 import AddChannelModal from "@/app/(server-setup)/components/AddChannelModal";
 import AddProjectModal from "@/app/(server-setup)/components/AddProjectModal";
+import AddProjectInviteModal from "@/app/(server-setup)/components/AddProjectInviteModal";
 import { useAdminSidebar } from "../hooks/useAdmin";
 import { UserInfo } from "./UserInfo";
 
@@ -35,7 +36,29 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   const serverUrl = serverInfo?.serverUrl;
   console.log("serverUrl", serverUrl);
   const projectListQuery = useProjectListQuery(serverUrl || "");
-  const { openChannelAddModal, openProjectAddModal } = useModal();
+  const { openChannelAddModal, openProjectAddModal, openProjectInviteModal } =
+    useModal();
+
+  // 프로젝트 추가 드롭다운 상태
+  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
+
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest(".project-dropdown")) {
+        setShowProjectDropdown(false);
+      }
+    };
+
+    if (showProjectDropdown) {
+      document.addEventListener("click", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [showProjectDropdown]);
 
   // Admin 페이지인지 확인
   const isAdminPage = pathname.includes("/admin");
@@ -174,10 +197,23 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   const handleAddProject = () => {
     if (!serverInfo?.serverUrl) return;
 
+    setShowProjectDropdown(false);
     openProjectAddModal({
       serverUrl: serverInfo.serverUrl,
       projectName: "",
       projectDescription: "",
+    });
+  };
+
+  // 프로젝트 초대 모달 열기
+  const handleInviteProject = () => {
+    if (!serverInfo?.serverUrl || !currentProject) return;
+
+    setShowProjectDropdown(false);
+    openProjectInviteModal({
+      serverUrl: serverInfo.serverUrl,
+      projectPk: currentProject.projectPk,
+      projectName: currentProject.projectName,
     });
   };
 
@@ -201,9 +237,9 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
       <div className="flex flex-col h-full bg-aurora-main rounded-tl-lg">
         <div className="flex flex-1">
           {/* 왼쪽: 프로젝트 목록 */}
-          <div className="w-16 bg-gray-800 flex flex-col py-3">
+          <div className="w-16 bg-gray-800 flex flex-col py-3 overflow-visible">
             {/* 프로젝트 목록 */}
-            <div className="flex-1 overflow-y-auto px-2">
+            <div className="flex-1 overflow-visible px-2">
               {projectListQuery.isLoading ? (
                 <div className="text-white text-xs text-center py-4">
                   로딩중...
@@ -234,16 +270,52 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                 ))
               )}
 
-              {/* 프로젝트 생성 버튼 */}
-              <div
-                onClick={handleAddProject}
-                className="mb-2 rounded cursor-pointer hover:bg-gray-700 transition-colors border-2 border-dashed border-gray-600 hover:border-gray-500"
-              >
-                <div className="flex items-center justify-center p-2">
-                  <div className="w-10 h-10 bg-gray-600 rounded flex items-center justify-center">
-                    <span className="text-white text-lg">+</span>
+              {/* 프로젝트 추가 드롭다운 */}
+              <div className="relative mb-2 project-dropdown">
+                <div
+                  onClick={() => setShowProjectDropdown(!showProjectDropdown)}
+                  className="rounded cursor-pointer hover:bg-gray-700 transition-colors border-2 border-dashed border-gray-600 hover:border-gray-500"
+                >
+                  <div className="flex items-center justify-center p-2">
+                    <div className="w-10 h-10 bg-gray-600 rounded flex items-center justify-center">
+                      <span className="text-white text-lg">+</span>
+                    </div>
                   </div>
                 </div>
+
+                {/* 드롭다운 메뉴 */}
+                {showProjectDropdown && (
+                  <div className="absolute top-full left-0 mt-1 w-48 bg-gray-700 rounded shadow-lg z-[9999] border border-gray-600">
+                    <button
+                      onClick={handleInviteProject}
+                      className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                    >
+                      <div className="flex items-center">
+                        <span className="mr-3">🔗</span>
+                        <div>
+                          <div className="font-medium">프로젝트 초대</div>
+                          <div className="text-xs text-gray-400">
+                            서버 멤버 초대하기
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={handleAddProject}
+                      className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors rounded-b"
+                    >
+                      <div className="flex items-center">
+                        <span className="mr-3">📁</span>
+                        <div>
+                          <div className="font-medium">프로젝트 생성</div>
+                          <div className="text-xs text-gray-400">
+                            새 프로젝트 만들기
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -451,6 +523,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
       {/* 모달들 - 원래 방식으로 사용 */}
       <AddChannelModal />
       <AddProjectModal />
+      <AddProjectInviteModal />
     </>
   );
 };

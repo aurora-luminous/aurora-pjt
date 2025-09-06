@@ -16,3 +16,19 @@ export interface ServerListItem {
 export interface InviteCode {
   inviteLink: string;
 }
+
+export interface MemberInfo {
+  status?: "Active" | "Inactive" | "Pending";
+  serverRole?: "member" | "admin" | "owner";
+  userInfo: UserInfo;
+}
+
+export interface UserInfo {
+  userName: string;
+  userEmail: string;
+  ProfileImageUrl: string;
+}
+
+export interface MemberEmail {
+  userEmail: string;
+}

@@ -1,98 +1,48 @@
 import { useState, useMemo, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { Member } from "../[server_id]/admin/components/MemberCard";
+import { useUserMemberListQuery } from "@/app/(server-setup)/hooks/useServerMutation";
 
 // 임시 데이터 (실제로는 API에서 가져올 데이터)
-const mockMembers: Member[] = [
-  {
-    id: "1",
-    userName: "김개발",
-    userEmail: "kim@example.com",
-    userAvatar: "",
-    role: "Owner",
-    joinDate: "2023-01-15",
-    status: "online",
-    isOwner: true,
-  },
-  {
-    id: "2",
-    userName: "이디자인",
-    userEmail: "lee@example.com",
-    userAvatar: "",
-    role: "Admin",
-    joinDate: "2023-02-20",
-    status: "away",
-  },
-  {
-    id: "3",
-    userName: "박기획",
-    userEmail: "park@example.com",
-    userAvatar: "",
-    role: "Member",
-    joinDate: "2023-03-10",
-    status: "online",
-  },
-  {
-    id: "4",
-    userName: "최마케팅",
-    userEmail: "choi@example.com",
-    userAvatar: "",
-    role: "Member",
-    joinDate: "2023-03-25",
-    status: "offline",
-  },
-  {
-    id: "5",
-    userName: "정퍼블리셔",
-    userEmail: "jung@example.com",
-    userAvatar: "",
-    role: "Member",
-    joinDate: "2023-04-01",
-    status: "dnd",
-  },
-];
 
 export const useMembersPage = () => {
   const params = useParams();
   const serverId = params.server_id as string;
 
   // 상태 관리
-  const [members] = useState<Member[]>(mockMembers);
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(
     new Set()
   );
   const [filterRole, setFilterRole] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [isLoading] = useState(false);
-  const [error] = useState<Error | null>(null);
+  const { data: memberList, isLoading, error: memberListError } = useUserMemberListQuery(serverId);
 
   // 필터링된 멤버 목록
   const filteredMembers = useMemo(() => {
-    return members.filter((member) => {
+    return memberList?.filter((member) => {
       // 검색 필터
       const matchesSearch =
         !searchQuery ||
-        member.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        member.userEmail.toLowerCase().includes(searchQuery.toLowerCase());
+        member.userInfo.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        member.userInfo.userEmail.toLowerCase().includes(searchQuery.toLowerCase());
 
       // 역할 필터
-      const matchesRole = filterRole === "all" || member.role === filterRole;
+      const matchesRole = filterRole === "all" || member.serverRole === filterRole;
 
       // 상태 필터
       const matchesStatus =
-        filterStatus === "all" || member.status === filterStatus;
+        filterStatus === "all" || member.status === filterStatus || member.status === "Active" || member.status === "Inactive" || member.status === "Pending";
 
       return matchesSearch && matchesRole && matchesStatus;
     });
-  }, [members, searchQuery, filterRole, filterStatus]);
+  }, [memberList, searchQuery, filterRole, filterStatus]);
 
   // 전체 선택 상태
   const selectedAll = useMemo(() => {
-    const selectableMembers = filteredMembers.filter((m) => !m.isOwner);
+    const selectableMembers = filteredMembers?.filter((m) => m.serverRole !== "owner");
     return (
-      selectableMembers.length > 0 &&
-      selectableMembers.every((member) => selectedMembers.has(member.id))
+      selectableMembers && selectableMembers.length > 0 &&
+      selectableMembers.every((member) => selectedMembers.has(member.userInfo.userName))
     );
   }, [filteredMembers, selectedMembers]);
 
@@ -116,8 +66,8 @@ export const useMembersPage = () => {
     (checked: boolean) => {
       if (checked) {
         const selectableMembers = filteredMembers
-          .filter((m) => !m.isOwner)
-          .map((m) => m.id);
+          ?.filter((m) => m.serverRole !== "owner")
+          .map((m) => m.userInfo.userName);
         setSelectedMembers(new Set(selectableMembers));
       } else {
         setSelectedMembers(new Set());
@@ -190,14 +140,14 @@ export const useMembersPage = () => {
 
   return {
     // 데이터
-    members,
+    memberList,
     filteredMembers,
     selectedMembers,
     filterRole,
     filterStatus,
     searchQuery,
     isLoading,
-    error,
+    memberListError,
     selectedAll,
 
     // 핸들러

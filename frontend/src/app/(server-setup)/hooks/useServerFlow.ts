@@ -1,5 +1,5 @@
 import { useAddServerMutation } from "./useServerMutation";
-import { ServerRequest } from "../types/Server";
+import { ServerRequest, ServerListItem } from "../types/Server";
 import { useRouter } from "next/navigation";
 import { ServerInfo } from "./useServer";
 import { useMutation } from "@tanstack/react-query";
@@ -120,6 +120,10 @@ export const useServerFlow = () => {
         projectName: firstProject.projectName,
         projectPk: firstProject.projectPk,
         channelName: targetChannel.channelName,
+        role:
+          serverList?.find(
+            (server: ServerListItem) => server.serverUrl === serverUrl
+          )?.serverRole || "",
       };
 
       if (typeof window !== "undefined") {

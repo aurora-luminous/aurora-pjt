@@ -8,8 +8,7 @@ import {
   useCreateChannelMutation,
 } from "./useServerMutation";
 import { createChannelUrl } from "../utils/serverAccessUtils";
-
-
+import { useServerListQuery } from "./useServerMutation";
 /**
  * 프로젝트 조회 및 채널 입장을 담당하는 훅
  * 사용 시점에 serverUrl을 알고 있어야 함
@@ -17,6 +16,7 @@ import { createChannelUrl } from "../utils/serverAccessUtils";
 export const useProjectNavigation = (serverUrl?: string) => {
   const router = useRouter();
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const serverListQuery = useServerListQuery(true);
 
   // 기본 mutation들 (serverUrl이 유효할 때만 활성화)
   // 빈 문자열이나 null/undefined일 때는 "DISABLED"로 설정하여 enabled 조건을 확실히 차단
@@ -117,6 +117,10 @@ export const useProjectNavigation = (serverUrl?: string) => {
           projectName: project.projectName,
           projectPk: project.projectPk,
           channelName: targetChannel.channelName,
+          role:
+            serverListQuery.data?.find(
+              (server) => server.serverUrl === serverUrl
+            )?.serverRole || "",
         };
 
         // sessionStorage에 서버 정보 저장

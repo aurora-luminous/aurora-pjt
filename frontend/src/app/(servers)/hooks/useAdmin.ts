@@ -3,6 +3,7 @@ import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
 import {
   useServerAccessQuery,
   usePatchServerAccessMutation,
+  useServerListQuery,
 } from "@/app/(server-setup)/hooks/useServerMutation";
 import { useMemo, useState, useCallback } from "react";
 import { ServerAccess } from "@/app/(servers)/types/ServerAccess";
@@ -47,12 +48,26 @@ export const useAdminSidebar = () => {
   const serverInfo = useCurrentServerInfo();
   const serverName = serverInfo?.serverName;
 
+  // 서버 목록을 조회하여 현재 사용자의 role 확인
+  const serverListQuery = useServerListQuery(true);
+
+  // 현재 서버에서의 사용자 role 찾기
+  const currentServerRole = serverListQuery.data?.find(
+    (server) => server.serverUrl === serverInfo?.serverUrl
+  )?.serverRole;
+
+  // 관리자 권한 확인 (owner 또는 admin)
+  const isAdmin =
+    currentServerRole === "owner" || currentServerRole === "admin";
+
   const {
     data: serverAccessList = [],
     isLoading,
     error,
     refetch,
-  } = useServerAccessQuery(serverUrl);
+  } = useServerAccessQuery(serverUrl, {
+    enabled: isAdmin, // 관리자 권한이 있을 때만 API 호출
+  });
 
   const pendingRequestsCount = useMemo(() => {
     return (
@@ -64,10 +79,11 @@ export const useAdminSidebar = () => {
   return {
     serverUrl,
     serverName,
-    isLoading,
-    error,
+    isLoading: isAdmin ? isLoading : false,
+    error: isAdmin ? error : null,
     refetch,
     pendingRequestsCount,
+    isAdmin, // 권한 정보도 반환
   };
 };
 
@@ -130,6 +146,20 @@ export const useJoinRequestsPage = () => {
   const params = useParams();
   const serverUrl = params.server_id as string;
 
+  const serverInfo = useCurrentServerInfo();
+
+  // 서버 목록을 조회하여 현재 사용자의 role 확인
+  const serverListQuery = useServerListQuery(true);
+
+  // 현재 서버에서의 사용자 role 찾기
+  const currentServerRole = serverListQuery.data?.find(
+    (server) => server.serverUrl === serverInfo?.serverUrl
+  )?.serverRole;
+
+  // 관리자 권한 확인 (owner 또는 admin)
+  const isAdmin =
+    currentServerRole === "owner" || currentServerRole === "admin";
+
   // 상태 관리
   const [selectedAll, setSelectedAll] = useState(false);
   const [selectedRequests, setSelectedRequests] = useState<Set<string>>(
@@ -139,13 +169,15 @@ export const useJoinRequestsPage = () => {
     "all" | "pending" | "approved" | "rejected"
   >("all");
 
-  // API 호출
+  // API 호출 - 관리자 권한이 있을 때만
   const {
     data: serverAccessList = [],
     isLoading,
     error,
     refetch,
-  } = useServerAccessQuery(serverUrl);
+  } = useServerAccessQuery(serverUrl, {
+    enabled: isAdmin, // 관리자 권한이 있을 때만 API 호출
+  });
 
   const patchServerAccessMutation = usePatchServerAccessMutation(serverUrl);
 
@@ -287,12 +319,15 @@ export const useJoinRequestsPage = () => {
     filterStatus,
 
     // 데이터
-    requests,
-    filteredRequests,
-    pendingCount,
-    isLoading,
-    error,
-    isProcessing,
+    requests: isAdmin ? requests : [],
+    filteredRequests: isAdmin ? filteredRequests : [],
+    pendingCount: isAdmin ? pendingCount : 0,
+    isLoading: isAdmin ? isLoading : false,
+    error: isAdmin ? error : null,
+    isProcessing: isAdmin ? isProcessing : false,
+
+    // 권한 정보
+    isAdmin,
 
     // 핸들러
     handleApprove,

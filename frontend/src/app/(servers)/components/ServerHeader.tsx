@@ -2,6 +2,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
+import { useServerListQuery } from "@/app/(server-setup)/hooks/useServerMutation";
 
 interface ServerHeaderProps {
   serverId: string;
@@ -18,9 +19,20 @@ export const ServerHeader: React.FC<ServerHeaderProps> = ({
 }) => {
   const serverInfo = useCurrentServerInfo();
 
+  // 서버 목록을 조회하여 현재 사용자의 role 확인
+  const serverListQuery = useServerListQuery(true);
+
+  // 현재 서버에서의 사용자 role 찾기
+  const currentServerRole = serverListQuery.data?.find(
+    (server) => server.serverUrl === serverInfo?.serverUrl
+  )?.serverRole;
+
   // 서버 정보 로딩 중일 때 기본값 사용
   const serverName = serverInfo?.serverName || "서버";
-  const channelName = serverInfo?.channelName || "채널";
+
+  // 관리자 권한 확인 (owner 또는 admin)
+  const isAdmin =
+    currentServerRole === "owner" || currentServerRole === "admin";
 
   return (
     <div className="h-12 bg-aurora-main flex items-center justify-between px-4">
@@ -68,32 +80,36 @@ export const ServerHeader: React.FC<ServerHeaderProps> = ({
           className="bg-white text-gray-500 placeholder-gray-500 px-3 py-1 rounded text-sm w-48 focus:outline-none focus:bg-blue-400"
         />
 
-        {/* 관리자 메뉴 버튼 */}
-        <Link
-          href={`/${serverId}/admin/join-requests`}
-          className="text-white hover:bg-blue-500 p-2 rounded transition-colors"
-          title="서버 관리"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-            />
-          </svg>
-        </Link>
+        {/* 관리자 메뉴 - owner나 admin만 표시 */}
+        {isAdmin && (
+          <>
+            <Link
+              href={`/${serverId}/admin/join-requests`}
+              className="text-white hover:bg-blue-500 p-2 rounded transition-colors"
+              title="서버 관리"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+            </Link>
+          </>
+        )}
 
         {/* 사이드바 토글 버튼 */}
         <button

@@ -31,7 +31,7 @@ export const useMembersPage = () => {
 
       // 상태 필터
       const matchesStatus =
-        filterStatus === "all" || member.status === filterStatus || member.status === "Active" || member.status === "Inactive" || member.status === "Pending";
+        filterStatus === "all" || member.pStatus === filterStatus || member.pStatus === "Active" || member.pStatus === "Inactive" || member.pStatus === "Pending";
 
       return matchesSearch && matchesRole && matchesStatus;
     });

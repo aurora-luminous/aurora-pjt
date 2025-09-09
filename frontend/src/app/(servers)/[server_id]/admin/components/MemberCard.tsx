@@ -75,7 +75,7 @@ const MemberCard: React.FC<MemberCardProps> = ({
               </div>
               <div
                 className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 ${getStatusColor(
-                  member.status || "offline"
+                  member.pStatus || "offline"
                 )} rounded-full border-2 border-gray-800`}
               ></div>
             </div>
@@ -144,7 +144,7 @@ const MemberCard: React.FC<MemberCardProps> = ({
           {/* 상태 */}
           <div className="col-span-2">
             <span className="text-gray-300 text-sm">
-              {getStatusText(member.status || "offline")}
+              {getStatusText(member.pStatus || "offline")}
             </span>
           </div>
 

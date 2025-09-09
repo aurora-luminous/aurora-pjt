@@ -122,3 +122,13 @@ export const useInviteProjectApi = (serverUrl: string, projectPk: number) => {
   });
 };
 
+export const useProjectMemberListApi = (
+  serverUrl: string,
+  projectPk: number
+) => {
+  return useApi<MemberInfo[], void>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/members`,
+    method: "GET",
+    axiosInstance: expressClient,
+  });
+};

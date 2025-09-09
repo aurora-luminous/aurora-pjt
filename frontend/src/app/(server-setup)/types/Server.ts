@@ -18,7 +18,7 @@ export interface InviteCode {
 }
 
 export interface MemberInfo {
-  status?: "Active" | "Inactive" | "Pending";
+  pStatus?: "Active" | "Inactive" | "Pending";
   serverRole?: "member" | "admin" | "owner";
   userInfo: UserInfo;
 }

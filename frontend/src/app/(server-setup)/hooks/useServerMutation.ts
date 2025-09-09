@@ -15,6 +15,7 @@ import {
   useCreateInviteCodeApi,
   useUserMemberListApi,
   useInviteProjectApi,
+  useProjectMemberListApi,
 } from "./useServerApi";
 
 export const useAddServerMutation = () => {
@@ -237,5 +238,23 @@ export const useInviteProjectMutation = (
     onError: (error) => {
       console.error("❌ 프로젝트 초대 실패:", error);
     },
+  });
+};
+
+export const useProjectMemberListQuery = (
+  serverUrl: string,
+  projectPk: number
+) => {
+  const { execute: getProjectMemberList } = useProjectMemberListApi(
+    serverUrl,
+    projectPk
+  );
+
+  return useQuery({
+    queryKey: ["projectMemberList", serverUrl, projectPk],
+    queryFn: () => getProjectMemberList(),
+    enabled: !!serverUrl && !!projectPk,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 };

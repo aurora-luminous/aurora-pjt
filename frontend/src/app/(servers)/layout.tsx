@@ -73,7 +73,6 @@ export default function ServersLayout({
             <UserSidebar
               activeTab={activeTab}
               setActiveTab={setActiveTab}
-              onlineUsers={onlineUsers}
               directMessages={directMessages}
               serverId={serverId}
               projectId={projectId}

@@ -15,7 +15,7 @@ export const useServerLayout = () => {
 
   // URL 파라미터
   const serverId = params.server_id as string;
-  const projectId = params.project_id as string;
+  const projectId = Number(params.project_id);
   const channelId = params.channel_id as string;
   const userId = params.user_id as string;
 
@@ -39,12 +39,12 @@ export const useServerLayout = () => {
   };
 
   // 현재 선택된 프로젝트인지 확인
-  const isProjectActive = (checkProjectId: string) => {
+  const isProjectActive = (checkProjectId: number) => {
     return pathname?.includes(`/projects/${checkProjectId}`);
   };
 
   // 프로젝트가 선택되었는지 확인
-  const isProjectSelected = Boolean(projectId && projectId !== "undefined");
+  const isProjectSelected = Boolean(projectId && projectId !== 0);
 
   // 사이드바 토글
   const toggleSidebar = () => {

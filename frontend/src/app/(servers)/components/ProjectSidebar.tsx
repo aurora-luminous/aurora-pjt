@@ -18,7 +18,7 @@ import { UserInfo } from "./UserInfo";
 
 interface ProjectSidebarProps {
   serverId: string;
-  projectId: string;
+  projectId: number;
   channelId: string;
   isProjectActive: (projectId: string) => boolean;
   isProjectSelected: boolean;
@@ -149,7 +149,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
 
     if (projectId) {
       // projectId를 숫자로 변환해서 projectPk와 매칭
-      const projectPkFromUrl = parseInt(projectId, 10);
+      const projectPkFromUrl = projectId;
 
       if (!isNaN(projectPkFromUrl)) {
         currentProj =

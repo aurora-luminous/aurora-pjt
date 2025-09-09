@@ -20,7 +20,7 @@ interface ProjectSidebarProps {
   serverId: string;
   projectId: number;
   channelId: string;
-  isProjectActive: (projectId: string) => boolean;
+  isProjectActive: (projectId: number) => boolean;
   isProjectSelected: boolean;
 }
 
@@ -254,7 +254,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                         ? "rounded-tr-lg rounded-br-lg rounded-bl-lg"
                         : "rounded"
                     } cursor-pointer transition-colors ${
-                      isProjectActive(project.projectPk.toString())
+                      isProjectActive(project.projectPk)
                         ? "bg-blue-600"
                         : "hover:bg-gray-700"
                     }`}

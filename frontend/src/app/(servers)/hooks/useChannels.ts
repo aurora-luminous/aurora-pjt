@@ -104,23 +104,7 @@ export const useChannels = (serverUrl?: string, projectPk?: number) => {
         const response = await expressClient.get(
           `/ex/servers/${finalServerUrl}/projects/${finalProjectPk}/channels`
         );
-        let channelList = response.data || [];
-
-        // 채널이 없으면 기본 채널 생성
-        if (channelList.length === 0) {
-          console.log("📺 기본 채널 생성 중...");
-          const newChannel = await createChannelMutation.mutateAsync({
-            channelKind: "text",
-            isPrivate: false,
-            channelRole: "member",
-            channelName: "general",
-          });
-
-          if (newChannel) {
-            channelList = [newChannel];
-            console.log("✅ 기본 채널 생성 완료");
-          }
-        }
+        const channelList = response.data || [];
 
         // Redux에 채널 저장
         dispatch(
@@ -151,7 +135,6 @@ export const useChannels = (serverUrl?: string, projectPk?: number) => {
     },
     [
       dispatch,
-      createChannelMutation,
       // channelState를 dependency에서 제거하여 무한 루프 방지
     ]
   );

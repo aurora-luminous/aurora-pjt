@@ -51,6 +51,9 @@ export class ChannelListDto {
 
 // 채널 생성 응답용
 export class ChannelCreateDto {
+  @ApiProperty({ description: '채널 PK' })
+  channelPk: number;
+
   @ApiProperty({ description: '채널명' })
   channelName: string;
 

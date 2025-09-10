@@ -2,6 +2,7 @@ import { Controller, Post, Get, Body, Param, ParseIntPipe, Patch, UseGuards } fr
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ServerCreationService } from '../services/server-creation.service';
 import { ServerInvitationService, ServerMemberInfoDto, ServerMemberDetailDto } from '../services/server-invitation.service';
+import { ServerMemberManagementService } from '../services/server-member-management.service';
 import { CreateServerDto, ServerListDto, ServerCreateResponseDto } from '../dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CurrentUser } from '../../auth/current-user.decorator';
@@ -13,6 +14,7 @@ export class ServerController {
   constructor(
     private readonly serverCreationService: ServerCreationService,
     private readonly serverInvitationService: ServerInvitationService,
+    private readonly serverMemberManagementService: ServerMemberManagementService,
   ) {}
 
   @Post()
@@ -207,6 +209,70 @@ export class ServerController {
     const requestUserPk = user.userPk;
     
     return await this.serverInvitationService.getServerMembersByUrl(serverUrl, requestUserPk);
+  }
+
+  @Patch(':serverUrl/members/roles')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '멤버 권한 일괄 변경 (Owner만)' })
+  async bulkUpdateMemberRoles(
+    @Param('serverUrl') serverUrl: string,
+    @Body() updateDto: {
+      changes: Array<{
+        userEmail: string;
+        newRole: 'member' | 'admin';
+      }>;
+    },
+    @CurrentUser() user: User
+  ): Promise<{ processed: number; failed: Array<{ userEmail: string; reason: string }>}> {
+    const ownerUserPk = user.userPk;
+
+    // serverUrl로 serverPk 조회
+    const server = await this.serverCreationService.getServerByUrl(serverUrl);
+
+    // 권한 일괄 변경 실행
+    const result = await this.serverMemberManagementService.bulkUpdateMemberRoles(        
+      server.serverPk,
+      updateDto.changes,
+      ownerUserPk
+    );
+
+    return {
+      processed: result.processed,
+      failed: result.failed
+    };
+  }
+
+  @Patch(':serverUrl/members/bulk-action')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '멤버 일괄 강퇴/밴 (Admin 이상)' })
+  @ApiResponse({ status: 200, description: '일괄 액션 처리 완료' })
+  async bulkMemberAction(
+    @Param('serverUrl') serverUrl: string,
+    @Body() actionDto: {
+      action: 'kick' | 'ban';
+      userEmails: string[];
+    },
+    @CurrentUser() user: User
+  ): Promise<{ processed: number; failed: Array<{ userEmail: string; reason: string }> }> {
+    const adminUserPk = user.userPk;
+    
+    // serverUrl로 serverPk 조회
+    const server = await this.serverCreationService.getServerByUrl(serverUrl);
+    
+    // 일괄 강퇴/밴 실행
+    const result = await this.serverMemberManagementService.bulkMemberAction(
+      server.serverPk,
+      actionDto.action,
+      actionDto.userEmails,
+      adminUserPk
+    );
+    
+    return {
+      processed: result.processed,
+      failed: result.failed
+    };
   }
 
 }

@@ -11,6 +11,7 @@ import { ServerCreationService } from './services/server-creation.service';
 import { ServerInvitationService } from './services/server-invitation.service';
 import { ServerController } from './controllers/server.controller';
 import { ProjectModule } from '../project/project.module';
+import { ServerMemberManagementService } from './services/server-member-management.service';
 
 @Module({
   imports: [
@@ -31,10 +32,12 @@ import { ProjectModule } from '../project/project.module';
   providers: [
     ServerCreationService,
     ServerInvitationService,
+    ServerMemberManagementService,
   ],
   exports: [
     ServerCreationService,
     ServerInvitationService,
+    ServerMemberManagementService,
   ],
 })
 export class ServerModule {}

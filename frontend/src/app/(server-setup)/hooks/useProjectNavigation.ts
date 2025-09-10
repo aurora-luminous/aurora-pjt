@@ -96,8 +96,8 @@ export const useProjectNavigation = (serverUrl?: string) => {
           targetChannel = await createChannelMutation.mutateAsync({
             channelKind: "text",
             isPrivate: false,
-            channelRole: "member",
             channelName: "general",
+            channelPk: 0,
           });
 
           console.log("✅ 기본 채널 생성 완료:", targetChannel);

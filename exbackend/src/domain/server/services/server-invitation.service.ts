@@ -605,9 +605,13 @@ export class ServerInvitationService {
       throw new ForbiddenException('Only server members can view member list');
     }
 
-    // 3. 승인된 멤버 목록 조회
+    // 3. 승인된 활성 멤버 목록 조회 (강퇴된 멤버 제외)
     const activeMembers = await this.serverMemberRepository.find({
-      where: { serverPk: server.serverPk, status: 'Approved' },
+      where: { 
+        serverPk: server.serverPk, 
+        status: 'Approved',
+        sStatus: 'Active'  // 강퇴되지 않은 멤버만
+      },
       relations: ['user'],
       order: { serverMemberPk: 'ASC' },
     });

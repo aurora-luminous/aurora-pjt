@@ -1,12 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useModal, ChannelData } from "../hooks/useModal";
-import { useCreateChannelMutation } from "../hooks/useServerMutation";
+import {
+  useCreateChannelMutation,
+  useInvitePrivateChannelMutation,
+  useProjectMemberListQuery,
+} from "../hooks/useServerMutation";
 import { useRouter } from "next/navigation";
 import { useChannels } from "@/app/(servers)/hooks/useChannels";
 import { createChannelUrl } from "../utils/serverAccessUtils";
+import { Channel } from "../types/Channel";
 
 const AddChannelModal = () => {
   const { isOpen, isChannelAddModal, close, data } = useModal();
@@ -17,14 +22,104 @@ const AddChannelModal = () => {
   const router = useRouter();
   const { addChannelToState } = useChannels(); // Redux 상태 업데이트용
 
+  // 채널 생성 후 멤버 초대를 위한 state
+  const [createdChannel, setCreatedChannel] = useState<Channel | null>(null);
+
+  // 멤버 초대를 위한 mutation (채널이 생성된 후에만 활성화)
+  const invitePrivateChannelMutation = useInvitePrivateChannelMutation(
+    (data as ChannelData)?.serverUrl || "",
+    (data as ChannelData)?.projectPk || 0,
+    createdChannel?.channelPk || 0
+  );
+
   const [channelName, setChannelName] = useState("");
   const [channelKind, setChannelKind] = useState<"text" | "voice" | "notice">(
     "text"
   );
   const [isPrivate, setIsPrivate] = useState(false);
+  const projectMemberListQuery = useProjectMemberListQuery(
+    (data as ChannelData)?.serverUrl || "",
+    (data as ChannelData)?.projectPk || 0
+  );
+  const projectMemberList = projectMemberListQuery.data || [];
+  const [selectedMembers, setSelectedMembers] = useState<Set<string>>(
+    new Set()
+  );
+
+  const handleMemberSelect = (userEmail: string) => {
+    const newSelectedMembers = new Set(selectedMembers);
+    if (newSelectedMembers.has(userEmail)) {
+      newSelectedMembers.delete(userEmail);
+    } else {
+      newSelectedMembers.add(userEmail);
+    }
+    setSelectedMembers(newSelectedMembers);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedMembers.size === projectMemberList.length) {
+      setSelectedMembers(new Set());
+    } else {
+      setSelectedMembers(
+        new Set(projectMemberList.map((member) => member.userInfo.userEmail))
+      );
+    }
+  };
 
   const channelData = data as ChannelData;
 
+  // 2단계: 채널 생성 완료 후 멤버 초대 및 후속 처리
+  useEffect(() => {
+    if (!createdChannel || !channelData) return;
+
+    const handleAfterChannelCreated = async () => {
+      try {
+        // 비공개 채널이고 선택된 멤버가 있으면 초대
+        if (isPrivate && selectedMembers.size > 0) {
+          try {
+            const userEmails = Array.from(selectedMembers);
+            await invitePrivateChannelMutation.mutateAsync(userEmails);
+            console.log(
+              `✅ ${selectedMembers.size}명의 멤버를 채널에 초대했습니다.`
+            );
+          } catch (error) {
+            console.error("❌ 채널 초대 실패:", error);
+            // 채널은 생성되었지만 초대에 실패한 경우에도 계속 진행
+          }
+        }
+
+        // Redux에 채널 추가
+        addChannelToState(createdChannel);
+
+        // 성공 시 모달 닫기
+        handleClose();
+
+        // 새 채널로 이동
+        const targetUrl = createChannelUrl(
+          channelData.serverUrl,
+          channelData.projectPk,
+          createdChannel.channelName,
+          createdChannel.channelKind
+        );
+
+        router.push(targetUrl);
+      } catch (error) {
+        console.error("❌ 채널 후속 처리 실패:", error);
+      }
+    };
+
+    handleAfterChannelCreated();
+  }, [
+    createdChannel,
+    isPrivate,
+    selectedMembers,
+    channelData,
+    invitePrivateChannelMutation,
+    addChannelToState,
+    router,
+  ]);
+
+  // 1단계: 채널 생성
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -35,7 +130,7 @@ const AddChannelModal = () => {
         channelName,
         channelKind,
         isPrivate,
-        channelRole: "member",
+        channelPk: channelData.channelPk,
       };
 
       console.log("🚀 채널 생성 시작:", newChannelData);
@@ -50,21 +145,8 @@ const AddChannelModal = () => {
 
       console.log("✅ 서버에서 채널 생성 성공:", newChannel);
 
-      // Redux에 채널 추가
-      addChannelToState(newChannel);
-
-      // 성공 시 모달 닫기
-      handleClose();
-
-      // 새 채널로 이동 - 유틸 함수 사용
-      const targetUrl = createChannelUrl(
-        channelData.serverUrl,
-        channelData.projectPk,
-        newChannel.channelName,
-        newChannel.channelKind
-      );
-
-      router.push(targetUrl);
+      // 생성된 채널을 state에 저장 (2단계 트리거)
+      setCreatedChannel(newChannel);
     } catch (error) {
       console.error("❌ 채널 생성 실패:", error);
     }
@@ -74,6 +156,8 @@ const AddChannelModal = () => {
     setChannelName("");
     setChannelKind("text");
     setIsPrivate(false);
+    setSelectedMembers(new Set());
+    setCreatedChannel(null);
     close();
   };
 
@@ -228,6 +312,99 @@ const AddChannelModal = () => {
                   <div className="w-11 h-6 bg-gray-500 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
               </div>
+              {/* 비공개 채널 멤버 초대 */}
+              {isPrivate && (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-white text-sm font-medium mb-2">
+                      채널에 초대할 멤버 선택
+                    </h3>
+                    <p className="text-gray-400 text-sm mb-3">
+                      이 비공개 채널에 접근할 수 있는 멤버를 선택하세요.
+                    </p>
+                  </div>
+
+                  {/* 전체 선택 */}
+                  <div className="flex items-center justify-between p-2 bg-gray-600 rounded">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={
+                          selectedMembers.size === projectMemberList.length &&
+                          projectMemberList.length > 0
+                        }
+                        onChange={handleSelectAll}
+                        className="mr-2 rounded border-gray-500 bg-gray-700"
+                      />
+                      <span className="text-white text-sm">전체 선택</span>
+                    </label>
+                    <span className="text-gray-400 text-sm">
+                      {selectedMembers.size}명 선택됨
+                    </span>
+                  </div>
+
+                  {/* 멤버 목록 */}
+                  <div className="max-h-40 overflow-y-auto space-y-2">
+                    {projectMemberListQuery.isLoading ? (
+                      <div className="text-center py-4">
+                        <div className="text-gray-400 text-sm">
+                          멤버 목록을 불러오는 중...
+                        </div>
+                      </div>
+                    ) : projectMemberList.length === 0 ? (
+                      <div className="text-center py-4">
+                        <div className="text-gray-400 text-sm">
+                          프로젝트 멤버가 없습니다.
+                        </div>
+                      </div>
+                    ) : (
+                      projectMemberList.map((member) => (
+                        <div
+                          key={member.userInfo.userEmail}
+                          onClick={() =>
+                            handleMemberSelect(member.userInfo.userEmail)
+                          }
+                          className="flex items-center p-2 bg-gray-600 rounded cursor-pointer hover:bg-gray-500 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedMembers.has(
+                              member.userInfo.userEmail
+                            )}
+                            onChange={() => {}} // onClick에서 처리
+                            className="mr-3 rounded border-gray-500 bg-gray-700"
+                          />
+                          <div className="flex items-center flex-1">
+                            <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center mr-2">
+                              {member.userInfo.ProfileImageUrl ? (
+                                <img
+                                  src={member.userInfo.ProfileImageUrl}
+                                  alt={member.userInfo.userName}
+                                  className="w-full h-full rounded-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-white text-xs font-semibold">
+                                  {member.userInfo.userName
+                                    .charAt(0)
+                                    .toUpperCase()}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <div className="text-white text-sm font-medium">
+                                {member.userInfo.userName}
+                              </div>
+                              <div className="text-gray-400 text-xs">
+                                {member.userInfo.userEmail}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* 버튼 */}
               <div className="flex justify-end space-x-3 pt-4">

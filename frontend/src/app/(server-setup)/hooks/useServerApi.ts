@@ -6,6 +6,7 @@ import {
   InviteCode,
   MemberInfo,
   MemberEmail,
+  ChannelMemberInfo,
 } from "../types/Server";
 import { expressClient } from "@/app/lib/axiosClient";
 import { Project } from "../types/Projcets";
@@ -129,6 +130,50 @@ export const useProjectMemberListApi = (
   return useApi<MemberInfo[], void>({
     endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/members`,
     method: "GET",
+    axiosInstance: expressClient,
+  });
+};
+
+export const useInvitePrivateChannelApi = (
+  serverUrl: string,
+  projectPk: number,
+  channelPk: number
+) => {
+  return useApi<{ message: string }, MemberEmail[]>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/invite`,
+    method: "POST",
+    axiosInstance: expressClient,
+  });
+};
+
+export const useChannelMemberListApi = (serverUrl: string, projectPk: number, channelPk: number) => {
+  return useApi<ChannelMemberInfo[], void>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/members`,
+    method: "GET",
+    axiosInstance: expressClient,
+  });
+};
+
+export const useKickChannelMemberApi = (serverUrl: string, projectPk: number, channelPk: number) => {
+  return useApi<{message: string}, MemberEmail[]>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/members`,
+    method: "DELETE",
+    axiosInstance: expressClient,
+  });
+};
+
+export const useBanChannelMemberApi = (serverUrl: string, projectPk: number, channelPk: number) => {
+  return useApi<{message: string}, MemberEmail[]>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/ban`,
+    method: "PATCH",
+    axiosInstance: expressClient,
+  });
+};
+
+export const useUnbanChannelMemberApi = (serverUrl: string, projectPk: number, channelPk: number) => {
+  return useApi<{message: string}, MemberEmail[]>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/unban`,
+    method: "PATCH",
     axiosInstance: expressClient,
   });
 };

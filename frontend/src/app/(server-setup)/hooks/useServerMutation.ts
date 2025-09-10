@@ -16,6 +16,11 @@ import {
   useUserMemberListApi,
   useInviteProjectApi,
   useProjectMemberListApi,
+  useInvitePrivateChannelApi,
+  useChannelMemberListApi,
+  useKickChannelMemberApi,
+  useBanChannelMemberApi,
+  useUnbanChannelMemberApi,
 } from "./useServerApi";
 
 export const useAddServerMutation = () => {
@@ -258,3 +263,63 @@ export const useProjectMemberListQuery = (
     gcTime: 10 * 60 * 1000,
   });
 };
+
+export const useInvitePrivateChannelMutation = (serverUrl: string, projectPk: number, channelPk: number) => {
+  const { execute: invitePrivateChannel } = useInvitePrivateChannelApi(serverUrl, projectPk, channelPk);
+
+  return useMutation({
+    mutationFn: async (userEmails: string[]) => {
+      const memberEmails = userEmails.map((userEmail) => ({ userEmail }));
+      const result = await invitePrivateChannel(memberEmails);
+      return result;
+    },
+  });
+};
+
+export const useChannelMemberListQuery = (serverUrl: string, projectPk: number, channelPk: number) => {
+  const { execute: getChannelMemberList } = useChannelMemberListApi(serverUrl, projectPk, channelPk);
+
+  return useQuery({
+    queryKey: ["channelMemberList", serverUrl, projectPk, channelPk],
+    queryFn: () => getChannelMemberList(),
+    enabled: !!serverUrl && !!projectPk && !!channelPk,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+export const useKickChannelMemberMutation = (serverUrl: string, projectPk: number, channelPk: number) => {
+  const { execute: kickChannelMember } = useKickChannelMemberApi(serverUrl, projectPk, channelPk);
+
+  return useMutation({
+    mutationFn: async (userEmails: string[]) => {
+      const memberEmails = userEmails.map((userEmail) => ({ userEmail }));
+      const result = await kickChannelMember(memberEmails);
+      return result;
+    },
+  });
+}
+
+export const useBanChannelMemberMutation = (serverUrl: string, projectPk: number, channelPk: number) => {
+  const { execute: banChannelMember } = useBanChannelMemberApi(serverUrl, projectPk, channelPk);
+
+  return useMutation({
+    mutationFn: async (userEmails: string[]) => {
+      const memberEmails = userEmails.map((userEmail) => ({ userEmail }));
+      const result = await banChannelMember(memberEmails);
+      return result;
+    },
+  });
+}
+
+export const useUnbanChannelMemberMutation = (serverUrl: string, projectPk: number, channelPk: number) => {
+  const { execute: unbanChannelMember } = useUnbanChannelMemberApi(serverUrl, projectPk, channelPk);
+
+  return useMutation({
+    mutationFn: async (userEmails: string[]) => {
+      const memberEmails = userEmails.map((userEmail) => ({ userEmail }));
+      const result = await unbanChannelMember(memberEmails);
+      return result;
+    },
+  });
+}

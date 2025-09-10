@@ -190,6 +190,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
       channelName: "",
       channelKind: "text",
       isPrivate: false,
+      channelPk: 0,
     });
   };
 

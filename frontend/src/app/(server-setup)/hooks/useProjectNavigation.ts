@@ -87,24 +87,7 @@ export const useProjectNavigation = (serverUrl?: string) => {
           channels = result.data;
         }
 
-        let targetChannel;
-
-        // 채널이 없으면 생성
-        if (!channels || channels.length === 0) {
-          console.log("📺 채널이 없어서 기본 채널 생성 중...");
-
-          targetChannel = await createChannelMutation.mutateAsync({
-            channelKind: "text",
-            isPrivate: false,
-            channelName: "general",
-            channelPk: 0,
-          });
-
-          console.log("✅ 기본 채널 생성 완료:", targetChannel);
-        } else {
-          targetChannel = channels[0];
-          console.log("📺 첫 번째 채널 선택:", targetChannel);
-        }
+        const targetChannel = channels?.[0];
 
         if (!targetChannel) {
           throw new Error("채널을 찾거나 생성할 수 없습니다.");

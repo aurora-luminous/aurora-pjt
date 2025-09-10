@@ -121,6 +121,7 @@ export class ChannelCreationService {
     }
 
     return {
+      channelPk: savedChannel.channelPk,
       channelName: savedChannel.channelName,
       channelKind: savedChannel.channelKind.toLowerCase() as 'text' | 'voice',
       isPrivate: savedChannel.isPrivate,

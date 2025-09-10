@@ -24,6 +24,7 @@ export interface ServerData {
 export interface ChannelData {
   serverUrl: string;
   projectPk: number;
+  channelPk: number;
   channelName: string;
   channelKind: "text" | "voice" | "notice";
   isPrivate: boolean;

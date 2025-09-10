@@ -32,3 +32,9 @@ export interface UserInfo {
 export interface MemberEmail {
   userEmail: string;
 }
+
+export interface ChannelMemberInfo {
+  cStatus?: "Active" | "Inactive" | "Banned";
+  channelRole?: "member" | "admin";
+  userInfo: UserInfo;
+}

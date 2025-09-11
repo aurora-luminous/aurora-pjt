@@ -291,9 +291,9 @@ export class ChannelInvitationService {
       }
     }
 
-    // 3. 활성 멤버 목록 조회
+    // 3. 모든 멤버 목록 조회 (모든 상태)
     const channelMembers = await this.channelMemberRepository.find({
-      where: { channelPk, cStatus: 'Active' },
+      where: { channelPk },
       relations: ['user'],
       order: { channelMemberPk: 'ASC' },
     });

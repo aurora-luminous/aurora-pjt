@@ -1,6 +1,5 @@
 services:
   frontend:
-    container_name: frontend-container
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -14,9 +13,7 @@ services:
       - aurora-network
     restart: unless-stopped
 
-
   backend-sp:
-    container_name: backend-sp-container
     build:
       context: ./spbackend
       dockerfile: Dockerfile
@@ -42,9 +39,8 @@ services:
     networks:
       - aurora-network
     restart: unless-stopped
-  
+
   backend-ex:
-    container_name: backend-ex-container
     build:
       context: ./ex
       dockerfile: Dockerfile
@@ -52,8 +48,8 @@ services:
     ports:
       - 3001:3001
     environment:
-      NODE_ENV: ${NODE_ENV:-development}
-      
+      NODE_ENV: ${NODE_ENV:-production}
+
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
       DB_USER: ${DB_USER}
@@ -118,6 +114,7 @@ services:
 
 networks:
   aurora-network:
+    name: aurora-network
     driver: bridge
 
 volumes:

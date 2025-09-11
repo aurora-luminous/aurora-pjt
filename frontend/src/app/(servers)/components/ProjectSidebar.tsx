@@ -15,6 +15,7 @@ import AddChannelModal from "@/app/(server-setup)/components/AddChannelModal";
 import AddProjectModal from "@/app/(server-setup)/components/AddProjectModal";
 import AddProjectInviteModal from "@/app/(server-setup)/components/AddProjectInviteModal";
 import { ProjectManageModal } from "@/app/(server-setup)/components/ProjectManageModal";
+import { ChannelManageModal } from "@/app/(server-setup)/components/ChannelManageModal";
 import { useAdminSidebar } from "../hooks/useAdmin";
 import { UserInfo } from "./UserInfo";
 import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
@@ -44,10 +45,13 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     openProjectAddModal,
     openProjectInviteModal,
     openProjectManageModal,
+    openChannelManageModal,
   } = useModal();
 
   // 프로젝트 추가 드롭다운 상태
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
+  // 채널 드롭다운 상태
+  const [showChannelDropdown, setShowChannelDropdown] = useState(false);
 
   const memberInfo = useProjectMemberListQuery(serverUrl || "", projectId);
 
@@ -63,16 +67,19 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
       if (!target.closest(".project-dropdown")) {
         setShowProjectDropdown(false);
       }
+      if (!target.closest(".channel-dropdown")) {
+        setShowChannelDropdown(false);
+      }
     };
 
-    if (showProjectDropdown) {
+    if (showProjectDropdown || showChannelDropdown) {
       document.addEventListener("click", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("click", handleClickOutside);
     };
-  }, [showProjectDropdown]);
+  }, [showProjectDropdown, showChannelDropdown]);
 
   // Admin 페이지인지 확인
   const isAdminPage = pathname.includes("/admin");
@@ -198,6 +205,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   const handleAddChannel = () => {
     if (!serverInfo?.serverUrl || !currentProject) return;
 
+    setShowChannelDropdown(false);
     openChannelAddModal({
       serverUrl: serverInfo.serverUrl,
       projectPk: currentProject.projectPk,
@@ -237,6 +245,25 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     openProjectManageModal({
       serverUrl: serverUrl || "",
       projectPk: projectId,
+    });
+  };
+
+  // 채널 관리 모달 열기
+  const handleChannelManage = () => {
+    if (currentProjectRole !== "admin") return;
+
+    // 현재 채널 찾기 (디코딩된 채널 ID로)
+    const currentChannel = channels.find(
+      (channel) => channel.channelName === decodedChannelId
+    );
+
+    if (!currentChannel || !serverInfo?.serverUrl || !currentProject) return;
+
+    setShowChannelDropdown(false);
+    openChannelManageModal({
+      serverUrl: serverInfo.serverUrl,
+      projectPk: currentProject.projectPk,
+      channelPk: currentChannel.channelPk,
     });
   };
 
@@ -377,12 +404,53 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                         "프로젝트"}
                   </h1>
                   {!isAdminPage && (
-                    <button
-                      onClick={handleAddChannel}
-                      className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white hover:bg-gray-500 transition-colors"
-                    >
-                      +
-                    </button>
+                    <div className="relative channel-dropdown">
+                      <button
+                        onClick={() =>
+                          setShowChannelDropdown(!showChannelDropdown)
+                        }
+                        className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white hover:bg-gray-500 transition-colors"
+                      >
+                        +
+                      </button>
+
+                      {/* 채널 드롭다운 메뉴 */}
+                      {showChannelDropdown && (
+                        <div className="absolute top-full right-0 mt-1 w-48 bg-gray-700 rounded shadow-lg z-[9999] border border-gray-600">
+                          <button
+                            onClick={handleAddChannel}
+                            className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                          >
+                            <div className="flex items-center">
+                              <span className="mr-3">📁</span>
+                              <div>
+                                <div className="font-medium">채널 생성</div>
+                                <div className="text-xs text-gray-400">
+                                  새 채널 만들기
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                          {currentProjectRole === "admin" &&
+                            decodedChannelId && (
+                              <button
+                                onClick={handleChannelManage}
+                                className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors rounded-b"
+                              >
+                                <div className="flex items-center">
+                                  <span className="mr-3">⚙️</span>
+                                  <div>
+                                    <div className="font-medium">채널 관리</div>
+                                    <div className="text-xs text-gray-400">
+                                      현재 채널 설정하기
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+                            )}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -565,6 +633,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
 
       {/* 모달들 - 원래 방식으로 사용 */}
       <ProjectManageModal />
+      <ChannelManageModal />
       <AddChannelModal />
       <AddProjectModal />
       <AddProjectInviteModal />

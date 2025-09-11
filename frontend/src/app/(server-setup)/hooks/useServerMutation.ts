@@ -21,6 +21,9 @@ import {
   useKickChannelMemberApi,
   useBanChannelMemberApi,
   useUnbanChannelMemberApi,
+  useLeaveProjectApi,
+  useBanProjectMemberApi,
+  useUnbanProjectMemberApi,
 } from "./useServerApi";
 
 export const useAddServerMutation = () => {
@@ -264,8 +267,63 @@ export const useProjectMemberListQuery = (
   });
 };
 
-export const useInvitePrivateChannelMutation = (serverUrl: string, projectPk: number, channelPk: number) => {
-  const { execute: invitePrivateChannel } = useInvitePrivateChannelApi(serverUrl, projectPk, channelPk);
+export const useLeaveProjectMutation = (
+  serverUrl: string,
+  projectPk: number
+) => {
+  const { execute: leaveProject } = useLeaveProjectApi(serverUrl, projectPk);
+
+  return useMutation({
+    mutationFn: async (userEmail: string) => {
+      const result = await leaveProject({ userEmail });
+      return result;
+    },
+  });
+};
+
+export const useBanProjectMemberMutation = (
+  serverUrl: string,
+  projectPk: number
+) => {
+  const { execute: banProjectMember } = useBanProjectMemberApi(
+    serverUrl,
+    projectPk
+  );
+  return useMutation({
+    mutationFn: async (userEmail: string) => {
+      const result = await banProjectMember({ userEmail });
+      return result;
+    },
+  });
+};
+
+export const useUnbanProjectMemberMutation = (
+  serverUrl: string,
+  projectPk: number
+) => {
+  const { execute: unbanProjectMember } = useUnbanProjectMemberApi(
+    serverUrl,
+    projectPk
+  );
+
+  return useMutation({
+    mutationFn: async (userEmail: string) => {
+      const result = await unbanProjectMember({ userEmail });
+      return result;
+    },
+  });
+};
+
+export const useInvitePrivateChannelMutation = (
+  serverUrl: string,
+  projectPk: number,
+  channelPk: number
+) => {
+  const { execute: invitePrivateChannel } = useInvitePrivateChannelApi(
+    serverUrl,
+    projectPk,
+    channelPk
+  );
 
   return useMutation({
     mutationFn: async (userEmails: string[]) => {
@@ -276,8 +334,16 @@ export const useInvitePrivateChannelMutation = (serverUrl: string, projectPk: nu
   });
 };
 
-export const useChannelMemberListQuery = (serverUrl: string, projectPk: number, channelPk: number) => {
-  const { execute: getChannelMemberList } = useChannelMemberListApi(serverUrl, projectPk, channelPk);
+export const useChannelMemberListQuery = (
+  serverUrl: string,
+  projectPk: number,
+  channelPk: number
+) => {
+  const { execute: getChannelMemberList } = useChannelMemberListApi(
+    serverUrl,
+    projectPk,
+    channelPk
+  );
 
   return useQuery({
     queryKey: ["channelMemberList", serverUrl, projectPk, channelPk],
@@ -286,10 +352,18 @@ export const useChannelMemberListQuery = (serverUrl: string, projectPk: number, 
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
-}
+};
 
-export const useKickChannelMemberMutation = (serverUrl: string, projectPk: number, channelPk: number) => {
-  const { execute: kickChannelMember } = useKickChannelMemberApi(serverUrl, projectPk, channelPk);
+export const useKickChannelMemberMutation = (
+  serverUrl: string,
+  projectPk: number,
+  channelPk: number
+) => {
+  const { execute: kickChannelMember } = useKickChannelMemberApi(
+    serverUrl,
+    projectPk,
+    channelPk
+  );
 
   return useMutation({
     mutationFn: async (userEmails: string[]) => {
@@ -298,10 +372,18 @@ export const useKickChannelMemberMutation = (serverUrl: string, projectPk: numbe
       return result;
     },
   });
-}
+};
 
-export const useBanChannelMemberMutation = (serverUrl: string, projectPk: number, channelPk: number) => {
-  const { execute: banChannelMember } = useBanChannelMemberApi(serverUrl, projectPk, channelPk);
+export const useBanChannelMemberMutation = (
+  serverUrl: string,
+  projectPk: number,
+  channelPk: number
+) => {
+  const { execute: banChannelMember } = useBanChannelMemberApi(
+    serverUrl,
+    projectPk,
+    channelPk
+  );
 
   return useMutation({
     mutationFn: async (userEmails: string[]) => {
@@ -310,10 +392,18 @@ export const useBanChannelMemberMutation = (serverUrl: string, projectPk: number
       return result;
     },
   });
-}
+};
 
-export const useUnbanChannelMemberMutation = (serverUrl: string, projectPk: number, channelPk: number) => {
-  const { execute: unbanChannelMember } = useUnbanChannelMemberApi(serverUrl, projectPk, channelPk);
+export const useUnbanChannelMemberMutation = (
+  serverUrl: string,
+  projectPk: number,
+  channelPk: number
+) => {
+  const { execute: unbanChannelMember } = useUnbanChannelMemberApi(
+    serverUrl,
+    projectPk,
+    channelPk
+  );
 
   return useMutation({
     mutationFn: async (userEmails: string[]) => {
@@ -322,4 +412,4 @@ export const useUnbanChannelMemberMutation = (serverUrl: string, projectPk: numb
       return result;
     },
   });
-}
+};

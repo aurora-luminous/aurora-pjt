@@ -7,6 +7,7 @@ import {
   MemberInfo,
   MemberEmail,
   ChannelMemberInfo,
+  ProjectMemberInfo,
 } from "../types/Server";
 import { expressClient } from "@/app/lib/axiosClient";
 import { Project } from "../types/Projcets";
@@ -127,9 +128,39 @@ export const useProjectMemberListApi = (
   serverUrl: string,
   projectPk: number
 ) => {
-  return useApi<MemberInfo[], void>({
+  return useApi<ProjectMemberInfo[], void>({
     endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/members`,
     method: "GET",
+    axiosInstance: expressClient,
+  });
+};
+
+export const useLeaveProjectApi = (serverUrl: string, projectPk: number) => {
+  return useApi<{ message: string }, MemberEmail>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/members/remove`,
+    method: "PATCH",
+    axiosInstance: expressClient,
+  });
+};
+
+export const useBanProjectMemberApi = (
+  serverUrl: string,
+  projectPk: number
+) => {
+  return useApi<{ message: string }, MemberEmail>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/members/ban`,
+    method: "PATCH",
+    axiosInstance: expressClient,
+  });
+};
+
+export const useUnbanProjectMemberApi = (
+  serverUrl: string,
+  projectPk: number
+) => {
+  return useApi<{ message: string }, MemberEmail>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/members/unban`,
+    method: "PATCH",
     axiosInstance: expressClient,
   });
 };
@@ -146,7 +177,11 @@ export const useInvitePrivateChannelApi = (
   });
 };
 
-export const useChannelMemberListApi = (serverUrl: string, projectPk: number, channelPk: number) => {
+export const useChannelMemberListApi = (
+  serverUrl: string,
+  projectPk: number,
+  channelPk: number
+) => {
   return useApi<ChannelMemberInfo[], void>({
     endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/members`,
     method: "GET",
@@ -154,24 +189,36 @@ export const useChannelMemberListApi = (serverUrl: string, projectPk: number, ch
   });
 };
 
-export const useKickChannelMemberApi = (serverUrl: string, projectPk: number, channelPk: number) => {
-  return useApi<{message: string}, MemberEmail[]>({
+export const useKickChannelMemberApi = (
+  serverUrl: string,
+  projectPk: number,
+  channelPk: number
+) => {
+  return useApi<{ message: string }, MemberEmail[]>({
     endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/members`,
     method: "DELETE",
     axiosInstance: expressClient,
   });
 };
 
-export const useBanChannelMemberApi = (serverUrl: string, projectPk: number, channelPk: number) => {
-  return useApi<{message: string}, MemberEmail[]>({
+export const useBanChannelMemberApi = (
+  serverUrl: string,
+  projectPk: number,
+  channelPk: number
+) => {
+  return useApi<{ message: string }, MemberEmail[]>({
     endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/ban`,
     method: "PATCH",
     axiosInstance: expressClient,
   });
 };
 
-export const useUnbanChannelMemberApi = (serverUrl: string, projectPk: number, channelPk: number) => {
-  return useApi<{message: string}, MemberEmail[]>({
+export const useUnbanChannelMemberApi = (
+  serverUrl: string,
+  projectPk: number,
+  channelPk: number
+) => {
+  return useApi<{ message: string }, MemberEmail[]>({
     endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/unban`,
     method: "PATCH",
     axiosInstance: expressClient,

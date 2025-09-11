@@ -5,6 +5,7 @@ import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
 import {
   useProjectListQuery,
   useChannelListQuery,
+  useProjectMemberListQuery,
 } from "@/app/(server-setup)/hooks/useServerMutation";
 import { Project } from "@/app/(server-setup)/types/Projcets";
 import { Channel } from "@/app/(server-setup)/types/Channel";
@@ -13,8 +14,10 @@ import { useModal } from "@/app/(server-setup)/hooks/useModal";
 import AddChannelModal from "@/app/(server-setup)/components/AddChannelModal";
 import AddProjectModal from "@/app/(server-setup)/components/AddProjectModal";
 import AddProjectInviteModal from "@/app/(server-setup)/components/AddProjectInviteModal";
+import { ProjectManageModal } from "@/app/(server-setup)/components/ProjectManageModal";
 import { useAdminSidebar } from "../hooks/useAdmin";
 import { UserInfo } from "./UserInfo";
+import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
 
 interface ProjectSidebarProps {
   serverId: string;
@@ -36,12 +39,23 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   const serverUrl = serverInfo?.serverUrl;
   console.log("serverUrl", serverUrl);
   const projectListQuery = useProjectListQuery(serverUrl || "");
-  const { openChannelAddModal, openProjectAddModal, openProjectInviteModal } =
-    useModal();
+  const {
+    openChannelAddModal,
+    openProjectAddModal,
+    openProjectInviteModal,
+    openProjectManageModal,
+  } = useModal();
 
   // 프로젝트 추가 드롭다운 상태
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
 
+  const memberInfo = useProjectMemberListQuery(serverUrl || "", projectId);
+
+  const userInfo = useGetUserInfoQuery();
+  const { data: userInfoData } = userInfo;
+  const currentProjectRole = memberInfo.data?.find(
+    (member) => member.userInfo.userEmail === userInfoData?.userEmail
+  )?.projectRole;
   // 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -218,6 +232,14 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     });
   };
 
+  const handleProjectManage = () => {
+    if (currentProjectRole !== "admin") return;
+    openProjectManageModal({
+      serverUrl: serverUrl || "",
+      projectPk: projectId,
+    });
+  };
+
   // 채널 링크 생성 함수 (채널 타입별 경로 구분) - 유틸 함수 사용
   const createChannelLink = (channel: Channel) => {
     return createChannelUrl(
@@ -303,7 +325,11 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                     </button>
                     <button
                       onClick={handleAddProject}
-                      className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors rounded-b"
+                      className={`block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors ${
+                        currentProjectRole === "admin"
+                          ? "border-b border-gray-600"
+                          : "rounded-b"
+                      }`}
                     >
                       <div className="flex items-center">
                         <span className="mr-3">📁</span>
@@ -315,6 +341,22 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                         </div>
                       </div>
                     </button>
+                    {currentProjectRole === "admin" && (
+                      <button
+                        onClick={handleProjectManage}
+                        className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors rounded-b"
+                      >
+                        <div className="flex items-center">
+                          <span className="mr-3">⚙️</span>
+                          <div>
+                            <div className="font-medium">프로젝트 관리</div>
+                            <div className="text-xs text-gray-400">
+                              프로젝트 설정하기
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -522,6 +564,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
       </div>
 
       {/* 모달들 - 원래 방식으로 사용 */}
+      <ProjectManageModal />
       <AddChannelModal />
       <AddProjectModal />
       <AddProjectInviteModal />

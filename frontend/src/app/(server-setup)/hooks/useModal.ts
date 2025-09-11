@@ -10,6 +10,7 @@ export type ModalType =
   | "CHANNEL_ADD"
   | "PROJECT_ADD"
   | "PROJECT_INVITE"
+  | "PROJECT_MANAGE"
   | null;
 
 // 서버 데이터 타입 정의
@@ -44,11 +45,23 @@ export interface ProjectInviteData {
   projectName: string;
 }
 
+// 프로젝트 관리 데이터 타입 정의
+export interface ProjectManageData {
+  serverUrl: string;
+  projectPk: number;
+}
+
 // 모달 상태 인터페이스
 export interface ModalState {
   isOpen: boolean;
   type: ModalType;
-  data: ServerData | ChannelData | ProjectData | ProjectInviteData | null;
+  data:
+    | ServerData
+    | ChannelData
+    | ProjectData
+    | ProjectInviteData
+    | ProjectManageData
+    | null;
   loading: boolean;
   error: string | null;
 }
@@ -72,7 +85,12 @@ const modalSlice = createSlice({
       state,
       action: PayloadAction<{
         type: ModalType;
-        data?: ServerData | ChannelData | ProjectData | ProjectInviteData;
+        data?:
+          | ServerData
+          | ChannelData
+          | ProjectData
+          | ProjectInviteData
+          | ProjectManageData;
       }>
     ) => {
       state.isOpen = true;
@@ -94,7 +112,11 @@ const modalSlice = createSlice({
     updateModalData: (
       state,
       action: PayloadAction<
-        ServerData | ChannelData | ProjectData | ProjectInviteData
+        | ServerData
+        | ChannelData
+        | ProjectData
+        | ProjectInviteData
+        | ProjectManageData
       >
     ) => {
       state.data = action.payload;
@@ -167,6 +189,11 @@ export const useModal = () => {
       dispatch(openModal({ type: "PROJECT_INVITE", data: projectInviteData }));
     },
 
+    // 프로젝트 관리 모달 열기
+    openProjectManageModal: (projectManageData: ProjectManageData) => {
+      dispatch(openModal({ type: "PROJECT_MANAGE", data: projectManageData }));
+    },
+
     // 모달 닫기
     close: () => {
       dispatch(closeModal());
@@ -174,7 +201,12 @@ export const useModal = () => {
 
     // 모달 데이터 업데이트
     updateData: (
-      data: ServerData | ChannelData | ProjectData | ProjectInviteData
+      data:
+        | ServerData
+        | ChannelData
+        | ProjectData
+        | ProjectInviteData
+        | ProjectManageData
     ) => {
       dispatch(updateModalData(data));
     },
@@ -218,5 +250,6 @@ export const useModal = () => {
     isChannelAddModal: modalState.type === "CHANNEL_ADD",
     isProjectAddModal: modalState.type === "PROJECT_ADD",
     isProjectInviteModal: modalState.type === "PROJECT_INVITE",
+    isProjectManageModal: modalState.type === "PROJECT_MANAGE",
   };
 };

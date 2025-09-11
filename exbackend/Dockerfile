@@ -28,4 +28,4 @@ RUN npm ci --omit=dev
 COPY --from=build --chown=node:node /app/dist ./dist
 
 EXPOSE 3001
-CMD ["node", "dist/main.js"]   # ← Nest 엔트리포인트
+CMD ["node", "dist/main.js"]

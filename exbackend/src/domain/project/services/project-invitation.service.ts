@@ -204,9 +204,9 @@ export class ProjectInvitationService {
       throw new ForbiddenException('Only project members can view member list');
     }
 
-    // 3. 활성 멤버 목록 조회
+    // 3. 모든 멤버 목록 조회 (모든 상태)
     const projectMembers = await this.projectMemberRepository.find({
-      where: { projectPk, pStatus: 'Active' },
+      where: { projectPk },
       relations: ['user'],
       order: { projectMemberPk: 'ASC' },
     });

@@ -147,19 +147,19 @@ export const UserSidebar: React.FC<UserSidebarProps> = ({
 
             {/* 바쁨 사용자 섹션 */}
             {projectMemberList &&
-              projectMemberList?.filter((u) => u.pStatus === "Pending").length >
+              projectMemberList?.filter((u) => u.pStatus === "Banned").length >
                 0 && (
                 <div>
                   <h3 className="text-white text-sm font-medium mb-3">
                     바쁨 ———{" "}
                     {
-                      projectMemberList?.filter((u) => u.pStatus === "Pending")
+                      projectMemberList?.filter((u) => u.pStatus === "Banned")
                         .length
                     }
                   </h3>
                   <div className="space-y-2">
                     {projectMemberList
-                      ?.filter((member) => member.pStatus === "Pending")
+                      ?.filter((member) => member.pStatus === "Banned")
                       .map((member) => (
                         <div
                           key={member.userInfo.userEmail}

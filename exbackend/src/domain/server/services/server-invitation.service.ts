@@ -413,7 +413,7 @@ export class ServerInvitationService {
     };
   }
 
-  // 서버의 활성 멤버 목록 조회 (Approved 상태만)
+  // 서버 멤버 목록 조회 (모든 상태)
   async getActiveServerMembers(serverPk: number, requestUserPk: number): Promise<PendingMemberDto[]> {
     // 1. 서버 존재 확인
     const server = await this.serverRepository.findOne({
@@ -437,14 +437,14 @@ export class ServerInvitationService {
       throw new ForbiddenException('Only server members can view member list');
     }
 
-    // 3. 활성 멤버 목록 조회 (Approved 상태만)
-    const activeMembers = await this.serverMemberRepository.find({
-      where: { serverPk, status: 'Approved' },
+    // 3. 모든 멤버 목록 조회 (모든 상태)
+    const allMembers = await this.serverMemberRepository.find({
+      where: { serverPk },
       relations: ['user'],
       order: { serverMemberPk: 'ASC' },
     });
 
-    return activeMembers.map(member => ({
+    return allMembers.map(member => ({
       status: member.status,
       userInfo: {
         user_pk: member.user.userPk,
@@ -605,13 +605,9 @@ export class ServerInvitationService {
       throw new ForbiddenException('Only server members can view member list');
     }
 
-    // 3. 승인된 활성 멤버 목록 조회 (강퇴된 멤버 제외)
-    const activeMembers = await this.serverMemberRepository.find({
-      where: { 
-        serverPk: server.serverPk, 
-        status: 'Approved',
-        sStatus: 'Active'  // 강퇴되지 않은 멤버만
-      },
+    // 3. 모든 멤버 목록 조회 (모든 상태)
+    const allMembers = await this.serverMemberRepository.find({
+      where: { serverPk: server.serverPk },
       relations: ['user'],
       order: { serverMemberPk: 'ASC' },
     });
@@ -621,7 +617,7 @@ export class ServerInvitationService {
 
     if (isAdmin) {
       // Admin/Owner: 상세 정보 포함
-      return activeMembers.map(member => ({
+      return allMembers.map(member => ({
         status: MemberStatusUtils.serverToMemberStatus(member.status as ServerMemberStatus),
         serverRole: member.serverRole,
         userInfo: {
@@ -632,7 +628,7 @@ export class ServerInvitationService {
       }));
     } else {
       // Member: 기본 정보만
-      return activeMembers.map(member => ({
+      return allMembers.map(member => ({
         userInfo: {
           userName: member.user.userName,
           userEmail: member.user.userEmail,

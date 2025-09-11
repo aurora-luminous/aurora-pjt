@@ -194,7 +194,7 @@ export const useKickChannelMemberApi = (
   projectPk: number,
   channelPk: number
 ) => {
-  return useApi<{ message: string }, MemberEmail[]>({
+  return useApi<{ message: string }, MemberEmail>({
     endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/members`,
     method: "DELETE",
     axiosInstance: expressClient,
@@ -206,8 +206,8 @@ export const useBanChannelMemberApi = (
   projectPk: number,
   channelPk: number
 ) => {
-  return useApi<{ message: string }, MemberEmail[]>({
-    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/ban`,
+  return useApi<{ message: string }, MemberEmail>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/members/ban`,
     method: "PATCH",
     axiosInstance: expressClient,
   });
@@ -218,8 +218,8 @@ export const useUnbanChannelMemberApi = (
   projectPk: number,
   channelPk: number
 ) => {
-  return useApi<{ message: string }, MemberEmail[]>({
-    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/unban`,
+  return useApi<{ message: string }, MemberEmail>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/members/unban`,
     method: "PATCH",
     axiosInstance: expressClient,
   });

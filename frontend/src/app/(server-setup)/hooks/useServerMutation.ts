@@ -366,9 +366,8 @@ export const useKickChannelMemberMutation = (
   );
 
   return useMutation({
-    mutationFn: async (userEmails: string[]) => {
-      const memberEmails = userEmails.map((userEmail) => ({ userEmail }));
-      const result = await kickChannelMember(memberEmails);
+    mutationFn: async (userEmail: string) => {
+      const result = await kickChannelMember({ userEmail });
       return result;
     },
   });
@@ -386,9 +385,8 @@ export const useBanChannelMemberMutation = (
   );
 
   return useMutation({
-    mutationFn: async (userEmails: string[]) => {
-      const memberEmails = userEmails.map((userEmail) => ({ userEmail }));
-      const result = await banChannelMember(memberEmails);
+    mutationFn: async (userEmail: string) => {
+      const result = await banChannelMember({ userEmail });
       return result;
     },
   });
@@ -406,9 +404,8 @@ export const useUnbanChannelMemberMutation = (
   );
 
   return useMutation({
-    mutationFn: async (userEmails: string[]) => {
-      const memberEmails = userEmails.map((userEmail) => ({ userEmail }));
-      const result = await unbanChannelMember(memberEmails);
+    mutationFn: async (userEmail: string) => {
+      const result = await unbanChannelMember({ userEmail });
       return result;
     },
   });

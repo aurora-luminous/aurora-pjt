@@ -38,3 +38,9 @@ export interface ChannelMemberInfo {
   channelRole?: "member" | "admin";
   userInfo: UserInfo;
 }
+
+export interface ProjectMemberInfo {
+  pStatus?: "Active" | "Inactive" | "Banned";
+  projectRole?: "member" | "admin";
+  userInfo: UserInfo;
+}

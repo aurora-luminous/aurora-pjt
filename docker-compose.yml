@@ -10,7 +10,7 @@ services:
     environment:
       - NODE_ENV=production
     command: npm start
-    networks:w
+    networks:
       - aurora-network
     restart: unless-stopped
 

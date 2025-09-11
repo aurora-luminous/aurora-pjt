@@ -11,6 +11,7 @@ export type ModalType =
   | "PROJECT_ADD"
   | "PROJECT_INVITE"
   | "PROJECT_MANAGE"
+  | "CHANNEL_MANAGE"
   | null;
 
 // 서버 데이터 타입 정의
@@ -51,6 +52,13 @@ export interface ProjectManageData {
   projectPk: number;
 }
 
+// 채널 관리 데이터 타입 정의
+export interface ChannelManageData {
+  serverUrl: string;
+  projectPk: number;
+  channelPk: number;
+}
+
 // 모달 상태 인터페이스
 export interface ModalState {
   isOpen: boolean;
@@ -61,6 +69,7 @@ export interface ModalState {
     | ProjectData
     | ProjectInviteData
     | ProjectManageData
+    | ChannelManageData
     | null;
   loading: boolean;
   error: string | null;
@@ -90,7 +99,8 @@ const modalSlice = createSlice({
           | ChannelData
           | ProjectData
           | ProjectInviteData
-          | ProjectManageData;
+          | ProjectManageData
+          | ChannelManageData;
       }>
     ) => {
       state.isOpen = true;
@@ -117,6 +127,7 @@ const modalSlice = createSlice({
         | ProjectData
         | ProjectInviteData
         | ProjectManageData
+        | ChannelManageData
       >
     ) => {
       state.data = action.payload;
@@ -194,6 +205,11 @@ export const useModal = () => {
       dispatch(openModal({ type: "PROJECT_MANAGE", data: projectManageData }));
     },
 
+    // 채널 관리 모달 열기
+    openChannelManageModal: (channelManageData: ChannelManageData) => {
+      dispatch(openModal({ type: "CHANNEL_MANAGE", data: channelManageData }));
+    },
+
     // 모달 닫기
     close: () => {
       dispatch(closeModal());
@@ -207,6 +223,7 @@ export const useModal = () => {
         | ProjectData
         | ProjectInviteData
         | ProjectManageData
+        | ChannelManageData
     ) => {
       dispatch(updateModalData(data));
     },
@@ -251,5 +268,6 @@ export const useModal = () => {
     isProjectAddModal: modalState.type === "PROJECT_ADD",
     isProjectInviteModal: modalState.type === "PROJECT_INVITE",
     isProjectManageModal: modalState.type === "PROJECT_MANAGE",
+    isChannelManageModal: modalState.type === "CHANNEL_MANAGE",
   };
 };

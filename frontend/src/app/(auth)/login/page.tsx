@@ -7,6 +7,7 @@ import { useAuth } from "../hooks/useAuth";
 import { AuthInput } from "../components/AuthInput";
 import { AuthCheckbox } from "../components/AuthCheckbox";
 import { AuthButton } from "../components/AuthButton";
+import { useResponsive } from "../../lib/useResponsive";
 
 const pageVariants = {
   initial: {
@@ -24,6 +25,7 @@ const pageVariants = {
 };
 
 const LoginPage = () => {
+  const { isMobile, isTablet } = useResponsive();
   const {
     formData,
     errors,
@@ -51,12 +53,29 @@ const LoginPage = () => {
       }}
       className="w-full"
     >
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-white mb-2">로그인</h2>
-        <p className="text-white/70">계정에 로그인하여 시작하세요</p>
+      <div className={`text-center ${isMobile ? "mb-6" : "mb-8"}`}>
+        <h2
+          className={`
+          font-bold text-white mb-2
+          ${isMobile ? "text-xl" : isTablet ? "text-xl" : "text-2xl"}
+        `}
+        >
+          로그인
+        </h2>
+        <p
+          className={`
+          text-white/70
+          ${isMobile ? "text-sm" : "text-base"}
+        `}
+        >
+          계정에 로그인하여 시작하세요
+        </p>
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-6">
+      <form
+        onSubmit={onSubmit}
+        className={`${isMobile ? "space-y-4" : "space-y-6"}`}
+      >
         <AuthInput
           label="이메일"
           type="email"
@@ -81,7 +100,12 @@ const LoginPage = () => {
           required
         />
 
-        <div className="flex items-center justify-between">
+        <div
+          className={`
+          flex items-center justify-between
+          ${isMobile ? "flex-col space-y-3" : "flex-row"}
+        `}
+        >
           <AuthCheckbox
             id="rememberMe"
             name="rememberMe"
@@ -93,7 +117,10 @@ const LoginPage = () => {
 
           <Link
             href="#"
-            className="text-sm text-purple-300 hover:text-purple-200"
+            className={`
+              text-purple-300 hover:text-purple-200
+              ${isMobile ? "text-sm" : "text-sm"}
+            `}
           >
             비밀번호 찾기
           </Link>
@@ -110,8 +137,13 @@ const LoginPage = () => {
         </AuthButton>
       </form>
 
-      <div className="mt-8 text-center">
-        <p className="text-white/70">
+      <div className={`text-center ${isMobile ? "mt-6" : "mt-8"}`}>
+        <p
+          className={`
+          text-white/70
+          ${isMobile ? "text-sm" : "text-base"}
+        `}
+        >
           계정이 없으신가요?{" "}
           <Link
             href="/register"
@@ -123,7 +155,12 @@ const LoginPage = () => {
       </div>
 
       {/* Navigation for testing */}
-      <div className="mt-8 pt-6 border-t border-white/10">
+      <div
+        className={`
+        pt-6 border-t border-white/10
+        ${isMobile ? "mt-6" : "mt-8"}
+      `}
+      >
         <AuthButton variant="secondary">
           <Link href="/" className="block w-full">
             메인으로

@@ -26,6 +26,8 @@ interface ProjectSidebarProps {
   channelId: string;
   isProjectActive: (projectId: number) => boolean;
   isProjectSelected: boolean;
+  isMobile: boolean;
+  isTablet: boolean;
 }
 
 export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
@@ -34,6 +36,8 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   channelId,
   isProjectActive,
   isProjectSelected,
+  isMobile,
+  isTablet,
 }) => {
   const pathname = usePathname();
   const serverInfo = useCurrentServerInfo();
@@ -284,14 +288,33 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
 
   return (
     <>
-      <div className="flex flex-col h-full bg-aurora-main rounded-tl-lg">
+      <div
+        className={`
+        flex flex-col h-full bg-aurora-main rounded-tl-lg
+        ${isMobile ? "w-full" : isTablet ? "w-72" : "w-80"}
+      `}
+      >
         <div className="flex flex-1">
           {/* 왼쪽: 프로젝트 목록 */}
-          <div className="w-16 bg-gray-800 flex flex-col py-3 overflow-visible">
+          <div
+            className={`
+            bg-gray-800 flex flex-col py-3 overflow-visible
+            ${isMobile ? "w-12" : "w-16"}
+          `}
+          >
             {/* 프로젝트 목록 */}
-            <div className="flex-1 overflow-visible px-2">
+            <div
+              className={`flex-1 overflow-visible ${
+                isMobile ? "px-1" : "px-2"
+              }`}
+            >
               {projectListQuery.isLoading ? (
-                <div className="text-white text-xs text-center py-4">
+                <div
+                  className={`
+                  text-white text-center py-4
+                  ${isMobile ? "text-xs" : "text-xs"}
+                `}
+                >
                   로딩중...
                 </div>
               ) : (
@@ -309,9 +332,23 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                         : "hover:bg-gray-700"
                     }`}
                   >
-                    <div className="flex items-center justify-center p-2">
-                      <div className="w-10 h-10 bg-purple-500 rounded flex items-center justify-center">
-                        <span className="text-white font-semibold text-sm">
+                    <div
+                      className={`flex items-center justify-center ${
+                        isMobile ? "p-1.5" : "p-2"
+                      }`}
+                    >
+                      <div
+                        className={`
+                        bg-purple-500 rounded flex items-center justify-center
+                        ${isMobile ? "w-8 h-8" : "w-10 h-10"}
+                      `}
+                      >
+                        <span
+                          className={`
+                          text-white font-semibold
+                          ${isMobile ? "text-xs" : "text-sm"}
+                        `}
+                        >
                           {project.projectName[0]?.toUpperCase()}
                         </span>
                       </div>

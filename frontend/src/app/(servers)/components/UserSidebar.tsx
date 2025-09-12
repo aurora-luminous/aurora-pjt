@@ -10,6 +10,8 @@ interface UserSidebarProps {
   serverId: string;
   projectId: number;
   isSidebarOpen: boolean;
+  isMobile: boolean;
+  isTablet: boolean;
 }
 
 export const UserSidebar: React.FC<UserSidebarProps> = ({
@@ -19,6 +21,8 @@ export const UserSidebar: React.FC<UserSidebarProps> = ({
   serverId,
   projectId,
   isSidebarOpen,
+  isMobile,
+  isTablet,
 }) => {
   const projectMemberListQuery = useProjectMemberListQuery(serverId, projectId);
   console.log("projectMemberListQuery", projectMemberListQuery);
@@ -27,27 +31,39 @@ export const UserSidebar: React.FC<UserSidebarProps> = ({
   if (!isSidebarOpen) return null;
 
   return (
-    <div className="w-64 bg-gray-600 flex flex-col rounded-tl-lg">
+    <div
+      className={`bg-gray-600 flex flex-col rounded-tl-lg ${
+        isMobile ? "w-full" : isTablet ? "w-56" : "w-64"
+      }`}
+    >
       {/* 탭 헤더 */}
       <div className="relative border-b border-gray-500">
         <div className="flex">
           <button
             onClick={() => setActiveTab("favorites")}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === "favorites"
-                ? "text-white"
-                : "text-gray-300 hover:text-white"
-            }`}
+            className={`
+              flex-1 py-3 font-medium transition-colors
+              ${isMobile ? "px-2 text-xs" : "px-4 text-sm"}
+              ${
+                activeTab === "favorites"
+                  ? "text-white"
+                  : "text-gray-300 hover:text-white"
+              }
+            `}
           >
             프로젝트 멤버
           </button>
           <button
             onClick={() => setActiveTab("messages")}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === "messages"
-                ? "text-white"
-                : "text-gray-300 hover:text-white"
-            }`}
+            className={`
+              flex-1 py-3 font-medium transition-colors
+              ${isMobile ? "px-2 text-xs" : "px-4 text-sm"}
+              ${
+                activeTab === "messages"
+                  ? "text-white"
+                  : "text-gray-300 hover:text-white"
+              }
+            `}
           >
             개인 메시지
           </button>
@@ -61,210 +77,195 @@ export const UserSidebar: React.FC<UserSidebarProps> = ({
       </div>
 
       {/* 탭 내용 */}
-      <div className="flex-1 overflow-y-auto p-3">
+      <div className={`flex-1 overflow-y-auto ${isMobile ? "p-2" : "p-3"}`}>
         {activeTab === "favorites" ? (
           /* 프로젝트 멤버 탭 */
-          <div className="space-y-4">
+          <div className={`${isMobile ? "space-y-2" : "space-y-4"}`}>
             {/* 온라인 사용자 섹션 */}
             <div>
-              <h3 className="text-white text-sm font-medium mb-3">
+              <h3
+                className={`
+                text-white font-medium mb-3
+                ${isMobile ? "text-xs" : "text-sm"}
+              `}
+              >
                 온라인 ———{" "}
                 {
                   projectMemberList?.filter((u) => u.pStatus === "Active")
                     .length
                 }
               </h3>
-              <div className="space-y-2">
+              <div className={`${isMobile ? "space-y-1" : "space-y-2"}`}>
                 {projectMemberList
                   ?.filter((member) => member.pStatus === "Active")
                   .map((member) => (
-                    <div
+                    <Link
                       key={member.userInfo.userEmail}
-                      className="flex items-center p-2 rounded hover:bg-gray-500 cursor-pointer"
+                      href={`/${serverId}/projects/${projectId}/messages/${member.userInfo.userEmail}`}
+                      className="group block"
                     >
-                      <div className="relative mr-3">
-                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                          <span className="text-gray-800 text-sm font-medium">
-                            {member.userInfo.userName[0]}
-                          </span>
+                      <div
+                        className={`
+                        flex items-center text-gray-300 hover:text-white transition-colors cursor-pointer
+                        ${isMobile ? "p-1" : "p-2"}
+                      `}
+                      >
+                        <div className="relative flex-shrink-0">
+                          <div
+                            className={`
+                            rounded-full bg-gray-500 flex items-center justify-center text-white font-medium
+                            ${isMobile ? "w-6 h-6 text-xs" : "w-8 h-8 text-sm"}
+                          `}
+                          >
+                            {member.userInfo.userName.charAt(0).toUpperCase()}
+                          </div>
+                          <div
+                            className={`
+                            absolute bottom-0 right-0 border-2 border-gray-600 rounded-full
+                            ${
+                              member.pStatus === "Active"
+                                ? "bg-green-500"
+                                : "bg-gray-400"
+                            }
+                            ${isMobile ? "w-2 h-2" : "w-3 h-3"}
+                          `}
+                          ></div>
                         </div>
-                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-gray-600"></div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-white text-sm font-medium">
+                        <div
+                          className={`ml-2 ${isMobile ? "text-xs" : "text-sm"}`}
+                        >
                           {member.userInfo.userName}
                         </div>
-                        <div className="text-gray-300 text-xs">
-                          출근 아직 안합니다
-                        </div>
                       </div>
-                    </div>
+                    </Link>
                   ))}
               </div>
             </div>
 
-            {/* 자리비움 사용자 섹션 */}
-            {projectMemberList &&
-              projectMemberList?.filter((u) => u.pStatus === "Inactive")
-                .length > 0 && (
-                <div>
-                  <h3 className="text-white text-sm font-medium mb-3">
-                    자리비움 ———{" "}
-                    {
-                      projectMemberList?.filter((u) => u.pStatus === "Inactive")
-                        .length
-                    }
-                  </h3>
-                  <div className="space-y-2">
-                    {projectMemberList
-                      ?.filter((member) => member.pStatus === "Inactive")
-                      .map((member) => (
-                        <div
-                          key={member.userInfo.userEmail}
-                          className="flex items-center p-2 rounded hover:bg-gray-500 cursor-pointer"
-                        >
-                          <div className="relative mr-3">
-                            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                              <span className="text-gray-800 text-sm font-medium">
-                                {member.userInfo.userName[0]}
-                              </span>
-                            </div>
-                            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full border-2 border-gray-600"></div>
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-white text-sm font-medium">
-                              {member.userInfo.userName}
-                            </div>
-                            <div className="text-gray-300 text-xs">
-                              출근 아직 안합니다
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-
-            {/* 바쁨 사용자 섹션 */}
-            {projectMemberList &&
-              projectMemberList?.filter((u) => u.pStatus === "Banned").length >
-                0 && (
-                <div>
-                  <h3 className="text-white text-sm font-medium mb-3">
-                    바쁨 ———{" "}
-                    {
-                      projectMemberList?.filter((u) => u.pStatus === "Banned")
-                        .length
-                    }
-                  </h3>
-                  <div className="space-y-2">
-                    {projectMemberList
-                      ?.filter((member) => member.pStatus === "Banned")
-                      .map((member) => (
-                        <div
-                          key={member.userInfo.userEmail}
-                          className="flex items-center p-2 rounded hover:bg-gray-500 cursor-pointer"
-                        >
-                          <div className="relative mr-3">
-                            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                              <span className="text-gray-800 text-sm font-medium">
-                                {member.userInfo.userName[0]}
-                              </span>
-                            </div>
-                            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-400 rounded-full border-2 border-gray-600"></div>
-                          </div>
-                          <div className="flex-1">
-                            <div className="text-white text-sm font-medium">
-                              {member.userInfo.userName}
-                            </div>
-                            <div className="text-gray-300 text-xs">
-                              출근 아직 안합니다
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-
             {/* 오프라인 사용자 섹션 */}
-            {projectMemberList &&
-              projectMemberList?.filter((u) => u.pStatus === "Inactive")
-                .length > 0 && (
-                <div>
-                  <h3 className="text-white text-sm font-medium mb-3">
-                    오프라인 ——— 1
-                  </h3>
-                  <div className="space-y-2">
-                    <div className="flex items-center p-2 rounded hover:bg-gray-500 cursor-pointer">
-                      <div className="relative mr-3">
-                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                          <span className="text-gray-800 text-sm font-medium">
-                            {
-                              projectMemberList?.filter(
-                                (u) => u.pStatus === "Inactive"
-                              )[0].userInfo.userName[0]
+            <div>
+              <h3
+                className={`
+                text-white font-medium mb-3
+                ${isMobile ? "text-xs" : "text-sm"}
+              `}
+              >
+                오프라인 ———{" "}
+                {
+                  projectMemberList?.filter((u) => u.pStatus === "Inactive")
+                    .length
+                }
+              </h3>
+              <div className={`${isMobile ? "space-y-1" : "space-y-2"}`}>
+                {projectMemberList
+                  ?.filter((member) => member.pStatus === "Inactive")
+                  .map((member) => (
+                    <Link
+                      key={member.userInfo.userEmail}
+                      href={`/${serverId}/projects/${projectId}/messages/${member.userInfo.userEmail}`}
+                      className="group block"
+                    >
+                      <div
+                        className={`
+                        flex items-center text-gray-400 hover:text-gray-300 transition-colors cursor-pointer
+                        ${isMobile ? "p-1" : "p-2"}
+                      `}
+                      >
+                        <div className="relative flex-shrink-0">
+                          <div
+                            className={`
+                            rounded-full bg-gray-500 flex items-center justify-center text-white font-medium
+                            ${isMobile ? "w-6 h-6 text-xs" : "w-8 h-8 text-sm"}
+                          `}
+                          >
+                            {member.userInfo.userName.charAt(0).toUpperCase()}
+                          </div>
+                          <div
+                            className={`
+                            absolute bottom-0 right-0 border-2 border-gray-600 rounded-full
+                            ${
+                              member.pStatus === "Active"
+                                ? "bg-green-500"
+                                : "bg-gray-400"
                             }
-                          </span>
+                            ${isMobile ? "w-2 h-2" : "w-3 h-3"}
+                          `}
+                          ></div>
                         </div>
-                        <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-gray-400 rounded-full border-2 border-gray-600"></div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-white text-sm font-medium">
-                          {
-                            projectMemberList?.filter(
-                              (u) => u.pStatus === "Inactive"
-                            )[0].userInfo.userName
-                          }
-                        </div>
-                        <div className="text-gray-300 text-xs">
-                          Figma 보고있는데 소용이...
+                        <div
+                          className={`ml-2 ${isMobile ? "text-xs" : "text-sm"}`}
+                        >
+                          {member.userInfo.userName}
                         </div>
                       </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+                    </Link>
+                  ))}
+              </div>
+            </div>
           </div>
         ) : (
           /* 개인 메시지 탭 */
-          <div className="space-y-2">
-            {directMessages.map((dm) => (
-              <Link
-                key={dm.id}
-                href={`/${serverId}/projects/${projectId}/messages/${dm.id}`}
-                className="flex items-center p-2 rounded hover:bg-gray-500 cursor-pointer"
+          <div className={`${isMobile ? "space-y-1" : "space-y-2"}`}>
+            {directMessages.length === 0 ? (
+              <div
+                className={`
+                text-gray-400 text-center
+                ${isMobile ? "text-xs py-4" : "text-sm py-8"}
+              `}
               >
-                <div className="relative mr-3">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                    <span className="text-gray-800 text-sm font-medium">
-                      {dm.name[0]}
-                    </span>
-                  </div>
-                  <div
-                    className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-gray-600 ${
-                      dm.status === "online"
-                        ? "bg-green-400"
-                        : dm.status === "away"
-                        ? "bg-yellow-400"
-                        : dm.status === "busy"
-                        ? "bg-red-400"
-                        : "bg-gray-400"
-                    }`}
-                  ></div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-white text-sm font-medium truncate">
-                    {dm.name}
-                  </div>
-                  {dm.lastMessage && (
-                    <div className="text-gray-300 text-xs truncate">
-                      {dm.lastMessage}
+                개인 메시지가 없습니다
+              </div>
+            ) : (
+              directMessages.map((dm) => (
+                <div
+                  key={dm.id}
+                  className={`
+                    flex items-center text-gray-300 hover:text-white hover:bg-gray-700 
+                    transition-colors cursor-pointer rounded
+                    ${isMobile ? "p-1" : "p-2"}
+                  `}
+                >
+                  <div className="relative flex-shrink-0">
+                    <div
+                      className={`
+                      rounded-full bg-gray-500 flex items-center justify-center text-white font-medium
+                      ${isMobile ? "w-6 h-6 text-xs" : "w-8 h-8 text-sm"}
+                    `}
+                    >
+                      {dm.name.charAt(0).toUpperCase()}
                     </div>
-                  )}
+                    {dm.status === "online" && (
+                      <div
+                        className={`
+                        absolute bottom-0 right-0 bg-green-500 border-2 border-gray-600 rounded-full
+                        ${isMobile ? "w-2 h-2" : "w-3 h-3"}
+                      `}
+                      ></div>
+                    )}
+                  </div>
+                  <div className="ml-2 min-w-0 flex-1">
+                    <div
+                      className={`
+                      font-medium
+                      ${isMobile ? "text-xs" : "text-sm"}
+                    `}
+                    >
+                      {dm.name}
+                    </div>
+                    {dm.lastMessage && (
+                      <div
+                        className={`
+                        text-gray-400 truncate
+                        ${isMobile ? "text-xs" : "text-xs"}
+                      `}
+                      >
+                        {dm.lastMessage}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </Link>
-            ))}
+              ))
+            )}
           </div>
         )}
       </div>

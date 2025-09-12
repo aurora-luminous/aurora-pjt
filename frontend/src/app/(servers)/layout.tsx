@@ -149,7 +149,7 @@ export default function ServersLayout({
       {/* 메인 콘텐츠 컨테이너 - 헤더와 본문을 함께 묶어서 transform 적용 */}
       <div
         className={`
-          flex flex-col flex-1 relative z-30
+          flex h-screen flex-col flex-1 relative z-30
           ${isMobile ? "transition-transform duration-300 ease-in-out" : ""}
         `}
         style={isMobile ? { transform: getMainContentTransform() } : {}}

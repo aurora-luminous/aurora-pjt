@@ -1,17 +1,26 @@
 import { useState, useEffect } from "react";
 
+// useResponsive 훅의 반환 타입 정의
+export interface ResponsiveState {
+  isMobile: boolean;
+  isTablet: boolean;
+  isDesktop: boolean;
+  width: number;
+  height: number;
+}
+
 /**
  * 화면 크기에 따른 반응형 상태를 제공하는 커스텀 훅
  *
  *
- * @returns {Object} 디바이스 타입 및 화면 크기 정보
+ * @returns {ResponsiveState} 디바이스 타입 및 화면 크기 정보
  * - isMobile: 모바일 화면 여부 (768px 미만)
  * - isTablet: 태블릿 화면 여부 (768px 이상 1024px 미만)
  * - isDesktop: 데스크탑 화면 여부 (1024px 이상)
  * - width: 현재 창의 너비
  * - height: 현재 창의 높이
  */
-export const useResponsive = (): object => {
+export const useResponsive = (): ResponsiveState => {
   // 창 크기 상태 관리
   const [windowSize, setWindowSize] = useState({
     // SSR 환경을 고려하여 window 객체 존재 여부 확인

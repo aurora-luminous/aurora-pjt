@@ -3,6 +3,7 @@
 import { useVoiceChannelPage } from "../../../../../hooks/useVoiceChannelPage";
 import { useVoiceGrid } from "../../../../../hooks/useVoiceGrid";
 import { useMediaControl } from "../../../../../hooks/useMediaControl";
+import { useResponsive } from "../../../../../../lib/useResponsive";
 import dynamic from "next/dynamic";
 import {
   VoiceHeader,
@@ -22,6 +23,7 @@ const FullscreenButton = dynamic(
 );
 
 const VoiceChannelPage = () => {
+  const { isMobile } = useResponsive();
   const {
     channelId,
     getChannelName,
@@ -57,7 +59,12 @@ const VoiceChannelPage = () => {
       <VoiceHeader channelName={getChannelName(channelId)} />
 
       {/* 메인 비디오 영역 */}
-      <div className="flex-1 p-8 flex items-center justify-center">
+      <div
+        className={`
+        flex-1 flex items-center justify-center
+        ${isMobile ? "p-4" : "p-8"}
+      `}
+      >
         {isScreenShareActive ? (
           /* 화면 공유 모드 */
           <ScreenShareView
@@ -87,11 +94,13 @@ const VoiceChannelPage = () => {
         onToggleScreenShare={toggleScreenShare}
       />
 
-      {/* 전체화면 버튼 - 클라이언트에서만 렌더링 */}
-      <FullscreenButton
-        onToggleFullscreen={toggleFullScreen}
-        isFullScreen={isFullScreen}
-      />
+      {/* 전체화면 버튼 - 데스크탑/태블릿에서만 렌더링 */}
+      {!isMobile && (
+        <FullscreenButton
+          onToggleFullscreen={toggleFullScreen}
+          isFullScreen={isFullScreen}
+        />
+      )}
     </div>
   );
 };

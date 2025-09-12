@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useResponsive } from "../../../../lib/useResponsive";
 
 export interface Permission {
   id: string;
@@ -38,6 +39,7 @@ const RoleCard: React.FC<RoleCardProps> = ({
   onDelete,
   onPermissionChange,
 }) => {
+  const { isMobile, isTablet } = useResponsive();
   const [expanded, setExpanded] = useState(false);
 
   const handleDeleteClick = () => {
@@ -53,15 +55,27 @@ const RoleCard: React.FC<RoleCardProps> = ({
   return (
     <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
       {/* 역할 헤더 */}
-      <div className="p-4 border-b border-gray-700">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+      <div className={`border-b border-gray-700 ${isMobile ? "p-3" : "p-4"}`}>
+        <div
+          className={`${
+            isMobile ? "space-y-3" : "flex items-center justify-between"
+          }`}
+        >
+          <div
+            className={`flex items-center ${
+              isMobile ? "space-x-2" : "space-x-4"
+            }`}
+          >
             {/* 순서 */}
             <div className="flex items-center space-x-2">
-              <span className="text-gray-400 text-sm">#{position}</span>
+              <span
+                className={`text-gray-400 ${isMobile ? "text-xs" : "text-sm"}`}
+              >
+                #{position}
+              </span>
               <div className="cursor-move text-gray-400 hover:text-white">
                 <svg
-                  className="w-4 h-4"
+                  className={`${isMobile ? "w-3 h-3" : "w-4 h-4"}`}
                   fill="currentColor"
                   viewBox="0 0 24 24"
                 >
@@ -72,26 +86,46 @@ const RoleCard: React.FC<RoleCardProps> = ({
 
             {/* 역할 색상 */}
             <div
-              className="w-4 h-4 rounded-full"
+              className={`rounded-full ${isMobile ? "w-3 h-3" : "w-4 h-4"}`}
               style={{ backgroundColor: role.color }}
             ></div>
 
             {/* 역할 정보 */}
-            <div>
-              <div className="flex items-center space-x-2">
-                <h3 className="text-white font-medium">{role.name}</h3>
+            <div className="flex-1">
+              <div
+                className={`flex items-center ${
+                  isMobile ? "space-x-1" : "space-x-2"
+                }`}
+              >
+                <h3
+                  className={`text-white font-medium ${
+                    isMobile ? "text-sm" : "text-base"
+                  }`}
+                >
+                  {role.name}
+                </h3>
                 {role.isDefault && (
-                  <span className="px-2 py-0.5 bg-gray-600 text-gray-200 text-xs rounded">
+                  <span
+                    className={`bg-gray-600 text-gray-200 rounded ${
+                      isMobile ? "px-1 py-0 text-xs" : "px-2 py-0.5 text-xs"
+                    }`}
+                  >
                     기본
                   </span>
                 )}
                 {role.isOwner && (
-                  <span className="px-2 py-0.5 bg-yellow-600 text-yellow-100 text-xs rounded">
+                  <span
+                    className={`bg-yellow-600 text-yellow-100 rounded ${
+                      isMobile ? "px-1 py-0 text-xs" : "px-2 py-0.5 text-xs"
+                    }`}
+                  >
                     소유자
                   </span>
                 )}
               </div>
-              <div className="text-gray-400 text-sm">
+              <div
+                className={`text-gray-400 ${isMobile ? "text-xs" : "text-sm"}`}
+              >
                 {role.memberCount}명의 멤버 • {enabledPermissions.length}개의
                 권한
               </div>
@@ -99,16 +133,22 @@ const RoleCard: React.FC<RoleCardProps> = ({
           </div>
 
           {/* 작업 버튼들 */}
-          <div className="flex items-center space-x-2">
+          <div
+            className={`flex items-center ${
+              isMobile ? "space-x-1 ml-auto" : "space-x-2"
+            }`}
+          >
             <button
               onClick={() => setExpanded(!expanded)}
-              className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+              className={`text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors ${
+                isMobile ? "p-1" : "p-2"
+              }`}
               title="권한 보기"
             >
               <svg
-                className={`w-4 h-4 transform transition-transform ${
+                className={`transform transition-transform ${
                   expanded ? "rotate-180" : ""
-                }`}
+                } ${isMobile ? "w-3 h-3" : "w-4 h-4"}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -123,7 +163,9 @@ const RoleCard: React.FC<RoleCardProps> = ({
             </button>
             <button
               onClick={() => onEdit(role)}
-              className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"
+              className={`text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors ${
+                isMobile ? "p-1 text-xs" : "p-2"
+              }`}
               title="수정"
             >
               ✏️
@@ -131,7 +173,9 @@ const RoleCard: React.FC<RoleCardProps> = ({
             {!role.isDefault && !role.isOwner && (
               <button
                 onClick={handleDeleteClick}
-                className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition-colors"
+                className={`text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition-colors ${
+                  isMobile ? "p-1 text-xs" : "p-2"
+                }`}
                 title="삭제"
               >
                 🗑️
@@ -143,13 +187,25 @@ const RoleCard: React.FC<RoleCardProps> = ({
 
       {/* 권한 목록 (확장 시) */}
       {expanded && (
-        <div className="p-4">
-          <h4 className="text-white font-medium mb-3">권한</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className={`${isMobile ? "p-3" : "p-4"}`}>
+          <h4
+            className={`text-white font-medium mb-3 ${
+              isMobile ? "text-sm" : "text-base"
+            }`}
+          >
+            권한
+          </h4>
+          <div
+            className={`gap-3 ${
+              isMobile ? "grid grid-cols-1" : "grid grid-cols-1 md:grid-cols-2"
+            }`}
+          >
             {role.permissions.map((permission) => (
               <label
                 key={permission.id}
-                className="flex items-start space-x-3 p-2 rounded hover:bg-gray-700 transition-colors cursor-pointer"
+                className={`flex items-start rounded hover:bg-gray-700 transition-colors cursor-pointer ${
+                  isMobile ? "space-x-2 p-2" : "space-x-3 p-2"
+                }`}
               >
                 <input
                   type="checkbox"
@@ -157,14 +213,24 @@ const RoleCard: React.FC<RoleCardProps> = ({
                   onChange={(e) =>
                     onPermissionChange(role.id, permission.id, e.target.checked)
                   }
-                  className="mt-1 rounded border-gray-600 bg-gray-700"
+                  className={`rounded border-gray-600 bg-gray-700 ${
+                    isMobile ? "mt-0.5" : "mt-1"
+                  }`}
                   disabled={role.isOwner}
                 />
                 <div className="flex-1">
-                  <div className="text-white text-sm font-medium">
+                  <div
+                    className={`text-white font-medium ${
+                      isMobile ? "text-xs" : "text-sm"
+                    }`}
+                  >
                     {permission.name}
                   </div>
-                  <div className="text-gray-400 text-xs">
+                  <div
+                    className={`text-gray-400 ${
+                      isMobile ? "text-xs" : "text-xs"
+                    }`}
+                  >
                     {permission.description}
                   </div>
                 </div>

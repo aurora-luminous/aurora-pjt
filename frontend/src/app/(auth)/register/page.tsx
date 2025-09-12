@@ -8,6 +8,7 @@ import { AuthInput } from "../components/AuthInput";
 import { AuthCheckbox } from "../components/AuthCheckbox";
 import { AuthButton } from "../components/AuthButton";
 import { AuthInputWithButton } from "../components/AuthInputWithButton";
+import { useResponsive } from "../../lib/useResponsive";
 
 const pageVariants = {
   initial: {
@@ -25,6 +26,7 @@ const pageVariants = {
 };
 
 const RegisterPage = () => {
+  const { isMobile, isTablet } = useResponsive();
   const {
     formData,
     errors,
@@ -53,11 +55,21 @@ const RegisterPage = () => {
       }}
       className="w-full"
     >
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-white mb-2">회원가입</h2>
+      <div className={`text-center ${isMobile ? "mb-6" : "mb-8"}`}>
+        <h2
+          className={`
+          font-bold text-white mb-2
+          ${isMobile ? "text-xl" : isTablet ? "text-xl" : "text-2xl"}
+        `}
+        >
+          회원가입
+        </h2>
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-6">
+      <form
+        onSubmit={onSubmit}
+        className={`${isMobile ? "space-y-4" : "space-y-6"}`}
+      >
         <AuthInputWithButton
           label="이메일"
           type="email"
@@ -125,8 +137,14 @@ const RegisterPage = () => {
           </Link>
           에 동의합니다.
         </AuthCheckbox>
-        <div className="mt-8 text-center">
-          <p className="text-white/70">
+
+        <div className={`text-center ${isMobile ? "mt-4" : "mt-8"}`}>
+          <p
+            className={`
+            text-white/70
+            ${isMobile ? "text-sm" : "text-base"}
+          `}
+          >
             이미 계정이 있으신가요?{" "}
             <Link
               href="/login"
@@ -136,6 +154,7 @@ const RegisterPage = () => {
             </Link>
           </p>
         </div>
+
         <AuthButton
           type="button"
           variant="primary"
@@ -151,7 +170,7 @@ const RegisterPage = () => {
           disabled={
             isLoading || signUpMutation.isPending || loginMutation.isPending
           }
-          className="mb-6 mt-4"
+          className={`${isMobile ? "mb-4 mt-4" : "mb-6 mt-4"}`}
         >
           {signUpMutation.isPending
             ? "회원가입 중..."

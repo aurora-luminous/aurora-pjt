@@ -5,10 +5,12 @@ import { motion } from "framer-motion";
 import Image from "next/image";
 import { useAuth } from "../(auth)/hooks/useAuth";
 import { usePathname } from "next/navigation";
+import { useResponsive } from "../lib/useResponsive";
 
 const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
   const { handleLogout } = useAuth();
   const pathname = usePathname();
+  const { isMobile, isTablet } = useResponsive();
 
   // pending 페이지일 때는 전체 화면 레이아웃 사용
   const isPendingPage = pathname.includes("/pending");
@@ -17,6 +19,45 @@ const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
     return <div className="min-h-screen">{children}</div>;
   }
 
+  // 모바일 레이아웃
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-aurora-blue-gradient-diagonal relative">
+        {/* 모바일 상단 헤더 */}
+        <div className="absolute top-4 left-4 right-4 z-20 flex justify-between items-center">
+          <div className="flex items-center">
+            <Image
+              src="/background/logo.png"
+              alt="Aurora Logo"
+              className="w-auto h-8 mr-2"
+              width={100}
+              height={100}
+            />
+            <h1 className="text-lg font-bold text-white tracking-wide">
+              Aurora
+            </h1>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg text-sm transition-colors"
+          >
+            로그아웃
+          </button>
+        </div>
+
+        {/* 모바일 폼 컨테이너 */}
+        <div className="min-h-screen flex items-center justify-center p-4 pt-20">
+          <div className="w-full max-w-sm">
+            <div className="bg-aurora-form/62 rounded-xl p-6 shadow-2xl border border-white/10">
+              {children}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 데스크탑/태블릿 애니메이션 레이아웃
   return (
     <div className="min-h-screen flex relative bg-aurora-blue-gradient-diagonal">
       {/* Left Panel - 사라지는 애니메이션 */}
@@ -37,7 +78,7 @@ const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
             <Image
               src="/background/logo.png"
               alt="Aurora Logo"
-              className="w-auto h-24 mx-auto"
+              className={`w-auto mx-auto ${isTablet ? "h-20" : "h-24"}`}
               width={100}
               height={100}
             />
@@ -46,7 +87,6 @@ const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
       </motion.div>
 
       {/* Right Panel - 확장되는 애니메이션 */}
-
       <motion.div
         initial={{ width: "50%" }}
         animate={{ width: "100%" }}
@@ -60,22 +100,44 @@ const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
           transition={{ duration: 0.8, ease: "easeInOut", delay: 0.4 }}
           className="absolute top-0 left-0 z-20"
         >
-          <Image
-            src="/background/logo.png"
-            alt="Aurora Logo"
-            className="w-auto h-10 mx-auto"
-            width={100}
-            height={100}
-          />
-          <h1 className="text-xl font-bold text-white tracking-wide">Aurora</h1>
+          <div className="flex items-center">
+            <Image
+              src="/background/logo.png"
+              alt="Aurora Logo"
+              className={`w-auto mr-2 ${isTablet ? "h-8" : "h-10"}`}
+              width={100}
+              height={100}
+            />
+            <h1
+              className={`font-bold text-white tracking-wide ${
+                isTablet ? "text-lg" : "text-xl"
+              }`}
+            >
+              Aurora
+            </h1>
+          </div>
         </motion.div>
-        <button onClick={handleLogout}>로그아웃</button>
+
+        {/* 로그아웃 버튼 */}
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.8 }}
+          onClick={handleLogout}
+          className="absolute top-8 right-8 z-20 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-sm transition-colors"
+        >
+          로그아웃
+        </motion.button>
 
         {/* Content Container */}
-        <div className="relative z-10 flex items-center justify-center min-h-screen p-8">
+        <div
+          className={`relative z-10 flex items-center justify-center min-h-screen ${
+            isTablet ? "p-6" : "p-8"
+          }`}
+        >
           <motion.div
             initial={{ maxWidth: "28rem" }}
-            animate={{ maxWidth: "32rem" }}
+            animate={{ maxWidth: isTablet ? "30rem" : "32rem" }}
             transition={{ duration: 0.8, ease: "easeInOut", delay: 0.3 }}
             className="w-full"
           >
@@ -83,7 +145,9 @@ const ServerSetupLayout = ({ children }: { children: React.ReactNode }) => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.6 }}
-              className="bg-aurora-form/62 rounded-xl p-8 shadow-2xl border border-white/10"
+              className={`bg-aurora-form/62 rounded-xl shadow-2xl border border-white/10 ${
+                isTablet ? "p-6" : "p-8"
+              }`}
             >
               {children}
             </motion.div>

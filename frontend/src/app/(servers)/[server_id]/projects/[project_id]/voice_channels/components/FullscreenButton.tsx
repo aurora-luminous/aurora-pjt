@@ -9,7 +9,6 @@ export const FullscreenButton = ({
   onToggleFullscreen,
   isFullScreen,
 }: FullscreenButtonProps) => {
-  // useFullscreen hook 사용
   const { isFullscreen, toggleFullscreen, isSupported } = useFullscreen();
 
   // 맥북 크롬 감지

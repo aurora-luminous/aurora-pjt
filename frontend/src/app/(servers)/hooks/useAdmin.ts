@@ -40,6 +40,27 @@ const mapServerAccessToJoinRequest = (
   };
 };
 
+export const useAdminPermission = () => {
+  const serverInfo = useCurrentServerInfo();
+  const serverListQuery = useServerListQuery(true);
+
+  // 현재 서버에서의 사용자 role 찾기
+  const currentServerRole = serverListQuery.data?.find(
+    (server) => server.serverUrl === serverInfo?.serverUrl
+  )?.serverRole;
+
+  // 관리자 권한 확인 (owner 또는 admin)
+  const isAdmin =
+    currentServerRole === "owner" || currentServerRole === "admin";
+
+  return {
+    isAdmin,
+    currentServerRole,
+    isLoading: serverListQuery.isLoading,
+    error: serverListQuery.error,
+  };
+};
+
 // 관리자 사이드바 훅
 export const useAdminSidebar = () => {
   const params = useParams();

@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useMessagePage } from "../../../../../hooks/useMessagePage";
+import { useResponsive } from "../../../../../../lib/useResponsive";
 import {
   PrivateMessageHeader,
   PrivateMessageList,
@@ -9,6 +10,7 @@ import {
 } from "../components";
 
 const MessagePage = () => {
+  const { isMobile } = useResponsive();
   const {
     userId,
     newMessage,

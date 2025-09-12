@@ -2,8 +2,12 @@
 
 import React, { useState } from "react";
 import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
+import { useResponsive } from "../../../../lib/useResponsive";
+import { useAdminPermission } from "../../../hooks/useAdmin";
 
 const SettingsPage = () => {
+  const { isMobile, isTablet } = useResponsive();
+  const { isAdmin, currentServerRole, isLoading } = useAdminPermission();
   const serverInfo = useCurrentServerInfo();
   const [confirmDeleteText, setConfirmDeleteText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -35,52 +39,153 @@ const SettingsPage = () => {
     }
   };
 
+  // 로딩 중일 때
+  if (isLoading) {
+    return (
+      <div className="flex h-full bg-gray-900 items-center justify-center">
+        <div className={`text-white text-center ${isMobile ? "px-4" : "px-0"}`}>
+          <div className={`mb-4 ${isMobile ? "text-base" : "text-lg"}`}>
+            권한을 확인하는 중...
+          </div>
+          <div
+            className={`
+            border-2 border-white border-t-transparent rounded-full animate-spin mx-auto
+            ${isMobile ? "w-6 h-6" : "w-8 h-8"}
+          `}
+          ></div>
+        </div>
+      </div>
+    );
+  }
+
+  // 권한이 없는 경우
+  if (!isAdmin) {
+    return (
+      <div className="flex h-full bg-gray-900 items-center justify-center">
+        <div
+          className={`
+          text-center bg-red-900/20 border border-red-600 rounded-lg
+          ${isMobile ? "p-6 mx-4 max-w-sm" : "p-8 max-w-md"}
+        `}
+        >
+          <div
+            className={`
+            text-red-400 mb-4
+            ${isMobile ? "text-4xl" : "text-6xl"}
+          `}
+          >
+            🚫
+          </div>
+          <h1
+            className={`
+            text-white font-bold mb-2
+            ${isMobile ? "text-xl" : "text-2xl"}
+          `}
+          >
+            접근 권한이 없습니다
+          </h1>
+          <p
+            className={`
+            text-gray-300 mb-4
+            ${isMobile ? "text-sm" : "text-base"}
+          `}
+          >
+            관리자 페이지는 서버 소유자 또는 관리자만 접근할 수 있습니다.
+          </p>
+          <p
+            className={`
+            text-gray-400
+            ${isMobile ? "text-xs" : "text-sm"}
+          `}
+          >
+            현재 권한:{" "}
+            <span className="text-yellow-400">
+              {currentServerRole || "member"}
+            </span>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex-1 bg-gray-900 p-6">
+    <div className={`h-full overflow-auto ${isMobile ? "p-4" : "p-6"}`}>
       {/* 헤더 */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white mb-2">서버 설정</h1>
-        <p className="text-gray-400">
+      <div className={`mb-6 ${isMobile ? "mb-4" : "mb-6"}`}>
+        <h1
+          className={`font-bold text-white mb-2 ${
+            isMobile ? "text-xl" : "text-2xl"
+          }`}
+        >
+          서버 설정
+        </h1>
+        <p className={`text-gray-400 ${isMobile ? "text-sm" : "text-base"}`}>
           서버의 고급 설정을 관리하세요. 주의깊게 진행해주세요.
         </p>
       </div>
 
       {/* 일반 설정 */}
-      <div className="mb-8">
-        <h2 className="text-xl font-bold text-white mb-4">일반 설정</h2>
-        <div className="bg-gray-800 rounded-lg p-6">
+      <div className={`mb-8 ${isMobile ? "mb-6" : "mb-8"}`}>
+        <h2
+          className={`font-bold text-white mb-4 ${
+            isMobile ? "text-lg" : "text-xl"
+          }`}
+        >
+          일반 설정
+        </h2>
+        <div className={`bg-gray-800 rounded-lg ${isMobile ? "p-4" : "p-6"}`}>
           <div className="space-y-6">
             {/* 서버 이름 */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                className={`block font-medium text-gray-300 mb-2 ${
+                  isMobile ? "text-sm" : "text-sm"
+                }`}
+              >
                 서버 이름
               </label>
               <input
                 type="text"
                 value={serverInfo?.serverName || ""}
                 disabled
-                className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white opacity-50 cursor-not-allowed"
+                className={`w-full bg-gray-700 border border-gray-600 rounded-md text-white opacity-50 cursor-not-allowed ${
+                  isMobile ? "px-3 py-2 text-sm" : "px-3 py-2"
+                }`}
               />
-              <p className="text-gray-400 text-xs mt-1">
+              <p
+                className={`text-gray-400 mt-1 ${
+                  isMobile ? "text-xs" : "text-xs"
+                }`}
+              >
                 서버 이름은 현재 변경할 수 없습니다.
               </p>
             </div>
 
             {/* 서버 설명 */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label
+                className={`block font-medium text-gray-300 mb-2 ${
+                  isMobile ? "text-sm" : "text-sm"
+                }`}
+              >
                 서버 설명
               </label>
               <textarea
-                rows={3}
+                rows={isMobile ? 2 : 3}
                 placeholder="서버에 대한 설명을 입력하세요..."
-                className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`w-full bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  isMobile ? "px-3 py-2 text-sm" : "px-3 py-2"
+                }`}
               />
             </div>
 
             {/* 저장 버튼 */}
             <div className="flex justify-end">
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+              <button
+                className={`bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ${
+                  isMobile ? "px-3 py-2 text-sm" : "px-4 py-2"
+                }`}
+              >
                 변경사항 저장
               </button>
             </div>
@@ -88,54 +193,52 @@ const SettingsPage = () => {
         </div>
       </div>
 
-      {/* 보안 설정 */}
-      <div className="mb-8">
-        <h2 className="text-xl font-bold text-white mb-4">보안 설정</h2>
-        <div className="bg-gray-800 rounded-lg p-6">
-          <div className="space-y-6">
-            {/* 자동 가입 승인 */}
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-white font-medium">자동 가입 승인</h3>
-                <p className="text-gray-400 text-sm">
-                  새로운 멤버가 서버에 가입할 때 자동으로 승인합니다.
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" />
-                <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-              </label>
-            </div>
-
-            {/* 초대 링크 만료 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                기본 초대 링크 만료 시간
-              </label>
-              <select className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="1h">1시간</option>
-                <option value="6h">6시간</option>
-                <option value="1d">1일</option>
-                <option value="7d">7일</option>
-                <option value="never">만료되지 않음</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* 위험 영역 */}
-      <div className="mb-8">
-        <h2 className="text-xl font-bold text-red-400 mb-4">위험 영역</h2>
-        <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6">
+      <div className={`mb-8 ${isMobile ? "mb-6" : "mb-8"}`}>
+        <h2
+          className={`font-bold text-red-400 mb-4 ${
+            isMobile ? "text-lg" : "text-xl"
+          }`}
+        >
+          위험 영역
+        </h2>
+        <div
+          className={`bg-red-900/20 border border-red-500/30 rounded-lg ${
+            isMobile ? "p-4" : "p-6"
+          }`}
+        >
           <div className="space-y-6">
             {/* 경고 메시지 */}
-            <div className="bg-red-800/30 border border-red-600/50 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
-                <span className="text-red-400 text-lg">⚠️</span>
+            <div
+              className={`bg-red-800/30 border border-red-600/50 rounded-lg ${
+                isMobile ? "p-3" : "p-4"
+              }`}
+            >
+              <div
+                className={`flex items-start ${
+                  isMobile ? "space-x-2" : "space-x-3"
+                }`}
+              >
+                <span
+                  className={`text-red-400 ${
+                    isMobile ? "text-base" : "text-lg"
+                  }`}
+                >
+                  ⚠️
+                </span>
                 <div>
-                  <h3 className="text-red-200 font-medium mb-1">서버 삭제</h3>
-                  <p className="text-red-300 text-sm">
+                  <h3
+                    className={`text-red-200 font-medium mb-1 ${
+                      isMobile ? "text-sm" : "text-base"
+                    }`}
+                  >
+                    서버 삭제
+                  </h3>
+                  <p
+                    className={`text-red-300 ${
+                      isMobile ? "text-xs" : "text-sm"
+                    }`}
+                  >
                     서버를 삭제하면 모든 채널, 메시지, 멤버 데이터가 영구적으로
                     삭제됩니다. 이 작업은 되돌릴 수 없습니다.
                   </p>
@@ -145,8 +248,18 @@ const SettingsPage = () => {
 
             {/* 서버 삭제 */}
             <div>
-              <h3 className="text-red-400 font-medium mb-3">서버 삭제</h3>
-              <p className="text-gray-300 text-sm mb-4">
+              <h3
+                className={`text-red-400 font-medium mb-3 ${
+                  isMobile ? "text-sm" : "text-base"
+                }`}
+              >
+                서버 삭제
+              </h3>
+              <p
+                className={`text-gray-300 mb-4 ${
+                  isMobile ? "text-xs" : "text-sm"
+                }`}
+              >
                 서버를 삭제하려면 아래에 정확한 서버 이름을 입력하세요:
                 <span className="font-bold text-white">
                   {" "}
@@ -160,7 +273,9 @@ const SettingsPage = () => {
                   value={confirmDeleteText}
                   onChange={(e) => setConfirmDeleteText(e.target.value)}
                   placeholder="서버 이름을 입력하세요"
-                  className="w-full bg-gray-700 border border-red-600 rounded-md px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className={`w-full bg-gray-700 border border-red-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 ${
+                    isMobile ? "px-3 py-2 text-sm" : "px-3 py-2"
+                  }`}
                 />
 
                 <button
@@ -168,7 +283,9 @@ const SettingsPage = () => {
                   disabled={
                     confirmDeleteText !== serverInfo?.serverName || isDeleting
                   }
-                  className="w-full px-4 py-3 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  className={`w-full bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium ${
+                    isMobile ? "px-3 py-2 text-sm" : "px-4 py-3"
+                  }`}
                 >
                   {isDeleting ? "삭제 중..." : "서버 영구 삭제"}
                 </button>
@@ -179,26 +296,62 @@ const SettingsPage = () => {
       </div>
 
       {/* 추가 정보 */}
-      <div className="bg-gray-800 rounded-lg p-6">
-        <h3 className="text-white font-medium mb-3">서버 정보</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+      <div className={`bg-gray-800 rounded-lg ${isMobile ? "p-4" : "p-6"}`}>
+        <h3
+          className={`text-white font-medium mb-3 ${
+            isMobile ? "text-sm" : "text-base"
+          }`}
+        >
+          서버 정보
+        </h3>
+        <div
+          className={`gap-4 text-sm ${
+            isMobile ? "grid grid-cols-1" : "grid grid-cols-1 md:grid-cols-2"
+          }`}
+        >
           <div>
-            <div className="text-gray-400">서버 ID</div>
-            <div className="text-white font-mono">
+            <div
+              className={`text-gray-400 ${isMobile ? "text-xs" : "text-sm"}`}
+            >
+              서버 ID
+            </div>
+            <div
+              className={`text-white font-mono ${
+                isMobile ? "text-xs break-all" : "text-sm"
+              }`}
+            >
               {serverInfo?.serverUrl || "N/A"}
             </div>
           </div>
           <div>
-            <div className="text-gray-400">생성일</div>
-            <div className="text-white">2023년 11월 15일</div>
+            <div
+              className={`text-gray-400 ${isMobile ? "text-xs" : "text-sm"}`}
+            >
+              생성일
+            </div>
+            <div className={`text-white ${isMobile ? "text-xs" : "text-sm"}`}>
+              2023년 11월 15일
+            </div>
           </div>
           <div>
-            <div className="text-gray-400">소유자</div>
-            <div className="text-white">김관리자</div>
+            <div
+              className={`text-gray-400 ${isMobile ? "text-xs" : "text-sm"}`}
+            >
+              소유자
+            </div>
+            <div className={`text-white ${isMobile ? "text-xs" : "text-sm"}`}>
+              김관리자
+            </div>
           </div>
           <div>
-            <div className="text-gray-400">멤버 수</div>
-            <div className="text-white">47명</div>
+            <div
+              className={`text-gray-400 ${isMobile ? "text-xs" : "text-sm"}`}
+            >
+              멤버 수
+            </div>
+            <div className={`text-white ${isMobile ? "text-xs" : "text-sm"}`}>
+              47명
+            </div>
           </div>
         </div>
       </div>

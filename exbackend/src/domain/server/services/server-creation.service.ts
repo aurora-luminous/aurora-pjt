@@ -41,6 +41,7 @@ export class ServerCreationService {
         userPk: createServerDto.creatorUserPk,
         serverPk: savedServer.serverPk,
         status: 'Approved', // 생성자는 자동 승인
+        sStatus: 'Active',
         serverRole: 'owner', // 생성자는 owner 권한
         });
         await this.serverMemberRepository.save(serverMember);

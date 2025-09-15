@@ -1,9 +1,10 @@
 /**
- * 서버 전용 역할 (3단계: owner > admin > member)
+ * 서버 전용 역할 (4단계: owner > admin > projectManager > member)
  */
 export enum ServerRole {
   OWNER = 'owner', // 서버 소유자 (슈퍼계정)
   ADMIN = 'admin',
+  PROJECT_MANAGER = 'projectManager',
   MEMBER = 'member',
 }
 
@@ -18,7 +19,7 @@ export enum MemberRole {
 /**
  * 타입 정의
  */
-export type ServerRoleType = 'owner' | 'admin' | 'member';
+export type ServerRoleType = 'owner' | 'admin' | 'projectManager' | 'member';
 export type ProjectRoleType = 'admin' | 'member';
 export type ChannelRoleType = 'admin' | 'member';
 
@@ -26,11 +27,14 @@ export type ChannelRoleType = 'admin' | 'member';
  * 서버 역할 권한 유틸리티
  */
 export class ServerRoleUtils {
-  // 관리자 역할들 (admin + owner)
+  // 서버 인원관리 권한 (admin + owner)
   static readonly ADMIN_ROLES = [ServerRole.ADMIN, ServerRole.OWNER];
 
   // 소유자 역할
   static readonly OWNER_ROLES = [ServerRole.OWNER];
+
+  // 프로젝트 생성 권한 (admin + owner + projectManager)
+  static readonly PROJECT_CREATE_ROLES = [ServerRole.ADMIN, ServerRole.OWNER, ServerRole.PROJECT_MANAGER];
 
   // 일반 멤버 역할들
   static readonly MEMBER_ROLES = [ServerRole.MEMBER];
@@ -43,6 +47,13 @@ export class ServerRoleUtils {
   }
 
   /**
+   * 프로젝트 생성 권한이 있는지 확인 (admin + owner + projectManager)
+   */
+  static hasProjectCreatePermission(role: ServerRoleType): boolean {
+    return this.PROJECT_CREATE_ROLES.includes(role as ServerRole);
+  }
+
+  /**
    * 소유자 권한이 있는지 확인
    */
   static hasOwnerPermission(role: ServerRoleType): boolean {
@@ -51,13 +62,15 @@ export class ServerRoleUtils {
 
   /**
    * 역할 간 권한 비교 (높을수록 더 많은 권한)
-   * owner > admin > member
+   * owner > admin > projectManager > member
    */
   static getRoleLevel(role: ServerRoleType): number {
     switch (role) {
       case 'owner':
-        return 3;
+        return 4;
       case 'admin':
+        return 3;
+      case 'projectManager':
         return 2;
       case 'member':
         return 1;

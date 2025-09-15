@@ -62,12 +62,12 @@ export class ProjectCreationService {
         });
 
         if (!serverMember) {
-        throw new ForbiddenException('User is not a member of this server');
+            throw new ForbiddenException('User is not a member of this server');
         }
 
-        // 3. 관리자 권한 확인 (admin 또는 owner만 프로젝트 생성 가능)
-        if (!ServerRoleUtils.hasAdminPermission(serverMember.serverRole)) {
-        throw new ForbiddenException('Only admin or owner can create projects');
+        // 3. 프로젝트 생성 권한 확인 (admin, owner, projectManager 가능)
+        if (!ServerRoleUtils.hasProjectCreatePermission(serverMember.serverRole)) {    
+            throw new ForbiddenException('Only admin, owner, or projectManager can create projects');
         }
 
         // 4. 프로젝트 생성

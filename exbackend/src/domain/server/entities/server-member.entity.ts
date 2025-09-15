@@ -43,7 +43,7 @@ export class ServerMember {
 
   @ApiProperty({
     description: '서버 역할',
-    enum: ['member', 'admin', 'owner'],
+    enum: ['member', 'admin', 'owner', 'projectManager'],
     default: 'member',
   })
   @Column({
@@ -51,7 +51,7 @@ export class ServerMember {
     length: 20,
     default: 'member',
   })
-  serverRole: 'member' | 'admin' | 'owner';
+  serverRole: 'member' | 'admin' | 'owner' | 'projectManager';
 
   //관계 설정
   @ManyToOne(() => User, (user) => user.serverMembers)

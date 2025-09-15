@@ -15,6 +15,8 @@ async function startApp() {
   // CORS 설정
   app.enableCors({
     origin: [
+      'https://t1329.p.ssafy.io',
+      'http://localhost:3000',
       'http://localhost:3001',
       'http://localhost:5173',
       'http://localhost:8080',

@@ -18,9 +18,11 @@ public class UserState {
     @Id
     private Integer userPk;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     private UserStatus status = UserStatus.OFFLINE;
 
+    @Builder.Default
     private Boolean isOnline = false;
 
     private LocalDateTime lastSeen;

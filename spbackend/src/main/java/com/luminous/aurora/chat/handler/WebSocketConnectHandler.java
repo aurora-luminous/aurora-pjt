@@ -2,6 +2,7 @@ package com.luminous.aurora.chat.handler;
 
 import com.luminous.aurora.auth.repository.UserRepository;
 import com.luminous.aurora.jwt.JwtTokenProvider;
+import com.luminous.aurora.userstate.service.UserStateService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ import java.util.Arrays;
 public class WebSocketConnectHandler {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
-
+    private final UserStateService userStateService;
 
     // WebSocket 연결 시 JWT 토큰을 쿠키에 저장
     @EventListener
@@ -36,6 +37,7 @@ public class WebSocketConnectHandler {
                 // JWT가 유효하면 연결 허용
                 headerAccessor.getSessionAttributes().put("authenticated",true);
                 headerAccessor.getSessionAttributes().put("user_pk", userPk);
+                userStateService.setUserOnline(userPk);
                 log.info("WebSocket 연결 성공 : 인증된 사용자 - userEmail ={}", userEmail);
             } else {
                 log.warn("WebSocket 연결 실패 : 인증 실패");
@@ -52,7 +54,20 @@ public class WebSocketConnectHandler {
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        log.info("WebSocket 연결 해제 : sessionId={}", headerAccessor.getSessionId());
+
+        try {
+            // 세션에서 userPk 추출
+            Integer userPk = (Integer) headerAccessor.getSessionAttributes().get("user_pk");
+            if (userPk != null) {
+                // 사용자를 오프라인 상태로 설정
+                userStateService.setUserOffline(userPk);
+                log.info("WebSocket 연결 해제 : userPk={}, sessionId={}", userPk, headerAccessor.getSessionId());
+            } else {
+                log.info("WebSocket 연결 해제 : sessionId={}", headerAccessor.getSessionId());
+            }
+        } catch (Exception e) {
+            log.error("WebSocket 연결 해제 처리 중 오류 발생 : {}", e.getMessage());
+        }
     }
 
 }

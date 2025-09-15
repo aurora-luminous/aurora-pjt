@@ -5,6 +5,9 @@ import com.luminous.aurora.chat.dto.ChatMessage;
 import com.luminous.aurora.chat.dto.MessageRequest;
 import com.luminous.aurora.chat.service.ChatService;
 import com.luminous.aurora.jwt.JwtTokenProvider;
+import com.luminous.aurora.userstate.dto.UserStatusChangeRequest;
+import com.luminous.aurora.userstate.dto.UserStatusChangeResponse;
+import com.luminous.aurora.userstate.service.UserStateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -26,6 +29,7 @@ public class ChatWebSocketController {
     private final SimpMessagingTemplate messagingTemplate;
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserStateService userStateService;
 
     // 채널 메시지 전송
     @MessageMapping("/chat/channel/{channelPk}")
@@ -114,4 +118,53 @@ public class ChatWebSocketController {
         return userRepository.findUserPkByUserEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
     }
+
+    /**
+     * 사용자 상태 변경 요청 처리
+     */
+    @MessageMapping("/userstate/change")
+    public void changeUserStatus(@Payload UserStatusChangeRequest request,
+                                 SimpMessageHeaderAccessor headerAccessor) {
+        Integer userPk = null;
+        try {
+            // JWT 토큰 검증 및 userPk 추출
+            String jwtToken = extractJwtFromSession(headerAccessor);
+            if (jwtToken == null) {
+                throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
+            }
+
+            userPk = extractUserPkFromToken(jwtToken);
+
+            // 상태 변경
+            userStateService.setUserStatus(userPk, request.getStatus());
+
+            // 상태 변경 응답 생성
+            UserStatusChangeResponse response = UserStatusChangeResponse.builder()
+                    .userPk(userPk)
+                    .status(request.getStatus())
+                    .timestamp(System.currentTimeMillis())
+                    .build();
+
+            // 브로드캐스트
+            if (request.getProjectPk() != null) {
+                String projectDestination = "/topic/project/" + request.getProjectPk() + "/userstate";
+                messagingTemplate.convertAndSend(projectDestination, response);
+                log.info("프로젝트 상태 변경 브로드캐스트: projectPk={}, userPk={}, status={}",
+                        request.getProjectPk(), userPk, request.getStatus());
+            }
+
+            if (request.getDmRoomPk() != null) {
+                String dmDestination = "/topic/dm/" + request.getDmRoomPk() + "/userstate";
+                messagingTemplate.convertAndSend(dmDestination, response);
+                log.info("DM 상태 변경 브로드캐스트: dmRoomPk={}, userPk={}, status={}",
+                        request.getDmRoomPk(), userPk, request.getStatus());
+            }
+
+        } catch (Exception e) {
+            log.error("사용자 상태 변경 실패: userPk={}, status={}",
+                    userPk, request.getStatus(), e);
+        }
+    }
+
+
 }

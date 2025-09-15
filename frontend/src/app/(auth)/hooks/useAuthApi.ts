@@ -21,7 +21,7 @@ export const useAuthApi = () => {
     loading: isSigningUp,
     error: signUpError,
   } = useApi<string, SignUpRequest>({
-    endpoint: "/jv/signup",
+    endpoint: "/signup",
     method: "POST",
     axiosInstance: springClient,
   });
@@ -31,7 +31,7 @@ export const useAuthApi = () => {
     loading: isLoggingIn,
     error: loginError,
   } = useApi<LoginResponse, LoginRequest>({
-    endpoint: "/jv/login",
+    endpoint: "/login",
     method: "POST",
     axiosInstance: springClient,
   });
@@ -41,7 +41,7 @@ export const useAuthApi = () => {
     loading: isRefreshing,
     error: refreshError,
   } = useApi<{ accessToken: string }, { refreshToken: string }>({
-    endpoint: "/jv/refresh",
+    endpoint: "/refresh",
     method: "POST",
     axiosInstance: springClient,
   });
@@ -51,7 +51,7 @@ export const useAuthApi = () => {
     loading: isLoggingOut,
     error: logoutError,
   } = useApi<string, void>({
-    endpoint: "/jv/logout",
+    endpoint: "/logout",
     method: "POST",
     axiosInstance: springClient,
   });
@@ -61,7 +61,7 @@ export const useAuthApi = () => {
     loading: isGettingUserInfo,
     error: getUserInfoError,
   } = useApi<UserInfo, void>({
-    endpoint: "/jv/info",
+    endpoint: "/info",
     method: "GET",
     axiosInstance: springClient,
   });

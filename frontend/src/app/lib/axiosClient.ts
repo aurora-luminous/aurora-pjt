@@ -24,7 +24,7 @@ export const springAuthClient = axios.create({
 
 // Express 서버 전용 클라이언트
 export const expressClient = axios.create({
-  baseURL: "/api/ex", // Express 서버로 라우팅
+  baseURL: "/api", // Express 서버로 라우팅
 });
 
 // 인증이 불필요한 엔드포인트 목록

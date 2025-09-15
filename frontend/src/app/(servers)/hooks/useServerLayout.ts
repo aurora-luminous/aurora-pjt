@@ -8,10 +8,12 @@ import {
   projectNames,
   channelNames,
 } from "../types/data";
+import { useResponsive } from "../../lib/useResponsive";
 
 export const useServerLayout = () => {
   const params = useParams();
   const pathname = usePathname();
+  const { isMobile } = useResponsive();
 
   // URL 파라미터
   const serverId = params.server_id as string;
@@ -19,11 +21,18 @@ export const useServerLayout = () => {
   const channelId = params.channel_id as string;
   const userId = params.user_id as string;
 
-  // 상태 관리
+  // 상태 관리 - 모바일에서는 UserSidebar가 기본적으로 닫혀있음
   const [activeTab, setActiveTab] = useState<TabType>("favorites");
   const [directMessages, setDirectMessages] = useState<DirectMessage[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<User[]>([]);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(!isMobile);
+
+  // 모바일 상태 변경시 사이드바 상태 업데이트
+  useEffect(() => {
+    if (isMobile) {
+      setIsSidebarOpen(false);
+    }
+  }, [isMobile]);
 
   // 이름 가져오기 함수들
   const getServerName = (id: string) => {

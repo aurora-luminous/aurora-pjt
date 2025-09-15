@@ -3,8 +3,10 @@
 import React from "react";
 import { useChannelPage } from "../../../../../hooks/useChannelPage";
 import { ChatHeader, MessageList, MessageInput } from "../components";
+import { useResponsive } from "../../../../../../lib/useResponsive";
 
 const ChannelPage = () => {
+  const { isMobile } = useResponsive();
   const {
     channelId,
     newMessage,
@@ -22,7 +24,14 @@ const ChannelPage = () => {
   if (loadingChannels) {
     return (
       <div className="h-full flex items-center justify-center bg-chatting-background">
-        <div className="text-white text-lg">채널 정보를 불러오는 중...</div>
+        <div
+          className={`
+          text-white
+          ${isMobile ? "text-base" : "text-lg"}
+        `}
+        >
+          채널 정보를 불러오는 중...
+        </div>
       </div>
     );
   }

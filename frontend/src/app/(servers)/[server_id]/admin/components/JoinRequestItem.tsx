@@ -1,6 +1,10 @@
 import React from "react";
 import Image from "next/image";
-import { useJoinRequestItem, JoinRequest } from "@/app/(servers)/hooks/useAdmin";
+import {
+  useJoinRequestItem,
+  JoinRequest,
+} from "@/app/(servers)/hooks/useAdmin";
+import { useResponsive } from "../../../../lib/useResponsive";
 
 interface JoinRequestItemProps {
   request: JoinRequest;
@@ -17,6 +21,7 @@ const JoinRequestItem: React.FC<JoinRequestItemProps> = ({
   onApprove,
   onReject,
 }) => {
+  const { isMobile } = useResponsive();
   const {
     isProcessing,
     handleApprove,
@@ -28,28 +33,51 @@ const JoinRequestItem: React.FC<JoinRequestItemProps> = ({
   const statusBadge = getStatusBadge();
 
   return (
-    <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+    <div
+      className={`
+      bg-gray-700 rounded-lg border border-gray-600
+      ${isMobile ? "p-3" : "p-4"}
+    `}
+    >
       <div className="flex items-start justify-between">
         {/* 사용자 정보 */}
-        <div className="flex items-start space-x-3 flex-1">
+        <div
+          className={`
+          flex items-start flex-1
+          ${isMobile ? "space-x-2" : "space-x-3"}
+        `}
+        >
           {/* 체크박스 */}
           <input
             type="checkbox"
             checked={isSelected}
             onChange={handleCheckboxChange}
-            className="mt-1 w-4 h-4 text-blue-600 bg-gray-600 border-gray-500 rounded focus:ring-blue-500"
+            className={`
+              text-blue-600 bg-gray-600 border-gray-500 rounded focus:ring-blue-500
+              ${isMobile ? "mt-0.5 w-4 h-4" : "mt-1 w-4 h-4"}
+            `}
           />
 
           {/* 아바타 */}
-          <div className="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
+          <div
+            className={`
+            bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0
+            ${isMobile ? "w-8 h-8" : "w-10 h-10"}
+          `}
+          >
             {request.userAvatar ? (
               <Image
                 src={request.userAvatar}
                 alt={request.userName}
-                className="w-10 h-10 rounded-full"
+                className={`rounded-full ${isMobile ? "w-8 h-8" : "w-10 h-10"}`}
               />
             ) : (
-              <span className="text-white font-medium text-sm">
+              <span
+                className={`
+                text-white font-medium
+                ${isMobile ? "text-xs" : "text-sm"}
+              `}
+              >
                 {request.userName.charAt(0).toUpperCase()}
               </span>
             )}
@@ -57,21 +85,53 @@ const JoinRequestItem: React.FC<JoinRequestItemProps> = ({
 
           {/* 사용자 정보 및 메시지 */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-2">
-              <h3 className="text-white font-medium">{request.userName}</h3>
+            <div
+              className={`
+              flex items-center
+              ${isMobile ? "space-x-1" : "space-x-2"}
+            `}
+            >
+              <h3
+                className={`
+                text-white font-medium truncate
+                ${isMobile ? "text-sm" : "text-base"}
+              `}
+              >
+                {request.userName}
+              </h3>
               {statusBadge && (
-                <span className={statusBadge.className}>
+                <span
+                  className={`
+                  ${statusBadge.className}
+                  ${isMobile ? "text-xs px-1.5 py-0.5" : ""}
+                `}
+                >
                   {statusBadge.text}
                 </span>
               )}
             </div>
-            <p className="text-gray-300 text-sm mt-1 break-words">
+            <p
+              className={`
+              text-gray-300 mt-1 break-words
+              ${isMobile ? "text-xs" : "text-sm"}
+            `}
+            >
               {request.userEmail}
             </p>
-            <p className="text-gray-300 text-sm mt-1 break-words">
+            <p
+              className={`
+              text-gray-300 mt-1 break-words
+              ${isMobile ? "text-xs" : "text-sm"}
+            `}
+            >
               {request.message}
             </p>
-            <p className="text-gray-500 text-xs mt-1">
+            <p
+              className={`
+              text-gray-500 mt-1
+              ${isMobile ? "text-xs" : "text-xs"}
+            `}
+            >
               {new Date(request.requestDate).toLocaleDateString("ko-KR", {
                 year: "numeric",
                 month: "long",
@@ -85,15 +145,23 @@ const JoinRequestItem: React.FC<JoinRequestItemProps> = ({
 
         {/* 액션 버튼들 */}
         {request.status === "pending" && (
-          <div className="flex space-x-2 ml-4 flex-shrink-0">
+          <div
+            className={`
+            flex flex-shrink-0
+            ${isMobile ? "space-x-1 ml-2" : "space-x-2 ml-4"}
+          `}
+          >
             <button
               onClick={handleApprove}
               disabled={isProcessing}
-              className="w-10 h-10 bg-green-600 hover:bg-green-700 disabled:bg-green-400 rounded-lg flex items-center justify-center transition-colors"
+              className={`
+                bg-green-600 hover:bg-green-700 disabled:bg-green-400 rounded-lg flex items-center justify-center transition-colors
+                ${isMobile ? "w-8 h-8" : "w-10 h-10"}
+              `}
               title="승인"
             >
               <svg
-                className="w-5 h-5 text-white"
+                className={`text-white ${isMobile ? "w-4 h-4" : "w-5 h-5"}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -109,11 +177,14 @@ const JoinRequestItem: React.FC<JoinRequestItemProps> = ({
             <button
               onClick={handleReject}
               disabled={isProcessing}
-              className="w-10 h-10 bg-red-600 hover:bg-red-700 disabled:bg-red-400 rounded-lg flex items-center justify-center transition-colors"
+              className={`
+                bg-red-600 hover:bg-red-700 disabled:bg-red-400 rounded-lg flex items-center justify-center transition-colors
+                ${isMobile ? "w-8 h-8" : "w-10 h-10"}
+              `}
               title="거절"
             >
               <svg
-                className="w-5 h-5 text-white"
+                className={`text-white ${isMobile ? "w-4 h-4" : "w-5 h-5"}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

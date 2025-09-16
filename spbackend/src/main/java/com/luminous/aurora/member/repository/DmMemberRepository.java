@@ -16,5 +16,5 @@ public interface DmMemberRepository extends JpaRepository<DmMember, Integer> {
     // DM방 멤버 존재 여부 확인
     boolean existsByDmRoom_DmRoomPkAndUser_UserPk(Integer dmRoomPk, Integer userPk);
 
-    List<DmMember> findByDmRoomPkOrderByLastMessageTimeDesc(Integer dmRoomPk);
+    List<DmMember> findByDmRoom_DmRoomPkOrderByLastMessageTimeDesc(Integer dmRoomPk);
 }

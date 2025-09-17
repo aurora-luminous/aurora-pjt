@@ -2,6 +2,8 @@ package com.luminous.aurora.member.repository;
 
 import com.luminous.aurora.member.entity.DmMember;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -16,5 +18,10 @@ public interface DmMemberRepository extends JpaRepository<DmMember, Integer> {
     // DM방 멤버 존재 여부 확인
     boolean existsByDmRoom_DmRoomPkAndUser_UserPk(Integer dmRoomPk, Integer userPk);
 
-    List<DmMember> findByDmRoom_DmRoomPkOrderByLastMessageTimeDesc(Integer dmRoomPk);
+    // DM 멤버 조회 (해당 DM룸의 가장 최근 메시지 시간으로 정렬)
+    @Query("SELECT dm FROM DmMember dm " +
+           "LEFT JOIN Message m ON dm.dmRoom.dmRoomPk = m.dmRoomPk " +
+           "WHERE dm.dmRoom.dmRoomPk = :dmRoomPk " +
+           "ORDER BY m.createdAt DESC")
+    List<DmMember> findByDmRoom_DmRoomPkOrderByLastMessageTimeDesc(@Param("dmRoomPk") Integer dmRoomPk);
 }

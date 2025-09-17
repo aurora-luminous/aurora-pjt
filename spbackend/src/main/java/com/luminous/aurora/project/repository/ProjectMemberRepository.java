@@ -8,6 +8,6 @@ import java.util.List;
 
 @Repository
 public interface ProjectMemberRepository extends JpaRepository<ProjectMember, Integer> {
-    List<ProjectMember> findByProjectPkAndProjectRole(Integer projectPk, String role);
-    List<ProjectMember> findByProjectPk(Integer projectPk);
+    List<ProjectMember> findByProject_ProjectPkAndProjectRole(Integer projectPk, String role);
+    List<ProjectMember> findByProject_ProjectPk(Integer projectPk);
 }

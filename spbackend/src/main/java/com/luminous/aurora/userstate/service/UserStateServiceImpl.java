@@ -79,7 +79,7 @@ public class UserStateServiceImpl implements UserStateService {
     @Override
     public List<ProjectMember> getProjectMembersWithStatus(Integer projectPk) {
         // 1. 프로젝트 멤버 조회
-        List<ProjectMember> members = projectMemberRepository.findByProjectPk(projectPk);
+        List<ProjectMember> members = projectMemberRepository.findByProject_ProjectPk(projectPk);
 
         // 2. 상태별로 그룹화
         Map<UserStatus, List<ProjectMember>> statusGroups = new HashMap<>();
@@ -124,6 +124,6 @@ public class UserStateServiceImpl implements UserStateService {
     @Override
     public List<DmMember> getDmMembers(Integer dmRoomPk) {
         // DM 멤버 조회 (최신순)
-        return dmMemberRepository.findByDmRoomPkOrderByLastMessageTimeDesc(dmRoomPk);
+        return dmMemberRepository.findByDmRoom_DmRoomPkOrderByLastMessageTimeDesc(dmRoomPk);
     }
 }

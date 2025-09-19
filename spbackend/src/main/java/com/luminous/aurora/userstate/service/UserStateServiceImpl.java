@@ -1,5 +1,6 @@
 package com.luminous.aurora.userstate.service;
 
+import com.luminous.aurora.common.error.exception.InternalServerErrorException;
 import com.luminous.aurora.member.entity.DmMember;
 import com.luminous.aurora.member.repository.DmMemberRepository;
 import com.luminous.aurora.project.entity.ProjectMember;
@@ -10,6 +11,7 @@ import com.luminous.aurora.userstate.repository.UserStateRedisRepository;
 import com.luminous.aurora.userstate.repository.UserStateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,91 +33,117 @@ public class UserStateServiceImpl implements UserStateService {
     // ====기본 상태 관리 ====
     @Override
     public UserStatus getUserStatus(Integer userPk) {
-        // 1. 의도적 설정 상태 조회 (DB)
-        Optional<UserState> userState = userStateRepository.findByUserPk(userPk);
-        if (userState.isPresent() && userState.get().getStatus() != UserStatus.OFFLINE) {
-            return userState.get().getStatus();
-        }
+        try {
+            // 1. 의도적 설정 상태 조회 (DB)
+            Optional<UserState> userState = userStateRepository.findByUserPk(userPk);
+            if (userState.isPresent() && userState.get().getStatus() != UserStatus.OFFLINE) {
+                return userState.get().getStatus();
+            }
 
-        // 2. 자동상태 조회 (Redis)
-        Optional<UserStatus> redisStatus = redisRepository.getUserStatus(userPk);
-        if (redisStatus.isPresent()) {
-            return redisStatus.get();
-        }
+            // 2. 자동상태 조회 (Redis)
+            Optional<UserStatus> redisStatus = redisRepository.getUserStatus(userPk);
+            if (redisStatus.isPresent()) {
+                return redisStatus.get();
+            }
 
-        // 3. 기본값
-        return UserStatus.OFFLINE;
+            // 3. 기본값
+            return UserStatus.OFFLINE;
+        } catch (Exception e) {
+            log.error("사용자 상태 조회 실패 : {}", e.getMessage());
+            // 상태 조회 실패 시 안전하게 OFFLINE 반환
+            return UserStatus.OFFLINE;
+        }
     }
 
     @Override
     @Transactional
     public void setUserStatus(Integer userPk, UserStatus status) {
-        UserState userState = userStateRepository.findByUserPk(userPk)
-                .orElse(UserState.builder().userPk(userPk).build());
+        try {
+            UserState userState = userStateRepository.findByUserPk(userPk)
+                    .orElse(UserState.builder().userPk(userPk).build());
 
-        userState.setStatus(status);
-        userState.setLastSeen(LocalDateTime.now());
+            userState.setStatus(status);
+            userState.setLastSeen(LocalDateTime.now());
 
-        userStateRepository.save(userState);
+            userStateRepository.save(userState);
 
-        log.info("사용자 상태 설정 : userPk = {}, status = {}", userPk, status);
+            log.info("사용자 상태 설정 : userPk = {}, status = {}", userPk, status);
+        } catch (Exception e) {
+            log.error("사용자 상태 설정 실패 : {}", e.getMessage());
+            throw new InternalServerErrorException("사용자 상태 설정 중 서버 오류가 발생했습니다: " + e.getMessage());
+        }
     }
+
     @Override
     public void setUserOnline(Integer userPk) {
-        // Redis에 자동상태 저장 (30분 만료)
-        redisRepository.saveUserStatus(userPk, UserStatus.ONLINE, 30);
-        log.debug("사용자 온라인 설정: userPk={}", userPk);
+        try {
+            // Redis에 자동상태 저장 (30분 만료)
+            redisRepository.saveUserStatus(userPk, UserStatus.ONLINE, 30);
+            log.debug("사용자 온라인 설정: userPk={}", userPk);
+        } catch (Exception e) {
+            log.error("사용자 온라인 설정 실패 : {}", e.getMessage());
+            // Redis는 캐시이므로 오류가 발생해도 치명적이지 않기 때문에 로그만 기록하고 진행
+        }
     }
 
     @Override
     public void setUserOffline(Integer userPk) {
-        // Redis에서 자동상태 삭제
-        redisRepository.deleteUserStatus(userPk);
-        log.debug("사용자 오프라인 설정: userPk={}", userPk);
+        try {
+            // Redis에서 자동상태 삭제
+            redisRepository.deleteUserStatus(userPk);
+            log.debug("사용자 오프라인 설정: userPk={}", userPk);
+        } catch (Exception e) {
+            log.error("사용자 오프라인 설정 실패 : {}", e.getMessage());
+        }
     }
 
     // ========== 프로젝트 멤버 조회 ==========
 
     @Override
     public List<ProjectMember> getProjectMembersWithStatus(Integer projectPk) {
-        // 1. 프로젝트 멤버 조회
-        List<ProjectMember> members = projectMemberRepository.findByProject_ProjectPk(projectPk);
+        try {
+            // 1. 프로젝트 멤버 조회
+            List<ProjectMember> members = projectMemberRepository.findByProject_ProjectPk(projectPk);
 
-        // 2. 상태별로 그룹화
-        Map<UserStatus, List<ProjectMember>> statusGroups = new HashMap<>();
+            // 2. 상태별로 그룹화
+            Map<UserStatus, List<ProjectMember>> statusGroups = new HashMap<>();
 
-        for (ProjectMember member : members) {
-            UserStatus status = getUserStatus(member.getUser().getUserPk());
-            statusGroups.computeIfAbsent(status, k -> new ArrayList<>()).add(member);
-        }
-
-        // 3. 정렬 및 조합
-        List<ProjectMember> result = new ArrayList<>();
-
-        // 온라인/자리비움/방해금지: 권한별로 나누고 가나다순
-        for (UserStatus status : Arrays.asList(UserStatus.ONLINE, UserStatus.AWAY, UserStatus.DND)) {
-            List<ProjectMember> statusMembers = statusGroups.getOrDefault(status, new ArrayList<>());
-
-            // 권한별로 그룹화
-            Map<String, List<ProjectMember>> roleGroups = statusMembers.stream()
-                    .collect(Collectors.groupingBy(ProjectMember::getProjectRole));
-
-            // admin 먼저, member 나중에
-            for (String role : Arrays.asList("admin", "member")) {
-                List<ProjectMember> roleMembers = roleGroups.getOrDefault(role, new ArrayList<>());
-
-                // 가나다순 정렬
-                roleMembers.sort(Comparator.comparing(m -> m.getUser().getUserName()));
-                result.addAll(roleMembers);
+            for (ProjectMember member : members) {
+                UserStatus status = getUserStatus(member.getUser().getUserPk());
+                statusGroups.computeIfAbsent(status, k -> new ArrayList<>()).add(member);
             }
+
+            // 3. 정렬 및 조합
+            List<ProjectMember> result = new ArrayList<>();
+
+            // 온라인/자리비움/방해금지: 권한별로 나누고 가나다순
+            for (UserStatus status : Arrays.asList(UserStatus.ONLINE, UserStatus.AWAY, UserStatus.DND)) {
+                List<ProjectMember> statusMembers = statusGroups.getOrDefault(status, new ArrayList<>());
+
+                // 권한별로 그룹화
+                Map<String, List<ProjectMember>> roleGroups = statusMembers.stream()
+                        .collect(Collectors.groupingBy(ProjectMember::getProjectRole));
+
+                // admin 먼저, member 나중에
+                for (String role : Arrays.asList("admin", "member")) {
+                    List<ProjectMember> roleMembers = roleGroups.getOrDefault(role, new ArrayList<>());
+
+                    // 가나다순 정렬
+                    roleMembers.sort(Comparator.comparing(m -> m.getUser().getUserName()));
+                    result.addAll(roleMembers);
+                }
+            }
+
+            // 오프라인: 권한 구분 없이 가나다순
+            List<ProjectMember> offlineMembers = statusGroups.getOrDefault(UserStatus.OFFLINE, new ArrayList<>());
+            offlineMembers.sort(Comparator.comparing(m -> m.getUser().getUserName()));
+            result.addAll(offlineMembers);
+
+            return result;
+        } catch (Exception e) {
+            log.error("프로젝트 멤버 조회 실패 : {}", e.getMessage());
+            throw new InternalServerErrorException("프로젝트 멤버 조회 중 서버 오류가 발생했습니다: " + e.getMessage());
         }
-
-        // 오프라인: 권한 구분 없이 가나다순
-        List<ProjectMember> offlineMembers = statusGroups.getOrDefault(UserStatus.OFFLINE, new ArrayList<>());
-        offlineMembers.sort(Comparator.comparing(m -> m.getUser().getUserName()));
-        result.addAll(offlineMembers);
-
-        return result;
     }
 
 
@@ -123,7 +151,12 @@ public class UserStateServiceImpl implements UserStateService {
 
     @Override
     public List<DmMember> getDmMembers(Integer dmRoomPk) {
-        // DM 멤버 조회 (최신순)
-        return dmMemberRepository.findByDmRoom_DmRoomPkOrderByLastMessageTimeDesc(dmRoomPk);
+        try {
+            // DM 멤버 조회 (최신순)
+            return dmMemberRepository.findByDmRoom_DmRoomPkOrderByLastMessageTimeDesc(dmRoomPk);
+        } catch (Exception e) {
+            log.error("DM 멤버 조회 실패 : {}", e.getMessage());
+            throw new InternalServerErrorException("DM 멤버 조회 중 서버 오류가 발생했습니다.: " + e.getMessage());
+        }
     }
 }

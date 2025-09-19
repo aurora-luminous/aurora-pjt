@@ -1,6 +1,8 @@
 package com.luminous.aurora.auth.service;
 
 
+import com.luminous.aurora.common.error.exception.InternalServerErrorException;
+import com.luminous.aurora.common.error.exception.UnauthorizedException;
 import com.luminous.aurora.jwt.JwtTokenProvider;
 import com.luminous.aurora.auth.dto.TokenResponse;
 import com.luminous.aurora.auth.repository.TokenRedisRepository;
@@ -25,54 +27,74 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public TokenResponse generateTokens(String userEmail) {
-        // Access Token 생성
-        String accessToken = jwtTokenProvider.generateAccessToken(userEmail);
+        try {
+            // Access Token 생성
+            String accessToken = jwtTokenProvider.generateAccessToken(userEmail);
 
-        // refreshToken 생성
-        String refreshToken = jwtTokenProvider.generateRefreshToken(userEmail);
+            // refreshToken 생성
+            String refreshToken = jwtTokenProvider.generateRefreshToken(userEmail);
 
-        // Redis에 토큰 저장
-        tokenRedisRepository.saveToken(userEmail, accessToken, accessTokenValidity);
-        tokenRedisRepository.saveToken(userEmail + ":refresh", refreshToken, refreshTokenValidity);
+            // Redis에 토큰 저장
+            tokenRedisRepository.saveToken(userEmail, accessToken, accessTokenValidity);
+            tokenRedisRepository.saveToken(userEmail + ":refresh", refreshToken, refreshTokenValidity);
 
-        log.info("토큰 생성 완료: userEmail = {}", userEmail);
+            log.info("토큰 생성 완료: userEmail = {}", userEmail);
 
-        return TokenResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
+            return TokenResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .build();
+        } catch (Exception e) {
+            log.error("토큰 생성 실패 : {}", e.getMessage());
+            throw new InternalServerErrorException("토큰 생성 중 서버 오류가 발생했습니다. : " + e.getMessage());
+        }
     }
 
     @Override
     public boolean validateToken(String userEmail, String token) {
+        try {
+            // JWT 토큰 자체의 유효성 검증
+            if (!jwtTokenProvider.validateToken(token)) {
+                return false;
+            }
 
-        // JWT 토큰 자체의 유효성 검증
-        if (!jwtTokenProvider.validateToken(token)) {
+            // Redis에 토큰이 존재하는지 확인 (로그아웃 체크)
+            return tokenRedisRepository.hasToken(userEmail);
+        } catch (Exception e) {
+            log.error("토큰 검증 실패 : {}", e.getMessage());
             return false;
         }
-
-        // Redis에 토큰이 존재하는지 확인 (로그아웃 체크)
-        return tokenRedisRepository.hasToken(userEmail);
     }
 
     @Override
     public void logout(String userEmail) {
-
-        tokenRedisRepository.deleteToken(userEmail);
-        tokenRedisRepository.deleteToken(userEmail + ":refresh");
-        log.info("로그아웃 완료 : userEmail = {}", userEmail);
+        try {
+            tokenRedisRepository.deleteToken(userEmail);
+            tokenRedisRepository.deleteToken(userEmail + ":refresh");
+            log.info("로그아웃 완료 : userEmail = {}", userEmail);
+        } catch (Exception e) {
+            log.error("로그아웃 실패 : {}", e.getMessage());
+            throw new InternalServerErrorException("로그아웃 처리 중 서버 오류가 발생했습니다 : " + e.getMessage());
+        }
     }
 
     @Override
     public TokenResponse refreshToken(String refreshToken) {
-        String userEmail = jwtTokenProvider.getUserEmailFromToken(refreshToken);
+        try {
+            String userEmail = jwtTokenProvider.getUserEmailFromToken(refreshToken);
 
-        // refresh token이 redis에 있는지 확인
-        if (!tokenRedisRepository.hasToken(userEmail + ":refresh")) {
-            throw new RuntimeException("유효하지 않은 Refresh Token 입니다.");
+            // refresh token이 redis에 있는지 확인
+            if (!tokenRedisRepository.hasToken(userEmail + ":refresh")) {
+                throw new UnauthorizedException("유효하지 않은 Refresh Token 입니다.");
+            }
+            // 있다면 새로운 토큰 생성
+            return generateTokens(userEmail);
+        } catch (UnauthorizedException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("토큰 갱신 실패: {}", e.getMessage());
+            throw new InternalServerErrorException("토큰 갱신 중 서버 오류가 발생했습니다: " + e.getMessage());
         }
-        // 있다면 새로운 토큰 생성
-        return generateTokens(userEmail);
     }
 
 }

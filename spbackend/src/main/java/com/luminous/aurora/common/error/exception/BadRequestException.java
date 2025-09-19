@@ -1,4 +1,4 @@
-package com.luminous.aurora.common.error.exption;
+package com.luminous.aurora.common.error.exception;
 
 public class BadRequestException extends RuntimeException {
     public BadRequestException(String message) {

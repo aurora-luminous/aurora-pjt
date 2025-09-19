@@ -1,6 +1,6 @@
 package com.luminous.aurora.common.error;
 
-import com.luminous.aurora.common.error.exption.*;
+import com.luminous.aurora.common.error.exception.*;
 import org.apache.coyote.BadRequestException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

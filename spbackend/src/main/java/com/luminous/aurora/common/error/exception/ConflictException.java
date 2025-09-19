@@ -1,4 +1,4 @@
-package com.luminous.aurora.common.error.exption;
+package com.luminous.aurora.common.error.exception;
 
 public class ConflictException extends RuntimeException {
     public ConflictException(String message) {

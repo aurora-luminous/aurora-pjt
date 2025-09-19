@@ -1,4 +1,4 @@
-package com.luminous.aurora.common.error.exption;
+package com.luminous.aurora.common.error.exception;
 
 public class NotFoundException extends RuntimeException {
   public NotFoundException(String message) {

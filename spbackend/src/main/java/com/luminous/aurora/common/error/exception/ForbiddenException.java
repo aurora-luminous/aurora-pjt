@@ -1,4 +1,4 @@
-package com.luminous.aurora.common.error.exption;
+package com.luminous.aurora.common.error.exception;
 
 public class ForbiddenException extends RuntimeException {
     public ForbiddenException(String message) {

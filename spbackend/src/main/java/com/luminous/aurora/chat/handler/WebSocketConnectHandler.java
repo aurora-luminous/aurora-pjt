@@ -1,6 +1,7 @@
 package com.luminous.aurora.chat.handler;
 
 import com.luminous.aurora.auth.repository.UserRepository;
+import com.luminous.aurora.common.error.exception.NotFoundException;
 import com.luminous.aurora.jwt.JwtTokenProvider;
 import com.luminous.aurora.userstate.service.UserStateService;
 import jakarta.servlet.http.Cookie;
@@ -33,7 +34,7 @@ public class WebSocketConnectHandler {
             if (jwtToken != null && jwtTokenProvider.validateToken(jwtToken)) {
                 String userEmail = jwtTokenProvider.getUserEmailFromToken(jwtToken);
                 Integer userPk = userRepository.findUserPkByUserEmail(userEmail)
-                        .orElseThrow(()-> new RuntimeException("사용자를 찾을 수 없습니다."));
+                        .orElseThrow(()-> new NotFoundException("사용자를 찾을 수 없습니다."));
                 // JWT가 유효하면 연결 허용
                 headerAccessor.getSessionAttributes().put("authenticated",true);
                 headerAccessor.getSessionAttributes().put("user_pk", userPk);

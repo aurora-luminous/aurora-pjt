@@ -16,17 +16,28 @@ public class MemberServiceImpl implements MemberService{
 
     @Override
     public boolean hasChannelAccess(Integer channelPk, Integer userPk) {
-        boolean hasAccess = channelMemberRepository.existsByChannel_ChannelPkAndUser_UserPk(channelPk, userPk);
+        try {
+            boolean hasAccess = channelMemberRepository.existsByChannel_ChannelPkAndUser_UserPk(channelPk, userPk);
 
-        log.debug("채널 접근 권한 확인 : channelPk = {}, userPk = {}, hasAccess={}", channelPk, userPk, hasAccess);
-        return hasAccess;
+            log.debug("채널 접근 권한 확인 : channelPk = {}, userPk = {}, hasAccess={}", channelPk, userPk, hasAccess);
+            return hasAccess;
+        } catch (Exception e) {
+            log.error("채널 접근 권한 확인 실패 : {}", e.getMessage());
+            // 권환 확인 실패 시 안전하게 false 반환
+            return false;
+        }
     }
 
     @Override
     public boolean hasDmRoomAccess(Integer dmRoomPk, Integer userPk) {
-        boolean hasAccess = dmMemberRepository.existsByDmRoom_DmRoomPkAndUser_UserPk(dmRoomPk, userPk);
+        try {
+            boolean hasAccess = dmMemberRepository.existsByDmRoom_DmRoomPkAndUser_UserPk(dmRoomPk, userPk);
 
-        log.debug("DM방 접근 권한 확인 : dmRoomPk={}, userPk={}, hasAccess={}", dmRoomPk, userPk, hasAccess);
-        return hasAccess;
+            log.debug("DM방 접근 권한 확인 : dmRoomPk={}, userPk={}, hasAccess={}", dmRoomPk, userPk, hasAccess);
+            return hasAccess;
+        } catch (Exception e) {
+            log.error("DM방 접근 권환 확인 실패: {}",e.getMessage());
+            return false;
+        }
     }
 }

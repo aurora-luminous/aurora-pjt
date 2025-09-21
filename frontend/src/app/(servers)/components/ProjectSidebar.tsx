@@ -16,6 +16,7 @@ import AddProjectModal from "@/app/(server-setup)/components/AddProjectModal";
 import AddProjectInviteModal from "@/app/(server-setup)/components/AddProjectInviteModal";
 import { ProjectManageModal } from "@/app/(server-setup)/components/ProjectManageModal";
 import { ChannelManageModal } from "@/app/(server-setup)/components/ChannelManageModal";
+import SettingModal from "@/app/(server-setup)/components/SettingModal";
 import { useAdminSidebar } from "../hooks/useAdmin";
 import { UserInfo } from "./UserInfo";
 import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
@@ -674,6 +675,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
       <AddChannelModal />
       <AddProjectModal />
       <AddProjectInviteModal />
+      <SettingModal />
     </>
   );
 };

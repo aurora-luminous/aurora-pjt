@@ -12,6 +12,7 @@ export type ModalType =
   | "PROJECT_INVITE"
   | "PROJECT_MANAGE"
   | "CHANNEL_MANAGE"
+  | "SETTING"
   | null;
 
 // 서버 데이터 타입 정의
@@ -210,6 +211,11 @@ export const useModal = () => {
       dispatch(openModal({ type: "CHANNEL_MANAGE", data: channelManageData }));
     },
 
+    // 설정 모달 열기
+    openSettingModal: () => {
+      dispatch(openModal({ type: "SETTING" }));
+    },
+
     // 모달 닫기
     close: () => {
       dispatch(closeModal());
@@ -269,5 +275,6 @@ export const useModal = () => {
     isProjectInviteModal: modalState.type === "PROJECT_INVITE",
     isProjectManageModal: modalState.type === "PROJECT_MANAGE",
     isChannelManageModal: modalState.type === "CHANNEL_MANAGE",
+    isSettingModal: modalState.type === "SETTING",
   };
 };

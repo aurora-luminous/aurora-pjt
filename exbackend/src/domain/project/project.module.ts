@@ -11,6 +11,7 @@ import { ChannelMember } from '../text-channel/entities/channel-member.entity';
 import { ProjectCreationService } from './services/project-creation.service';
 import { ProjectInvitationService } from './services/project-invitation.service';
 import { ProjectController } from './controllers/project.controller';
+import { ProjectNotificationService } from './services/project-notification.service';
 
 @Module({
   imports: [
@@ -31,10 +32,12 @@ import { ProjectController } from './controllers/project.controller';
   providers: [
     ProjectCreationService,
     ProjectInvitationService,
+    ProjectNotificationService,
   ],
   exports: [
     ProjectCreationService,
     ProjectInvitationService,
+    ProjectNotificationService,
   ],
 })
 export class ProjectModule {}

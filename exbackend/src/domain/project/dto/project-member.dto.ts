@@ -12,6 +12,11 @@ export class ProjectMemberUserInfoDto {
 }
 
 export class ProjectMemberDto {
+  @ApiProperty({
+    description: '프로젝트 기본키',
+    example: 1
+  })
+  projectPk: number;
 
   @ApiProperty({ 
     description: '프로젝트 상태',
@@ -30,4 +35,13 @@ export class ProjectMemberDto {
     type: ProjectMemberUserInfoDto
   })
   userInfo: ProjectMemberUserInfoDto;
+}
+
+export interface ProjectMemberNotificationDto {
+  eventType: 'MEMBER_ADDED' | 'MEMBER_REMOVED';
+  projectPk: number;
+  userPk: number;
+  userName: string;
+  projectRole: string;
+  timestamp: number;
 }

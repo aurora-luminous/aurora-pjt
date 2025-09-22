@@ -1,9 +1,9 @@
 import { Controller, Post, Get, Body, Param, ParseIntPipe, Patch, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ServerCreationService } from '../services/server-creation.service';
-import { ServerInvitationService, ServerMemberInfoDto, ServerMemberDetailDto } from '../services/server-invitation.service';
+import { ServerInvitationService } from '../services/server-invitation.service';
 import { ServerMemberManagementService } from '../services/server-member-management.service';
-import { CreateServerDto, ServerListDto, ServerCreateResponseDto } from '../dto';
+import { CreateServerDto, ServerListDto, ServerCreateResponseDto, ServerMemberInfoDto, ServerMemberDetailDto } from '../dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import { User } from '../../user/entities/user.entity';
@@ -45,7 +45,7 @@ export class ServerController {
     @CurrentUser() user: User
   ): Promise<ServerListDto[]> {
     const requestUserPk = user.userPk;
-    
+
     return await this.serverCreationService.getUserServers(requestUserPk);
   }
 
@@ -59,7 +59,7 @@ export class ServerController {
     @CurrentUser() user: User // ✅ 매개변수로 추가
   ): Promise<{ inviteLink: string }> {
     const requestUserPk = user.userPk; // ✅ 하드코딩 대신 JWT에서 추출
-    
+
     // serverUrl로 serverPk 조회
     const server = await this.serverCreationService.getServerByUrl(serverUrl);
     const result = await this.serverInvitationService.generateInviteLink(server.serverPk, requestUserPk);
@@ -75,18 +75,18 @@ export class ServerController {
     @Param('serverUrl') serverUrl: string,
     @Param('inviteHash') inviteHash: string,
     @CurrentUser() user: User
-  ): Promise<{ 
+  ): Promise<{
     serverUrl: string;
     serverName: string;
   }> {
     const userPk = user.userPk;
-    
+
     const result = await this.serverInvitationService.getServerInfoByInvite({
       inviteHash,
       userPk
     });
-    
-    return { 
+
+    return {
       serverUrl: result.serverUrl,
       serverName: result.serverName
     };
@@ -101,7 +101,7 @@ export class ServerController {
     @Param('serverUrl') serverUrl: string,
     @CurrentUser() user: User
   ): Promise<{
-    status: 'Pending' | 'Approved' | 'Rejected' | 'Banned';
+    sStatus: 'Pending' | 'Active' | 'Inactive' | 'Banned';
     defaultProject?: {
       projectPk: number;
       projectName: string;
@@ -112,10 +112,10 @@ export class ServerController {
     };
   }> {
     const userPk = user.userPk;
-    
+
     const result = await this.serverInvitationService.joinServerDirect(serverUrl, userPk);
     return {
-      status: result.status,
+      sStatus: result.sStatus,
       ...(result.defaultProject && { defaultProject: result.defaultProject }),
       ...(result.defaultChannel && { defaultChannel: result.defaultChannel }),
     };
@@ -130,7 +130,7 @@ export class ServerController {
     @Param('serverUrl') serverUrl: string,
     @CurrentUser() user: User
   ): Promise<Array<{
-    status: string;
+    sStatus: string;
     userInfo: {
       user_name: string;
       user_email: string;
@@ -138,14 +138,14 @@ export class ServerController {
     };
   }>> {
     const requestUserPk = user.userPk;
-    
+
     // serverUrl로 serverPk 조회
     const server = await this.serverCreationService.getServerByUrl(serverUrl);
     const members = await this.serverInvitationService.getPendingMembers(server.serverPk, requestUserPk);
-    
+
     // 명세서 형식에 맞게 변환
     return members.map(member => ({
-      status: member.status,
+      sStatus: member.sStatus,
       userInfo: {
         user_name: member.userInfo.user_name,
         user_email: member.userInfo.user_email,
@@ -161,13 +161,13 @@ export class ServerController {
   @ApiResponse({ status: 200, description: '멤버 상태 변경 성공' })
   async updateMemberStatus(
     @Param('serverUrl') serverUrl: string,
-    @Body() updateDto: { 
+    @Body() updateDto: {
       userEmail: string;
-      status: 'Approved' | 'Rejected' | 'Banned';
+      sStatus: 'Active' | 'Inactive' | 'Banned';
     },
     @CurrentUser() user: User
   ): Promise<{
-    status: 'Approved' | 'Rejected' | 'Banned';
+    sStatus: 'Pending' | 'Active' | 'Inactive' | 'Banned';
     userInfo: {
       user_name: string;
       user_email: string;
@@ -175,20 +175,20 @@ export class ServerController {
     };
   }> {
     const adminUserPk = user.userPk;
-    
+
     // serverUrl로 serverPk 조회
     const server = await this.serverCreationService.getServerByUrl(serverUrl);
-    
+
     const result = await this.serverInvitationService.updateMemberStatusByEmail(
       server.serverPk,
       updateDto.userEmail,
-      updateDto.status,
+      updateDto.sStatus,
       adminUserPk
     );
-    
+
     // 명세서 형식에 맞게 변환
     return {
-      status: result.status as 'Approved' | 'Rejected' | 'Banned',
+      sStatus: result.sStatus as 'Active' | 'Inactive' | 'Banned',
       userInfo: {
         user_name: result.userInfo.user_name,
         user_email: result.userInfo.user_email,
@@ -207,7 +207,7 @@ export class ServerController {
     @CurrentUser() user: User
   ): Promise<ServerMemberInfoDto[] | ServerMemberDetailDto[]> {
     const requestUserPk = user.userPk;
-    
+
     return await this.serverInvitationService.getServerMembersByUrl(serverUrl, requestUserPk);
   }
 
@@ -231,7 +231,7 @@ export class ServerController {
     const server = await this.serverCreationService.getServerByUrl(serverUrl);
 
     // 권한 일괄 변경 실행
-    const result = await this.serverMemberManagementService.bulkUpdateMemberRoles(        
+    const result = await this.serverMemberManagementService.bulkUpdateMemberRoles(
       server.serverPk,
       updateDto.changes,
       ownerUserPk
@@ -257,10 +257,10 @@ export class ServerController {
     @CurrentUser() user: User
   ): Promise<{ processed: number; failed: Array<{ userEmail: string; reason: string }> }> {
     const adminUserPk = user.userPk;
-    
+
     // serverUrl로 serverPk 조회
     const server = await this.serverCreationService.getServerByUrl(serverUrl);
-    
+
     // 일괄 강퇴/밴 실행
     const result = await this.serverMemberManagementService.bulkMemberAction(
       server.serverPk,
@@ -268,11 +268,10 @@ export class ServerController {
       actionDto.userEmails,
       adminUserPk
     );
-    
+
     return {
       processed: result.processed,
       failed: result.failed
     };
   }
-
 }

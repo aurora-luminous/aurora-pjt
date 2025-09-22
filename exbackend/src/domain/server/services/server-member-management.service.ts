@@ -6,26 +6,7 @@ import { ServerMember } from "../entities/server-member.entity";
 import { User } from "../../user/entities/user.entity";
 import { UserService } from "../../user/services/user.service";
 import { ServerRoleUtils } from "../../../common/enums/member-role.enum";
-
-export interface BulkRoleUpdateDto {
-    changes: Array<{
-        userEmail: string;
-        newRole: 'member' | 'admin';
-    }>;
-}
-
-export interface BulkActionDto {
-    action: 'kick' | 'ban';
-    userEmails: string[];
-}
-
-export interface BulkOperationResult {
-    processed: number;
-    failed: Array <{
-        userEmail: string;
-        reason: string;
-    }>;
-}
+import { BulkRoleUpdateDto, BulkActionDto, BulkOperationResult } from '../dto';
 
 @Injectable()
 export class ServerMemberManagementService {
@@ -59,7 +40,7 @@ export class ServerMemberManagementService {
             where: {
                 serverPk,
                 userPk: ownerUserPk,
-                status: 'Approved',
+                sStatus: 'Active',
                 serverRole: 'owner'
             }
         });
@@ -84,7 +65,7 @@ export class ServerMemberManagementService {
                     where: {
                         serverPk,
                         userPk: user.userPk,
-                        status: 'Approved'
+                        sStatus: 'Active'
                     }
                 });
 
@@ -109,7 +90,7 @@ export class ServerMemberManagementService {
                 serverMember.serverRole = change.newRole;
                 await this.serverMemberRepository.save(serverMember);
                 results.processed++;
-                
+
             } catch (error) {
                 results.failed.push({
                     userEmail: change.userEmail,
@@ -138,10 +119,10 @@ export class ServerMemberManagementService {
 
         // 2. 요청자가 Admin 이상인지 확인
         const adminMember = await this.serverMemberRepository.findOne({
-            where: { 
-                serverPk, 
-                userPk: adminUserPk, 
-                status: 'Approved'
+            where: {
+                serverPk,
+                userPk: adminUserPk,
+                sStatus: 'Active'
             }
         });
 
@@ -159,13 +140,13 @@ export class ServerMemberManagementService {
             try {
                 // 사용자 찾기
                 const user = await this.userService.findByEmailOrThrow(userEmail);
-                
+
                 // 대상 멤버 찾기
                 const targetMember = await this.serverMemberRepository.findOne({
-                    where: { 
-                        serverPk, 
+                    where: {
+                        serverPk,
                         userPk: user.userPk,
-                        status: 'Approved'
+                        sStatus: 'Active'
                     }
                 });
 
@@ -200,8 +181,8 @@ export class ServerMemberManagementService {
                     // 강퇴: sStatus를 Inactive로 변경
                     targetMember.sStatus = 'Inactive';
                 } else if (action === 'ban') {
-                    // 밴: status를 Banned로 변경
-                    targetMember.status = 'Banned';
+                    // 밴: sStatus를 Banned로 변경
+                    targetMember.sStatus = 'Banned';
                 }
 
                 await this.serverMemberRepository.save(targetMember);
@@ -217,5 +198,4 @@ export class ServerMemberManagementService {
 
         return results;
     }
-
 }

@@ -25,21 +25,13 @@ export class ServerMember {
   @Column()
   serverPk: number;
 
-  @ApiProperty({ description: '서버 멤버 상태 (활성/비활성/밴)' })
-  @Column({ type: 'varchar', length: 20, name: 's_status', default: 'Active' })
-  sStatus: 'Active' | 'Inactive' | 'Banned';
-
   @ApiProperty({
-    description: '멤버 승인 상태',
-    enum: ['Pending', 'Approved', 'Rejected', 'Banned'],
+    description: '서버 멤버 상태',
+    enum: ['Pending', 'Active', 'Inactive', 'Banned'],
     default: 'Pending',
   })
-  @Column({
-    type: 'varchar',
-    length: 20,
-    default: 'Pending',
-  })
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Banned';
+  @Column({ type: 'varchar', length: 20, name: 's_status', default: 'Pending' })
+  sStatus: 'Pending' | 'Active' | 'Inactive' | 'Banned';
 
   @ApiProperty({
     description: '서버 역할',

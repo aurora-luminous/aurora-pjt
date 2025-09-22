@@ -40,7 +40,6 @@ export class ServerCreationService {
         const serverMember = this.serverMemberRepository.create({
         userPk: createServerDto.creatorUserPk,
         serverPk: savedServer.serverPk,
-        status: 'Approved', // 생성자는 자동 승인
         sStatus: 'Active',
         serverRole: 'owner', // 생성자는 owner 권한
         });
@@ -68,8 +67,7 @@ export class ServerCreationService {
     async getUserServers(userPk: number): Promise<ServerListDto[]> {
         const serverMembers = await this.serverMemberRepository.find({
             where: { 
-                userPk: userPk,
-                status: 'Approved'
+                userPk: userPk
             },
             relations: ['server'],
         });

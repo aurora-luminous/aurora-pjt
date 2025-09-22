@@ -130,7 +130,7 @@ export class ServerController {
     @Param('serverUrl') serverUrl: string,
     @CurrentUser() user: User
   ): Promise<Array<{
-    sStatus: string;
+    sStatus: 'Pending' | 'Active' | 'Inactive' | 'Banned';
     userInfo: {
       user_name: string;
       user_email: string;
@@ -188,7 +188,7 @@ export class ServerController {
 
     // 명세서 형식에 맞게 변환
     return {
-      sStatus: result.sStatus as 'Active' | 'Inactive' | 'Banned',
+      sStatus: result.sStatus,
       userInfo: {
         user_name: result.userInfo.user_name,
         user_email: result.userInfo.user_email,

@@ -56,7 +56,7 @@ export class ProjectCreationService {
         where: { 
             serverPk: server.serverPk, 
             userPk: createProjectDto.creatorUserPk,
-            status: 'Approved'
+            sStatus: 'Active'
         },
         relations: ['user']
         });

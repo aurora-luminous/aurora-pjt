@@ -97,7 +97,7 @@ export class ProjectInvitationService {
     const serverMember = await this.serverMemberRepository.findOne({
       where: { 
         serverPk: project.serverPk, 
-        status: 'Approved'
+        sStatus: 'Active'
       }
     });
 

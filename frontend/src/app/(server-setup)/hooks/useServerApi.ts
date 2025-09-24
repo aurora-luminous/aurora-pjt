@@ -8,6 +8,8 @@ import {
   MemberEmail,
   ChannelMemberInfo,
   ProjectMemberInfo,
+  PermissionResponse,
+  PermissonUsers,
 } from "../types/Server";
 import { expressClient } from "@/app/lib/axiosClient";
 import { Project } from "../types/Projcets";
@@ -220,6 +222,14 @@ export const useUnbanChannelMemberApi = (
 ) => {
   return useApi<{ message: string }, MemberEmail>({
     endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/members/unban`,
+    method: "PATCH",
+    axiosInstance: expressClient,
+  });
+};
+
+export const useServerPermissionApi = (serverUrl: string) => {
+  return useApi<PermissionResponse, PermissonUsers>({
+    endpoint: `/ex/servers/${serverUrl}/members/roles`,
     method: "PATCH",
     axiosInstance: expressClient,
   });

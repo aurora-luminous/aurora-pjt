@@ -489,23 +489,6 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                               </div>
                             </div>
                           </button>
-                          {currentProjectRole === "admin" &&
-                            decodedChannelId && (
-                              <button
-                                onClick={handleChannelManage}
-                                className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors rounded-b"
-                              >
-                                <div className="flex items-center">
-                                  <span className="mr-3">⚙️</span>
-                                  <div>
-                                    <div className="font-medium">채널 관리</div>
-                                    <div className="text-xs text-gray-400">
-                                      현재 채널 설정하기
-                                    </div>
-                                  </div>
-                                </div>
-                              </button>
-                            )}
                         </div>
                       )}
                     </div>

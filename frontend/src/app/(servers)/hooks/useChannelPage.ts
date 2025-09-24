@@ -23,12 +23,18 @@ export const useChannelPage = () => {
 
   const serverInfo = useCurrentServerInfo();
 
+  // URL의 projectId를 숫자로 변환
+  const urlProjectPk = useMemo(() => {
+    const pk = parseInt(projectId, 10);
+    return isNaN(pk) ? 0 : pk;
+  }, [projectId]);
+
   const {
     channels,
     loading: loadingChannels,
     loadChannels,
     findChannel,
-  } = useChannels(serverInfo?.serverUrl, serverInfo?.projectPk);
+  } = useChannels(serverInfo?.serverUrl, urlProjectPk);
 
   // 상태 관리
   const [newMessage, setNewMessage] = useState("");
@@ -38,26 +44,25 @@ export const useChannelPage = () => {
   // 채널 목록 로딩 (Redux 사용)
   useEffect(() => {
     const loadChannelList = async () => {
-      if (!serverInfo?.serverUrl || !serverInfo?.projectPk) return;
+      if (!serverInfo?.serverUrl || !urlProjectPk) return;
 
       try {
         console.log(
-          `🔄 채널 페이지에서 채널 목록 로드 - 프로젝트: ${serverInfo.projectPk}, 찾는 채널: "${channelId}" (원본: "${channelIdRaw}")`
+          `🔄 채널 페이지에서 채널 목록 로드 - 프로젝트: ${urlProjectPk}, 찾는 채널: "${channelId}" (원본: "${channelIdRaw}")`
         );
-        await loadChannels(serverInfo.serverUrl, serverInfo.projectPk);
+        await loadChannels(serverInfo.serverUrl, urlProjectPk);
       } catch (error) {
         console.error("채널 정보 로딩 실패:", error);
       }
     };
 
-    // 채널 목록이 비어있으면 로드
-    if (channels.length === 0) {
+    // URL 프로젝트 ID가 변경되면 항상 새로 로드
+    if (serverInfo?.serverUrl && urlProjectPk > 0) {
       loadChannelList();
     }
   }, [
     serverInfo?.serverUrl,
-    serverInfo?.projectPk,
-    channels.length,
+    urlProjectPk, // 프로젝트 변경 감지
     loadChannels,
     channelId,
     channelIdRaw,
@@ -68,12 +73,68 @@ export const useChannelPage = () => {
     console.log(
       `🔍 현재 채널 찾기: "${channelId}" (디코딩됨), 전체 채널 수: ${channels.length}`
     );
+    console.log(
+      "📋 사용 가능한 채널 목록:",
+      channels.map((ch) => ch.channelName)
+    );
+    console.log("🔍 찾는 채널명:", channelId, "타입:", typeof channelId);
 
     // Redux에서 현재 채널 찾기 (디코딩된 이름으로)
-    const channel = findChannel(channelId);
+    let channel = findChannel(channelId);
+
+    // 정확히 매칭되지 않으면 fallback 매칭 시도
+    if (!channel && channels.length > 0) {
+      console.log("❌ 정확한 매칭 실패, fallback 매칭 시도...");
+
+      // 1. 소문자로 변환해서 매칭
+      channel = channels.find(
+        (ch) => ch.channelName.toLowerCase() === channelId.toLowerCase()
+      );
+
+      if (!channel) {
+        // 2. "일반" -> "general" 매핑
+        const channelMap: Record<string, string> = {
+          일반: "general",
+          general: "일반",
+          공지: "notice",
+          notice: "공지",
+          음성: "voice",
+          voice: "음성",
+        };
+
+        const mappedName = channelMap[channelId];
+        if (mappedName) {
+          channel = findChannel(mappedName);
+          console.log(
+            `🔄 매핑된 채널명으로 재시도: "${channelId}" -> "${mappedName}":`,
+            !!channel
+          );
+        }
+      }
+
+      if (!channel) {
+        // 3. 부분 문자열 매칭
+        channel = channels.find(
+          (ch) =>
+            ch.channelName.includes(channelId) ||
+            channelId.includes(ch.channelName)
+        );
+        console.log("🔄 부분 매칭 결과:", !!channel);
+      }
+
+      if (!channel) {
+        // 4. 첫 번째 텍스트 채널 또는 첫 번째 채널 사용
+        channel =
+          channels.find((ch) => ch.channelKind === "text") || channels[0];
+        console.log("🔄 기본 채널 사용:", channel?.channelName);
+      }
+    }
 
     if (channel) {
-      console.log(`✅ 채널 찾음: "${channel.channelName}"`);
+      const wasExactMatch = findChannel(channelId) === channel;
+      console.log(
+        `✅ 채널 찾음: "${channel.channelName}", 정확한 매칭: ${wasExactMatch}`
+      );
       setCurrentChannel(channel);
 
       // 채널별 환영 메시지 설정
@@ -102,49 +163,36 @@ export const useChannelPage = () => {
           }),
           isSystem: true,
         },
-        {
-          id: 3,
-          user: "시스템",
-          content: "실제 메시지 API 연동 전이므로 임시 메시지입니다.",
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          }),
-          isSystem: true,
-        },
       ];
-      setMessages(welcomeMessages);
-    } else if (channels.length > 0) {
-      console.log(`❌ 채널 못찾음: "${channelId}", 첫 번째 채널 사용`);
-      const fallbackChannel = channels[0];
-      setCurrentChannel(fallbackChannel);
 
-      const errorMessages: Message[] = [
-        {
-          id: 1,
+      // 정확한 매칭이 아닌 경우 안내 메시지 추가
+      if (!wasExactMatch && channelId !== channel.channelName) {
+        welcomeMessages.splice(1, 0, {
+          id: 1.5,
           user: "시스템",
-          content: `요청하신 "${channelId}" 채널을 찾을 수 없습니다.`,
+          content: `"${channelId}" 채널을 찾지 못해 "${channel.channelName}" 채널로 연결되었습니다.`,
           timestamp: new Date().toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
             hour12: true,
           }),
           isSystem: true,
-        },
-        {
-          id: 2,
-          user: "시스템",
-          content: `${fallbackChannel.channelName} 채널로 이동하였습니다.`,
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          }),
-          isSystem: true,
-        },
-      ];
-      setMessages(errorMessages);
+        });
+      }
+
+      welcomeMessages.push({
+        id: 3,
+        user: "시스템",
+        content: "실제 메시지 API 연동 전이므로 임시 메시지입니다.",
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        }),
+        isSystem: true,
+      });
+
+      setMessages(welcomeMessages);
     } else if (!loadingChannels) {
       // 채널 목록이 비어있고 로딩 중이 아닐 때
       setCurrentChannel(null);

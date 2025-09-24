@@ -44,3 +44,24 @@ export interface ProjectMemberInfo {
   projectRole?: "member" | "admin";
   userInfo: UserInfo;
 }
+
+export interface PermissonUsers {
+  changes: Permisson[];
+}
+
+export interface Permisson {
+  userEmail: string;
+}
+
+export interface UserPermission extends Permisson {
+  newRole: string;
+}
+
+export interface FailedPermission extends Permisson {
+  reason: string;
+}
+
+export interface PermissionResponse {
+  processed: number;
+  failed: FailedPermission[];
+}

@@ -16,6 +16,7 @@ import AddProjectModal from "@/app/(server-setup)/components/AddProjectModal";
 import AddProjectInviteModal from "@/app/(server-setup)/components/AddProjectInviteModal";
 import { ProjectManageModal } from "@/app/(server-setup)/components/ProjectManageModal";
 import { ChannelManageModal } from "@/app/(server-setup)/components/ChannelManageModal";
+import SettingModal from "@/app/(server-setup)/components/SettingModal";
 import { useAdminSidebar } from "../hooks/useAdmin";
 import { UserInfo } from "./UserInfo";
 import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
@@ -56,6 +57,14 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   const [showProjectDropdown, setShowProjectDropdown] = useState(false);
   // 채널 드롭다운 상태
   const [showChannelDropdown, setShowChannelDropdown] = useState(false);
+  // 프로젝트 옵션 드롭다운 상태
+  const [showProjectOptionMenu, setShowProjectOptionMenu] = useState<
+    number | null
+  >(null);
+  // 채널 옵션 드롭다운 상태 (채널명을 저장)
+  const [showChannelOptionMenu, setShowChannelOptionMenu] = useState<
+    string | null
+  >(null);
 
   const memberInfo = useProjectMemberListQuery(serverUrl || "", projectId);
 
@@ -126,6 +135,37 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   // 현재 admin 링크가 활성화된 상태인지 확인
   const isActiveAdminLink = (href: string) => {
     return pathname === href;
+  };
+
+  const openProjectDropdown = (e: React.MouseEvent, projectId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("openProjectDropdown", showProjectOptionMenu, projectId);
+    setShowProjectOptionMenu(
+      showProjectOptionMenu === projectId ? null : projectId
+    );
+  };
+
+  // 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setShowProjectOptionMenu(null);
+      setShowChannelOptionMenu(null);
+    };
+
+    if (showProjectOptionMenu !== null || showChannelOptionMenu !== null) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [showProjectOptionMenu, showChannelOptionMenu]);
+
+  const openChannelDropdown = (e: React.MouseEvent, channelName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("openChannelDropdown", showChannelOptionMenu, channelName);
+    setShowChannelOptionMenu(
+      showChannelOptionMenu === channelName ? null : channelName
+    );
   };
 
   // 디코딩된 채널 ID
@@ -319,41 +359,76 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                 </div>
               ) : (
                 projects.map((project, index) => (
-                  <Link
-                    key={project.projectPk}
-                    href={`/${serverId}/projects/${project.projectPk}/channels/general`}
-                    className={`block mb-2 ${
-                      index === 0
-                        ? "rounded-tr-lg rounded-br-lg rounded-bl-lg"
-                        : "rounded"
-                    } cursor-pointer transition-colors ${
-                      isProjectActive(project.projectPk)
-                        ? "bg-blue-600"
-                        : "hover:bg-gray-700"
-                    }`}
-                  >
-                    <div
-                      className={`flex items-center justify-center ${
-                        isMobile ? "p-1.5" : "p-2"
+                  <div key={project.projectPk} className="relative mb-2">
+                    <Link
+                      href={`/${serverId}/projects/${project.projectPk}/channels/general`}
+                      className={`block ${
+                        index === 0
+                          ? "rounded-tr-lg rounded-br-lg rounded-bl-lg"
+                          : "rounded"
+                      } cursor-pointer transition-colors ${
+                        isProjectActive(project.projectPk)
+                          ? "bg-blue-600"
+                          : "hover:bg-gray-700"
                       }`}
+                      onContextMenu={(e) =>
+                        openProjectDropdown(e, project.projectPk)
+                      }
                     >
                       <div
-                        className={`
-                        bg-purple-500 rounded flex items-center justify-center
-                        ${isMobile ? "w-8 h-8" : "w-10 h-10"}
-                      `}
+                        className={`flex items-center justify-center ${
+                          isMobile ? "p-1.5" : "p-2"
+                        }`}
                       >
-                        <span
+                        <div
                           className={`
-                          text-white font-semibold
-                          ${isMobile ? "text-xs" : "text-sm"}
+                          bg-purple-500 rounded flex items-center justify-center
+                          ${isMobile ? "w-8 h-8" : "w-10 h-10"}
                         `}
                         >
-                          {project.projectName[0]?.toUpperCase()}
-                        </span>
+                          <span
+                            className={`
+                            text-white font-semibold
+                            ${isMobile ? "text-xs" : "text-sm"}
+                          `}
+                          >
+                            {project.projectName[0]?.toUpperCase()}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </Link>
+                    </Link>
+
+                    {/* 프로젝트 우클릭 드롭다운 */}
+                    {showProjectOptionMenu === project.projectPk && (
+                      <div
+                        className="absolute top-full left-0 mt-1 w-48 bg-gray-700 rounded shadow-lg z-[9999] border border-gray-600"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={() => {
+                            setShowProjectOptionMenu(null);
+                            // 프로젝트에서 나가기 기능 (나중에 구현)
+                            console.log(
+                              `프로젝트 ${project.projectName}에서 나가기`
+                            );
+                          }}
+                          className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors rounded"
+                        >
+                          <div className="flex items-center">
+                            <span className="mr-3">🚪</span>
+                            <div>
+                              <div className="font-medium">
+                                프로젝트에서 나가기
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {project.projectName}에서 나가기
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ))
               )}
 
@@ -493,7 +568,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
               </div>
 
               {/* 채널 목록 또는 관리자 메뉴 */}
-              <div className="px-4 py-3 flex-1 overflow-y-auto">
+              <div className="px-4 py-3 flex-1 overflow-y-auto relative">
                 {isAdminPage ? (
                   /* 관리자 메뉴 */
                   adminLoading ? (
@@ -536,23 +611,133 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                           </h3>
                         </div>
                         {noticeChannels.map((channel: Channel) => (
-                          <Link
+                          <div
                             key={channel.channelName}
-                            href={createChannelLink(channel)}
-                            className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
-                              isCurrentChannel(channel.channelName)
-                                ? "bg-gray-600 text-white"
-                                : "text-gray-300 hover:bg-gray-700 hover:text-white"
-                            }`}
+                            className="relative mb-1"
                           >
-                            <span className="mr-2 text-gray-400">📢</span>
-                            <span className="text-sm">
-                              {channel.channelName}
-                            </span>
-                            {channel.isPrivate && (
-                              <span className="ml-auto text-xs">🔒</span>
+                            <Link
+                              href={createChannelLink(channel)}
+                              className={`flex items-center px-2 py-1 rounded cursor-pointer transition-colors ${
+                                isCurrentChannel(channel.channelName)
+                                  ? "bg-gray-600 text-white"
+                                  : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                              }`}
+                              onContextMenu={(e) =>
+                                openChannelDropdown(e, channel.channelName)
+                              }
+                            >
+                              <span className="mr-2 text-gray-400">📢</span>
+                              <span className="text-sm">
+                                {channel.channelName}
+                              </span>
+                              {channel.isPrivate && (
+                                <span className="ml-auto text-xs">🔒</span>
+                              )}
+                            </Link>
+
+                            {/* 공지 채널 우클릭 드롭다운 */}
+                            {showChannelOptionMenu === channel.channelName && (
+                              <div
+                                className="absolute top-full left-0 mt-1 w-48 bg-gray-700 rounded shadow-lg z-[9999] border border-gray-600"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  onClick={() => {
+                                    setShowChannelOptionMenu(null);
+                                    console.log(
+                                      `채널 정보: ${channel.channelName}`
+                                    );
+                                  }}
+                                  className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                                >
+                                  <div className="flex items-center">
+                                    <span className="mr-3">ℹ️</span>
+                                    <div>
+                                      <div className="font-medium">
+                                        채널 정보
+                                      </div>
+                                      <div className="text-xs text-gray-400">
+                                        채널 세부사항 보기
+                                      </div>
+                                    </div>
+                                  </div>
+                                </button>
+
+                                {channel.isPrivate && (
+                                  <button
+                                    onClick={() => {
+                                      setShowChannelOptionMenu(null);
+                                      console.log(
+                                        `채널에서 나가기: ${channel.channelName}`
+                                      );
+                                    }}
+                                    className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                                  >
+                                    <div className="flex items-center">
+                                      <span className="mr-3">🚪</span>
+                                      <div>
+                                        <div className="font-medium">
+                                          채널에서 나가기
+                                        </div>
+                                        <div className="text-xs text-gray-400">
+                                          이 채널을 떠나기
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </button>
+                                )}
+
+                                {currentProjectRole === "admin" && (
+                                  <button
+                                    onClick={() => {
+                                      setShowChannelOptionMenu(null);
+                                      handleChannelManage();
+                                    }}
+                                    className={`block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors ${
+                                      !channel.isPrivate &&
+                                      currentProjectRole !== "admin"
+                                        ? "rounded-b"
+                                        : "border-b border-gray-600"
+                                    }`}
+                                  >
+                                    <div className="flex items-center">
+                                      <span className="mr-3">⚙️</span>
+                                      <div>
+                                        <div className="font-medium">
+                                          채널 관리
+                                        </div>
+                                        <div className="text-xs text-gray-400">
+                                          채널 설정 변경
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </button>
+                                )}
+
+                                <button
+                                  onClick={() => {
+                                    setShowChannelOptionMenu(null);
+                                    console.log(
+                                      `알림 설정: ${channel.channelName}`
+                                    );
+                                  }}
+                                  className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors rounded-b"
+                                >
+                                  <div className="flex items-center">
+                                    <span className="mr-3">🔔</span>
+                                    <div>
+                                      <div className="font-medium">
+                                        알림 설정
+                                      </div>
+                                      <div className="text-xs text-gray-400">
+                                        채널 알림 관리
+                                      </div>
+                                    </div>
+                                  </div>
+                                </button>
+                              </div>
                             )}
-                          </Link>
+                          </div>
                         ))}
                       </div>
                     )}
@@ -584,26 +769,129 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                         </div>
                       ) : (
                         textChannels.map((channel: Channel) => (
-                          <Link
+                          <div
                             key={channel.channelName}
-                            href={createChannelLink(channel)}
+                            className="relative mb-1"
                           >
-                            <div
-                              className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
-                                isCurrentChannel(channel.channelName)
-                                  ? "bg-gray-600 text-white"
-                                  : "text-gray-300 hover:bg-gray-600 hover:text-white"
-                              }`}
-                            >
-                              <span className="mr-2 text-gray-400">#</span>
-                              <span className="text-sm">
-                                {channel.channelName}
-                              </span>
-                              {channel.isPrivate && (
-                                <span className="ml-auto text-xs">🔒</span>
-                              )}
-                            </div>
-                          </Link>
+                            <Link href={createChannelLink(channel)}>
+                              <div
+                                className={`flex items-center px-2 py-1 rounded cursor-pointer transition-colors ${
+                                  isCurrentChannel(channel.channelName)
+                                    ? "bg-gray-600 text-white"
+                                    : "text-gray-300 hover:bg-gray-600 hover:text-white"
+                                }`}
+                                onContextMenu={(e) =>
+                                  openChannelDropdown(e, channel.channelName)
+                                }
+                              >
+                                <span className="mr-2 text-gray-400">#</span>
+                                <span className="text-sm">
+                                  {channel.channelName}
+                                </span>
+                                {channel.isPrivate && (
+                                  <span className="ml-auto text-xs">🔒</span>
+                                )}
+                              </div>
+                            </Link>
+
+                            {/* 채팅 채널 우클릭 드롭다운 */}
+                            {showChannelOptionMenu === channel.channelName && (
+                              <div
+                                className="absolute top-full left-0 mt-1 w-48 bg-gray-700 rounded shadow-lg z-[9999] border border-gray-600"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  onClick={() => {
+                                    setShowChannelOptionMenu(null);
+                                    console.log(
+                                      `채널 정보: ${channel.channelName}`
+                                    );
+                                  }}
+                                  className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                                >
+                                  <div className="flex items-center">
+                                    <span className="mr-3">ℹ️</span>
+                                    <div>
+                                      <div className="font-medium">
+                                        채널 정보
+                                      </div>
+                                      <div className="text-xs text-gray-400">
+                                        채널 세부사항 보기
+                                      </div>
+                                    </div>
+                                  </div>
+                                </button>
+
+                                {channel.isPrivate && (
+                                  <button
+                                    onClick={() => {
+                                      setShowChannelOptionMenu(null);
+                                      console.log(
+                                        `채널에서 나가기: ${channel.channelName}`
+                                      );
+                                    }}
+                                    className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                                  >
+                                    <div className="flex items-center">
+                                      <span className="mr-3">🚪</span>
+                                      <div>
+                                        <div className="font-medium">
+                                          채널에서 나가기
+                                        </div>
+                                        <div className="text-xs text-gray-400">
+                                          이 채널을 떠나기
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </button>
+                                )}
+
+                                {currentProjectRole === "admin" && (
+                                  <button
+                                    onClick={() => {
+                                      setShowChannelOptionMenu(null);
+                                      handleChannelManage();
+                                    }}
+                                    className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                                  >
+                                    <div className="flex items-center">
+                                      <span className="mr-3">⚙️</span>
+                                      <div>
+                                        <div className="font-medium">
+                                          채널 관리
+                                        </div>
+                                        <div className="text-xs text-gray-400">
+                                          채널 설정 변경
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </button>
+                                )}
+
+                                <button
+                                  onClick={() => {
+                                    setShowChannelOptionMenu(null);
+                                    console.log(
+                                      `알림 설정: ${channel.channelName}`
+                                    );
+                                  }}
+                                  className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors rounded-b"
+                                >
+                                  <div className="flex items-center">
+                                    <span className="mr-3">🔔</span>
+                                    <div>
+                                      <div className="font-medium">
+                                        알림 설정
+                                      </div>
+                                      <div className="text-xs text-gray-400">
+                                        채널 알림 관리
+                                      </div>
+                                    </div>
+                                  </div>
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         ))
                       )}
                     </div>
@@ -634,26 +922,151 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                         </div>
                       ) : (
                         voiceChannels.map((channel: Channel) => (
-                          <Link
+                          <div
                             key={channel.channelName}
-                            href={createChannelLink(channel)}
+                            className="relative mb-1"
                           >
-                            <div
-                              className={`flex items-center px-2 py-1 rounded cursor-pointer mb-1 transition-colors ${
-                                isCurrentChannel(channel.channelName)
-                                  ? "bg-gray-600 text-white"
-                                  : "text-gray-300 hover:bg-gray-600 hover:text-white"
-                              }`}
-                            >
-                              <span className="mr-2 text-gray-400">🔊</span>
-                              <span className="text-sm">
-                                {channel.channelName}
-                              </span>
-                              {channel.isPrivate && (
-                                <span className="ml-auto text-xs">🔒</span>
-                              )}
-                            </div>
-                          </Link>
+                            <Link href={createChannelLink(channel)}>
+                              <div
+                                className={`flex items-center px-2 py-1 rounded cursor-pointer transition-colors ${
+                                  isCurrentChannel(channel.channelName)
+                                    ? "bg-gray-600 text-white"
+                                    : "text-gray-300 hover:bg-gray-600 hover:text-white"
+                                }`}
+                                onContextMenu={(e) =>
+                                  openChannelDropdown(e, channel.channelName)
+                                }
+                              >
+                                <span className="mr-2 text-gray-400">🔊</span>
+                                <span className="text-sm">
+                                  {channel.channelName}
+                                </span>
+                                {channel.isPrivate && (
+                                  <span className="ml-auto text-xs">🔒</span>
+                                )}
+                              </div>
+                            </Link>
+
+                            {/* 음성 채널 우클릭 드롭다운 */}
+                            {showChannelOptionMenu === channel.channelName && (
+                              <div
+                                className="absolute top-full left-0 mt-1 w-48 bg-gray-700 rounded shadow-lg z-[9999] border border-gray-600"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  onClick={() => {
+                                    setShowChannelOptionMenu(null);
+                                    console.log(
+                                      `음성 채널 참가: ${channel.channelName}`
+                                    );
+                                  }}
+                                  className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                                >
+                                  <div className="flex items-center">
+                                    <span className="mr-3">🎙️</span>
+                                    <div>
+                                      <div className="font-medium">
+                                        음성 채널 참가
+                                      </div>
+                                      <div className="text-xs text-gray-400">
+                                        음성 채팅에 참여하기
+                                      </div>
+                                    </div>
+                                  </div>
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    setShowChannelOptionMenu(null);
+                                    console.log(
+                                      `채널 정보: ${channel.channelName}`
+                                    );
+                                  }}
+                                  className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                                >
+                                  <div className="flex items-center">
+                                    <span className="mr-3">ℹ️</span>
+                                    <div>
+                                      <div className="font-medium">
+                                        채널 정보
+                                      </div>
+                                      <div className="text-xs text-gray-400">
+                                        채널 세부사항 보기
+                                      </div>
+                                    </div>
+                                  </div>
+                                </button>
+
+                                {channel.isPrivate && (
+                                  <button
+                                    onClick={() => {
+                                      setShowChannelOptionMenu(null);
+                                      console.log(
+                                        `채널에서 나가기: ${channel.channelName}`
+                                      );
+                                    }}
+                                    className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                                  >
+                                    <div className="flex items-center">
+                                      <span className="mr-3">🚪</span>
+                                      <div>
+                                        <div className="font-medium">
+                                          채널에서 나가기
+                                        </div>
+                                        <div className="text-xs text-gray-400">
+                                          이 채널을 떠나기
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </button>
+                                )}
+
+                                {currentProjectRole === "admin" && (
+                                  <button
+                                    onClick={() => {
+                                      setShowChannelOptionMenu(null);
+                                      handleChannelManage();
+                                    }}
+                                    className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                                  >
+                                    <div className="flex items-center">
+                                      <span className="mr-3">⚙️</span>
+                                      <div>
+                                        <div className="font-medium">
+                                          채널 관리
+                                        </div>
+                                        <div className="text-xs text-gray-400">
+                                          채널 설정 변경
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </button>
+                                )}
+
+                                <button
+                                  onClick={() => {
+                                    setShowChannelOptionMenu(null);
+                                    console.log(
+                                      `알림 설정: ${channel.channelName}`
+                                    );
+                                  }}
+                                  className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors rounded-b"
+                                >
+                                  <div className="flex items-center">
+                                    <span className="mr-3">🔔</span>
+                                    <div>
+                                      <div className="font-medium">
+                                        알림 설정
+                                      </div>
+                                      <div className="text-xs text-gray-400">
+                                        채널 알림 관리
+                                      </div>
+                                    </div>
+                                  </div>
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         ))
                       )}
                     </div>
@@ -674,6 +1087,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
       <AddChannelModal />
       <AddProjectModal />
       <AddProjectInviteModal />
+      <SettingModal />
     </>
   );
 };

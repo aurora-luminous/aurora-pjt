@@ -1,7 +1,9 @@
 import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
+import { useModal } from "@/app/(server-setup)/hooks/useModal";
 
 export const UserInfo = () => {
   const { data: userInfo, isLoading, error } = useGetUserInfoQuery();
+  const { openSettingModal } = useModal();
 
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error: {error.message}</div>;
@@ -28,7 +30,10 @@ export const UserInfo = () => {
           <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
             🎧
           </button>
-          <button className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors">
+          <button
+            onClick={openSettingModal}
+            className="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded transition-colors"
+          >
             ⚙️
           </button>
         </div>

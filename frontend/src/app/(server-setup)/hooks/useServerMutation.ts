@@ -1,4 +1,4 @@
-import { ServerRequest } from "../types/Server";
+import { ServerRequest, UserPermission } from "../types/Server";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Channel } from "../types/Channel";
 import { ServerStatus } from "@/app/(servers)/types/ServerAccess";
@@ -24,6 +24,7 @@ import {
   useLeaveProjectApi,
   useBanProjectMemberApi,
   useUnbanProjectMemberApi,
+  useServerPermissionApi,
 } from "./useServerApi";
 
 export const useAddServerMutation = () => {
@@ -406,6 +407,19 @@ export const useUnbanChannelMemberMutation = (
   return useMutation({
     mutationFn: async (userEmail: string) => {
       const result = await unbanChannelMember({ userEmail });
+      return result;
+    },
+  });
+};
+
+export const useServerPermissionMutation = (serverUrl: string) => {
+  const { execute: patchServerPermission } = useServerPermissionApi(serverUrl);
+
+  return useMutation({
+    mutationFn: async (changes: UserPermission[]) => {
+      const result = await patchServerPermission({
+        changes,
+      });
       return result;
     },
   });

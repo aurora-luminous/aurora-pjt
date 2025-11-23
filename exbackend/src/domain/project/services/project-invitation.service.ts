@@ -72,7 +72,7 @@ export class ProjectInvitationService {
     });
 
     if (!project) {
-      throw new NotFoundException(`Project with ID ${inviteDto.projectPk} not found`);
+      throw new NotFoundException(`프로젝트 ID ${inviteDto.projectPk}를 찾을 수 없습니다`);
     }
 
     // 2. 초대하려는 사용자 존재 확인 (이메일로)
@@ -86,7 +86,7 @@ export class ProjectInvitationService {
     );
 
     if (!hasPermission) {
-      throw new ForbiddenException('Only project admin or server admin/owner/projectManager can invite users');
+      throw new ForbiddenException('프로젝트 관리자 또는 서버 관리자/소유자/프로젝트 매니저만 사용자를 초대할 수 있습니다');
     }
 
     // 4. 초대할 사용자가 해당 서버의 멤버인지 확인
@@ -99,7 +99,7 @@ export class ProjectInvitationService {
     });
 
     if (!serverMember) {
-      throw new ForbiddenException('User must be a server member to join projects');
+      throw new ForbiddenException('프로젝트에 참가하려면 서버 멤버여야 합니다');
     }
 
     // 5. 이미 프로젝트 멤버인지 확인
@@ -109,9 +109,9 @@ export class ProjectInvitationService {
 
     if (existingMember) {
       if (existingMember.pStatus === 'Active') {
-        throw new ConflictException('User is already an active member of this project');
+        throw new ConflictException('사용자가 이미 이 프로젝트의 활성 멤버입니다');
       } else if (existingMember.pStatus === 'Banned') {
-        throw new ConflictException('User is banned from this project');
+        throw new ConflictException('사용자가 이 프로젝트에서 차단되었습니다');
       } else if (existingMember.pStatus === 'Inactive') {
         // 비활성 사용자를 다시 활성화
         existingMember.pStatus = 'Active';
@@ -201,7 +201,7 @@ export class ProjectInvitationService {
     });
 
     if (!project) {
-      throw new NotFoundException(`Project with ID ${projectPk} not found`);
+      throw new NotFoundException(`프로젝트 ID ${projectPk}를 찾을 수 없습니다`);
     }
 
     // 2. 요청자 권한 확인 (계층적 권한 시스템)
@@ -221,7 +221,7 @@ export class ProjectInvitationService {
     });
 
     if (!requestMember && !hasPermission) {
-      throw new ForbiddenException('Only project members or server admin/owner/projectManager can view member list');
+      throw new ForbiddenException('프로젝트 멤버 또는 서버 관리자/소유자/프로젝트 매니저만 멤버 목록을 볼 수 있습니다');
     }
 
     // 3. 모든 멤버 목록 조회 (모든 상태)
@@ -251,7 +251,7 @@ export class ProjectInvitationService {
     });
 
     if (!project) {
-      throw new NotFoundException(`Project with ID ${removeDto.projectPk} not found`);
+      throw new NotFoundException(`프로젝트 ID ${removeDto.projectPk}를 찾을 수 없습니다`);
     }
 
     // 2. 제거할 멤버 확인
@@ -265,7 +265,7 @@ export class ProjectInvitationService {
     });
 
     if (!targetMember) {
-      throw new NotFoundException('Target user is not an active member of this project');
+      throw new NotFoundException('대상 사용자가 이 프로젝트의 활성 멤버가 아닙니다');
     }
 
     // 3. 관리자 권한 확인 (계층적 권한 시스템)
@@ -276,12 +276,12 @@ export class ProjectInvitationService {
     );
 
     if (!hasPermission) {
-      throw new ForbiddenException('Only project admin or server admin/owner/projectManager can remove members');
+      throw new ForbiddenException('프로젝트 관리자 또는 서버 관리자/소유자/프로젝트 매니저만 멤버를 제거할 수 있습니다');
     }
 
     // 4. Admin끼리는 제거 불가
     if (targetMember.projectRole === 'admin') {
-      throw new ForbiddenException('Cannot remove admin members');
+      throw new ForbiddenException('관리자 멤버는 제거할 수 없습니다');
     }
 
     // 5. 상태를 Inactive로 변경 (soft delete)
@@ -305,7 +305,7 @@ export class ProjectInvitationService {
     });
 
     if (!project) {
-      throw new NotFoundException(`Project with ID ${projectPk} not found`);
+      throw new NotFoundException(`프로젝트 ID ${projectPk}를 찾을 수 없습니다`);
     }
 
     // 2. 차단할 멤버 확인
@@ -315,7 +315,7 @@ export class ProjectInvitationService {
     });
 
     if (!targetMember || targetMember.pStatus === 'Banned') {
-      throw new NotFoundException('Target user is not found or already banned');
+      throw new NotFoundException('대상 사용자를 찾을 수 없거나 이미 차단된 상태입니다');
     }
 
     // 3. 관리자 권한 확인 (계층적 권한 시스템)
@@ -326,12 +326,12 @@ export class ProjectInvitationService {
     );
 
     if (!hasPermission) {
-      throw new ForbiddenException('Only project admin or server admin/owner/projectManager can ban members');
+      throw new ForbiddenException('프로젝트 관리자 또는 서버 관리자/소유자/프로젝트 매니저만 멤버를 차단할 수 있습니다');
     }
 
     // 4. Admin끼리는 차단 불가
     if (targetMember.projectRole === 'admin') {
-      throw new ForbiddenException('Cannot ban admin members');
+      throw new ForbiddenException('관리자 멤버는 차단할 수 없습니다');
     }
 
     // 5. 상태를 Banned로 변경
@@ -355,7 +355,7 @@ export class ProjectInvitationService {
     });
 
     if (!project) {
-      throw new NotFoundException(`Project with ID ${projectPk} not found`);
+      throw new NotFoundException(`프로젝트 ID ${projectPk}를 찾을 수 없습니다`);
     }
 
     // 2. 차단된 멤버 확인
@@ -365,7 +365,7 @@ export class ProjectInvitationService {
     });
 
     if (!bannedMember) {
-      throw new NotFoundException('Banned member not found');
+      throw new NotFoundException('차단된 멤버를 찾을 수 없습니다');
     }
 
     // 3. Admin 권한 확인 (계층적 권한 시스템)
@@ -376,7 +376,7 @@ export class ProjectInvitationService {
     );
 
     if (!hasPermission) {
-      throw new ForbiddenException('Only project admin or server admin/owner/projectManager can unban members');
+      throw new ForbiddenException('프로젝트 관리자 또는 서버 관리자/소유자/프로젝트 매니저만 멤버의 차단을 해제할 수 있습니다');
     }
 
     // 4. 상태를 Active로 복구
@@ -474,5 +474,97 @@ export class ProjectInvitationService {
     const targetUser = await this.userService.findByEmailOrThrow(targetUserEmail);
 
     await this.unbanUserFromProject(projectPk, targetUser.userPk, adminUserPk);
+  }
+
+  // 프로젝트 나가기 로직 (일반 멤버 + PM 특별 로직)
+  async leaveProject(
+    projectPk: number,
+    userPk: number
+  ): Promise<{ message: string }> {
+    // 1. 프로젝트 존재 확인
+    const project = await this.projectRepository.findOne({
+      where: { projectPk, isDeletedProject: false },
+      relations: ['server']
+    });
+
+    if (!project) {
+      throw new NotFoundException(`프로젝트 ID ${projectPk}를 찾을 수 없습니다`);
+    }
+
+    // 2. 요청자가 프로젝트 멤버인지 확인
+    const projectMember = await this.projectMemberRepository.findOne({
+      where: {
+        projectPk,
+        userPk,
+        pStatus: 'Active'
+      },
+      relations: ['user']
+    });
+
+    if (!projectMember) {
+      throw new NotFoundException('프로젝트의 활성 멤버가 아닙니다');
+    }
+
+    // 3. 서버에서의 역할 확인
+    const serverMember = await this.serverMemberRepository.findOne({
+      where: {
+        serverPk: project.serverPk,
+        userPk,
+        sStatus: 'Active'
+      }
+    });
+
+    // 4. PM 나가기 특별 로직 (프로젝트 admin && 서버 projectManager)
+    if (projectMember.projectRole === 'admin' &&
+        serverMember?.serverRole === 'projectManager') {
+
+      // 다른 프로젝트 Admin이 있는지 확인
+      const allAdmins = await this.projectMemberRepository.find({
+        where: {
+          projectPk,
+          projectRole: 'admin',
+          pStatus: 'Active'
+        }
+      });
+
+      const otherActiveAdmins = allAdmins.filter(admin => admin.userPk !== userPk);
+
+      if (otherActiveAdmins.length === 0) {
+        // 마지막 PM인 경우 - 다른 멤버들이 있으면 나갈 수 없음
+        const allMembers = await this.projectMemberRepository.find({
+          where: {
+            projectPk,
+            pStatus: 'Active'
+          }
+        });
+
+        const membersToKickCount = allMembers.filter(member =>
+          member.userPk !== userPk &&
+          member.projectRole === 'member'
+        ).length;
+
+        if (membersToKickCount > 0) {
+          throw new ForbiddenException(
+            `마지막 프로젝트 관리자(PM)는 프로젝트를 나가기 전에 ${membersToKickCount}명의 멤버를 모두 강퇴해야 합니다. 먼저 멤버 관리에서 다른 멤버들을 강퇴한 후 다시 시도하세요.`
+          );
+        }
+      }
+    }
+
+    // 5. 프로젝트에서 나가기 (일반 로직)
+    projectMember.pStatus = 'Inactive';
+    await this.projectMemberRepository.save(projectMember);
+
+    // Spring 서버로 멤버 제거 알림 전송
+    await this.projectNotificationService.notifyMemberRemoved(
+      projectPk,
+      userPk,
+      projectMember.user?.userName || 'Unknown',
+      projectMember.projectRole
+    );
+
+    return {
+      message: '프로젝트에서 나갔습니다'
+    };
   }
 }

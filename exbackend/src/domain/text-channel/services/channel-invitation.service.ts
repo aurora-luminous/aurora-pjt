@@ -70,12 +70,12 @@ export class ChannelInvitationService {
     });
 
     if (!channel) {
-      throw new NotFoundException(`Channel with ID ${inviteDto.channelPk} not found`);
+      throw new NotFoundException(`채널 ID ${inviteDto.channelPk}를 찾을 수 없습니다`);
     }
 
     // 2. Private 채널은 초대만 가능
     if (!channel.isPrivate) {
-      throw new ForbiddenException('Public channels allow direct joining. Use join channel instead.');
+      throw new ForbiddenException('공개 채널은 직접 참가가 가능합니다. 채널 참가 기능을 사용하세요.');
     }
 
     // 3. 초대하려는 사용자 존재 확인 (이메일로)
@@ -91,7 +91,7 @@ export class ChannelInvitationService {
     });
 
     if (!inviterMember || !MemberRoleUtils.hasAdminPermission(inviterMember.channelRole)) {
-      throw new ForbiddenException('Only channel admin or owner can invite users to private channels');
+      throw new ForbiddenException('채널 관리자 또는 소유자만 비공개 채널에 사용자를 초대할 수 있습니다');
     }
 
     // 5. 초대할 사용자가 해당 프로젝트의 멤버인지 확인
@@ -103,7 +103,7 @@ export class ChannelInvitationService {
     });
 
     if (!projectMember) {
-      throw new ForbiddenException('User must be a project member to join channels');
+      throw new ForbiddenException('채널에 참가하려면 프로젝트 멤버여야 합니다');
     }
 
     // 6. 이미 채널 멤버인지 확인
@@ -113,9 +113,9 @@ export class ChannelInvitationService {
 
     if (existingMember) {
       if (existingMember.cStatus === 'Active') {
-        throw new ConflictException('User is already an active member of this channel');
+        throw new ConflictException('사용자가 이미 이 채널의 활성 멤버입니다');
       } else if (existingMember.cStatus === 'Banned') {
-        throw new ConflictException('User is banned from this channel');
+        throw new ConflictException('사용자가 이 채널에서 차단되었습니다');
       } else if (existingMember.cStatus === 'Inactive') {
         // 비활성 사용자를 다시 활성화
         existingMember.cStatus = 'Active';
@@ -169,12 +169,12 @@ export class ChannelInvitationService {
     });
 
     if (!channel) {
-      throw new NotFoundException(`Channel with ID ${channelPk} not found`);
+      throw new NotFoundException(`채널 ID ${channelPk}를 찾을 수 없습니다`);
     }
 
     // 2. Public 채널인지 확인
     if (channel.isPrivate) {
-      throw new ForbiddenException('Private channels require invitation');
+      throw new ForbiddenException('비공개 채널은 초대가 필요합니다');
     }
 
     // 3. 사용자 존재 확인
@@ -183,7 +183,7 @@ export class ChannelInvitationService {
     });
 
     if (!user) {
-      throw new NotFoundException(`User with ID ${userPk} not found`);
+      throw new NotFoundException(`사용자 ID ${userPk}를 찾을 수 없습니다`);
     }
 
     // 4. 사용자가 해당 프로젝트의 멤버인지 확인
@@ -196,7 +196,7 @@ export class ChannelInvitationService {
     });
 
     if (!projectMember) {
-      throw new ForbiddenException('User must be a project member to join channels');
+      throw new ForbiddenException('채널에 참가하려면 프로젝트 멤버여야 합니다');
     }
 
     // 5. 이미 채널 멤버인지 확인
@@ -206,9 +206,9 @@ export class ChannelInvitationService {
 
     if (existingMember) {
       if (existingMember.cStatus === 'Active') {
-        throw new ConflictException('User is already an active member of this channel');
+        throw new ConflictException('사용자가 이미 이 채널의 활성 멤버입니다');
       } else if (existingMember.cStatus === 'Banned') {
-        throw new ConflictException('User is banned from this channel');
+        throw new ConflictException('사용자가 이 채널에서 차단되었습니다');
       } else if (existingMember.cStatus === 'Inactive') {
         // 비활성 사용자를 다시 활성화
         existingMember.cStatus = 'Active';
@@ -260,7 +260,7 @@ export class ChannelInvitationService {
     });
 
     if (!channel) {
-      throw new NotFoundException(`Channel with ID ${channelPk} not found`);
+      throw new NotFoundException(`채널 ID ${channelPk}를 찾을 수 없습니다`);
     }
 
     // 2. Private 채널은 멤버만 조회 가능
@@ -274,7 +274,7 @@ export class ChannelInvitationService {
       });
 
       if (!requestMember) {
-        throw new ForbiddenException('Only channel members can view member list of private channels');
+        throw new ForbiddenException('채널 멤버만 비공개 채널의 멤버 목록을 볼 수 있습니다');
       }
     } else {
       // Public 채널은 프로젝트 멤버면 조회 가능
@@ -287,7 +287,7 @@ export class ChannelInvitationService {
       });
 
       if (!projectMember) {
-        throw new ForbiddenException('Only project members can view channel member list');
+        throw new ForbiddenException('프로젝트 멤버만 채널 멤버 목록을 보수 있습니다');
       }
     }
 
@@ -335,7 +335,7 @@ export class ChannelInvitationService {
     });
 
     if (!targetMember) {
-      throw new NotFoundException('Target user is not an active member of this channel');
+      throw new NotFoundException('대상 사용자가 이 채널의 활성 멤버가 아닙니다');
     }
 
     // 3. 관리자 권한 확인 (자기 자신은 언제든 나갈 수 있음)
@@ -349,12 +349,12 @@ export class ChannelInvitationService {
       });
 
       if (!adminMember || !MemberRoleUtils.hasAdminPermission(adminMember.channelRole)) {
-        throw new ForbiddenException('Only channel admin or owner can remove members');
+        throw new ForbiddenException('채널 관리자 또는 소유자만 멤버를 제거할 수 있습니다');
       }
 
       // 4. Admin끼리는 제거 불가
       if (targetMember.channelRole === 'admin') {
-        throw new ForbiddenException('Cannot remove admin members');
+        throw new ForbiddenException('관리자 멤버는 제거할 수 없습니다');
       }
     }
 
@@ -371,7 +371,7 @@ export class ChannelInvitationService {
     });
 
     if (!channel) {
-      throw new NotFoundException(`Channel with ID ${channelPk} not found`);
+      throw new NotFoundException(`채널 ID ${channelPk}를 찾을 수 없습니다`);
     }
 
     // 2. 차단할 멤버 확인
@@ -380,7 +380,7 @@ export class ChannelInvitationService {
     });
 
     if (!targetMember || targetMember.cStatus === 'Banned') {
-      throw new NotFoundException('Target user is not found or already banned');
+      throw new NotFoundException('대상 사용자를 찾을 수 없거나 이미 차단된 상태입니다');
     }
 
     // 3. 관리자 권한 확인
@@ -393,12 +393,12 @@ export class ChannelInvitationService {
     });
 
     if (!adminMember || !MemberRoleUtils.hasAdminPermission(adminMember.channelRole)) {
-      throw new ForbiddenException('Only channel admin or owner can ban members');
+      throw new ForbiddenException('채널 관리자 또는 소유자만 멤버를 차단할 수 있습니다');
     }
 
     // 4. Admin끼리는 차단 불가
     if (targetMember.channelRole === 'admin') {
-      throw new ForbiddenException('Cannot ban admin members');
+      throw new ForbiddenException('관리자 멤버는 차단할 수 없습니다');
     }
 
     // 6. 상태를 Banned로 변경
@@ -415,7 +415,7 @@ export class ChannelInvitationService {
     });
 
     if (!bannedMember) {
-      throw new NotFoundException('Banned member not found');
+      throw new NotFoundException('차단된 멤버를 찾을 수 없습니다');
     }
 
     // 2. Admin 권한 확인
@@ -428,7 +428,7 @@ export class ChannelInvitationService {
     });
 
     if (!adminMember || !MemberRoleUtils.hasAdminPermission(adminMember.channelRole)) {
-      throw new ForbiddenException('Only channel admin can unban members');
+      throw new ForbiddenException('채널 관리자만 멤버의 차단을 해제할 수 있습니다');
     }
 
     // 3. 상태를 Active로 복구
@@ -457,7 +457,7 @@ export class ChannelInvitationService {
     });
 
     if (!channel) {
-      throw new NotFoundException(`Channel with ID ${channelPk} not found`);
+      throw new NotFoundException(`채널 ID ${channelPk}를 찾을 수 없습니다`);
     }
 
     // 2. 대상 멤버 확인
@@ -471,7 +471,7 @@ export class ChannelInvitationService {
     });
 
     if (!targetMember) {
-      throw new NotFoundException('Target user is not an active member of this channel');
+      throw new NotFoundException('대상 사용자가 이 채널의 활성 멤버가 아닙니다');
     }
 
     // 3. 본인 음소거는 본인만, 타인 음소거는 관리자만
@@ -485,7 +485,7 @@ export class ChannelInvitationService {
       });
 
       if (!adminMember || !MemberRoleUtils.hasAdminPermission(adminMember.channelRole)) {
-        throw new ForbiddenException('Only channel admin or owner can mute/unmute other members');
+        throw new ForbiddenException('채널 관리자 또는 소유자만 다른 멤버를 음소거/음소거 해제할 수 있습니다');
       }
     }
 

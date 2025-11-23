@@ -11,6 +11,7 @@ import { ServerRoleUtils, ServerRoleType } from '../../../common/enums/member-ro
 import { MemberStatus, ServerMemberStatus, MemberStatusUtils } from '../../../common/enums/member-status.enum';
 import { Project } from '../../project/entities/project.entity';
 import { Channel } from '../../text-channel/entities/channel.entity';
+import { ServerRolePermissionService } from './server-role-permission.service';
 import { PendingMemberDto, ServerMemberInfoDto, ServerMemberDetailDto, UpdateMemberStatusDto, JoinServerDto, ServerInviteDto } from '../dto';
 
 @Injectable()
@@ -30,6 +31,7 @@ export class ServerInvitationService {
     @InjectRepository(Channel)
     private readonly channelRepository: Repository<Channel>,
     private readonly configService: ConfigService,
+    private readonly serverRolePermissionService: ServerRolePermissionService,
   ) {}
 
   // serverPk를 해시로 변환
@@ -64,7 +66,7 @@ export class ServerInvitationService {
     });
 
     if (!server) {
-      throw new NotFoundException(`Server with ID ${serverPk} not found`);
+      throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없습니다`);
     }
 
     // 2. 요청자가 서버 관리자인지 확인
@@ -77,7 +79,7 @@ export class ServerInvitationService {
     });
 
     if (!serverMember || !ServerRoleUtils.hasAdminPermission(serverMember.serverRole)) {
-      throw new ForbiddenException('Only server admin or owner can generate invite links');
+      throw new ForbiddenException('서버 관리자 또는 소유자만 초대 링크를 생성할 수 있습니다');
     }
 
     // 3. 해시 생성 및 링크 생성
@@ -100,7 +102,7 @@ export class ServerInvitationService {
     });
 
     if (!server) {
-      throw new NotFoundException(`Server with URL ${serverUrl} not found`);
+      throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다`);
     }
 
     // 2. 사용자 존재 확인
@@ -109,7 +111,7 @@ export class ServerInvitationService {
     });
 
     if (!user) {
-      throw new NotFoundException(`User with ID ${userPk} not found`);
+      throw new NotFoundException(`사용자 ID ${userPk}를 찾을 수 없습니다`);
     }
 
     // 3. 이미 서버 멤버인지 확인
@@ -191,7 +193,7 @@ export class ServerInvitationService {
     const serverPk = await this.getServerPkFromHash(joinDto.inviteHash);
 
     if (!serverPk) {
-      throw new NotFoundException('Invalid invite link');
+      throw new NotFoundException('잘못된 초대 링크입니다');
     }
 
     // 2. 서버 존재 확인
@@ -200,7 +202,7 @@ export class ServerInvitationService {
     });
 
     if (!server) {
-      throw new NotFoundException('Server not found or deleted');
+      throw new NotFoundException('서버를 찾을 수 없거나 삭제되었습니다');
     }
 
     // 3. 사용자 존재 확인 (유효한 사용자인지만 확인)
@@ -209,7 +211,7 @@ export class ServerInvitationService {
     });
 
     if (!user) {
-      throw new NotFoundException(`User with ID ${joinDto.userPk} not found`);
+      throw new NotFoundException(`사용자 ID ${joinDto.userPk}를 찾을 수 없습니다`);
     }
 
     // 4. 서버 정보만 반환
@@ -227,7 +229,7 @@ export class ServerInvitationService {
     });
 
     if (!server) {
-      throw new NotFoundException(`Server with ID ${serverPk} not found`);
+      throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없습니다`);
     }
 
     // 2. 요청자가 서버 관리자인지 확인
@@ -240,7 +242,7 @@ export class ServerInvitationService {
     });
 
     if (!requestMember || !ServerRoleUtils.hasAdminPermission(requestMember.serverRole)) {
-      throw new ForbiddenException('Only server admin or owner can view pending members');
+      throw new ForbiddenException('서버 관리자 또는 소유자만 대기 중인 멤버를 볼 수 있습니다');
     }
 
     // 3. 대기 중인 멤버 목록 조회
@@ -273,7 +275,7 @@ export class ServerInvitationService {
     });
 
     if (!serverMember) {
-      throw new NotFoundException(`Server member with ID ${serverMemberPk} not found`);
+      throw new NotFoundException(`서버 멤버 ID ${serverMemberPk}를 찾을 수 없습니다`);
     }
 
     // 2. 관리자 권한 확인
@@ -286,17 +288,17 @@ export class ServerInvitationService {
     });
 
     if (!adminMember || !ServerRoleUtils.hasAdminPermission(adminMember.serverRole)) {
-      throw new ForbiddenException('Only server admin or owner can approve/reject members');
+      throw new ForbiddenException('서버 관리자 또는 소유자만 멤버를 승인/거절할 수 있습니다');
     }
 
     // 3. 상태가 Pending인지 확인
     if (serverMember.sStatus !== 'Pending') {
-      throw new ConflictException('Only pending members can be approved or rejected');
+      throw new ConflictException('대기 중인 멤버만 승인 또는 거절할 수 있습니다');
     }
 
     // 4. 상태 업데이트 (Active 또는 Inactive만 허용)
     if (!['Active', 'Inactive'].includes(updateDto.sStatus)) {
-      throw new ConflictException('Invalid status. Only Active or Inactive allowed for pending members');
+      throw new ConflictException('잘못된 상태입니다. 대기 멤버는 Active 또는 Inactive만 허용됩니다');
     }
 
     // 5. 상태 업데이트
@@ -329,7 +331,7 @@ export class ServerInvitationService {
     });
 
     if (!serverMember) {
-      throw new NotFoundException(`User ${userEmail} is not a member of this server`);
+      throw new NotFoundException(`사용자 ${userEmail}이 이 서버의 멤버가 아닙니다`);
     }
 
     // 3. 관리자 권한 확인
@@ -342,12 +344,12 @@ export class ServerInvitationService {
     });
 
     if (!adminMember || !ServerRoleUtils.hasAdminPermission(adminMember.serverRole)) {
-      throw new ForbiddenException('Only server admin or owner can approve/reject members');
+      throw new ForbiddenException('서버 관리자 또는 소유자만 멤버를 승인/거절할 수 있습니다');
     }
 
     // 4. 상태가 Pending인지 확인 (Banned는 예외)
     if (serverMember.sStatus !== 'Pending' && sStatus !== 'Banned') {
-      throw new ConflictException('Only pending members can be approved or rejected');
+      throw new ConflictException('대기 중인 멤버만 승인 또는 거절할 수 있습니다');
     }
 
     // 5. 상태 업데이트
@@ -372,7 +374,7 @@ export class ServerInvitationService {
     });
 
     if (!server) {
-      throw new NotFoundException(`Server with ID ${serverPk} not found`);
+      throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없습니다`);
     }
 
     // 2. 요청자가 서버 멤버인지 확인
@@ -385,7 +387,7 @@ export class ServerInvitationService {
     });
 
     if (!requestMember) {
-      throw new ForbiddenException('Only server members can view member list');
+      throw new ForbiddenException('서버 멤버만 멤버 목록을 볼 수 있습니다');
     }
 
     // 3. 모든 멤버 목록 조회 (모든 상태)
@@ -414,7 +416,7 @@ export class ServerInvitationService {
     });
 
     if (!server) {
-      throw new NotFoundException(`Server with ID ${serverPk} not found`);
+      throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없습니다`);
     }
 
     // 2. 요청자가 서버 관리자인지 확인
@@ -427,7 +429,7 @@ export class ServerInvitationService {
     });
 
     if (!requestMember || !ServerRoleUtils.hasAdminPermission(requestMember.serverRole)) {
-      throw new ForbiddenException('Only server admin or owner can view banned members');
+      throw new ForbiddenException('서버 관리자 또는 소유자만 차단된 멤버를 볼 수 있습니다');
     }
 
     // 3. 밴된 멤버 목록 조회
@@ -457,7 +459,7 @@ export class ServerInvitationService {
     });
 
     if (!bannedMember) {
-      throw new NotFoundException('Banned member not found');
+      throw new NotFoundException('차단된 멤버를 찾을 수 없습니다');
     }
 
     // 2. 관리자 권한 확인 (Owner만 언밴 가능)
@@ -470,7 +472,7 @@ export class ServerInvitationService {
     });
 
     if (!adminMember || adminMember.serverRole !== 'owner') {
-      throw new ForbiddenException('Only server owner can unban members');
+      throw new ForbiddenException('서버 소유자만 멤버의 차단을 해제할 수 있습니다');
     }
 
     // 3. 상태를 Active로 복구
@@ -494,35 +496,46 @@ export class ServerInvitationService {
     });
 
     if (!server) {
-      throw new NotFoundException(`Server with ID ${serverPk} not found`);
+      throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없습니다`);
     }
 
-    // 2. 강퇴할 멤버 확인 (승인된 멤버만)
+    // 2. 차단할 멤버 확인 (승인된 멤버만)
     const targetMember = await this.serverMemberRepository.findOne({
       where: { serverPk, userPk: targetUserPk, sStatus: 'Active' }
     });
 
     if (!targetMember) {
-      throw new NotFoundException('Target user is not an active member of this server');
+      throw new NotFoundException('대상 사용자가 이 서버의 활성 멤버가 아닙니다');
     }
 
-    // 3. 관리자 권한 확인
+    // 3. ban_members 권한 확인 (DB 권한 시스템 사용)
+    const hasBanPermission = await this.serverRolePermissionService.hasPermission(
+      serverPk,
+      adminUserPk,
+      'banMembers'
+    );
+
+    if (!hasBanPermission) {
+      throw new ForbiddenException('멤버 차단 권한이 없습니다');
+    }
+
+    // 요청자 정보 조회 (Owner 여부 확인용)
     const adminMember = await this.serverMemberRepository.findOne({
       where: { serverPk, userPk: adminUserPk, sStatus: 'Active' }
     });
 
-    if (!adminMember || !ServerRoleUtils.hasAdminPermission(adminMember.serverRole)) {
-      throw new ForbiddenException('Only server admin or owner can kick members');
+    if (!adminMember) {
+      throw new ForbiddenException('서버 멤버가 아닙니다');
     }
 
-    // 4. Owner는 강퇴할 수 없음
+    // 4. Owner는 차단할 수 없음
     if (targetMember.serverRole === 'owner') {
-      throw new ForbiddenException('Cannot ban server owner');
+      throw new ForbiddenException('서버 소유자는 차단할 수 없습니다');
     }
 
-    // 5. Admin끼리는 강퇴 불가 (Owner만 Admin 강퇴 가능)
+    // 5. Admin끼리는 차단 불가 (Owner만 Admin 차단 가능)
     if (targetMember.serverRole === 'admin' && adminMember.serverRole !== 'owner') {
-      throw new ForbiddenException('Only server owner can ban admin members');
+      throw new ForbiddenException('서버 소유자만 관리자 멤버를 차단할 수 있습니다');
     }
 
     // 6. 논리적 삭제 (상태를 'Banned'로 변경)
@@ -541,7 +554,7 @@ export class ServerInvitationService {
     });
 
     if (!server) {
-      throw new NotFoundException(`Server with URL ${serverUrl} not found`);
+      throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다`);
     }
 
     // 2. 요청자의 서버 멤버 정보 확인
@@ -554,7 +567,7 @@ export class ServerInvitationService {
     });
 
     if (!requestMember) {
-      throw new ForbiddenException('Only server members can view member list');
+      throw new ForbiddenException('서버 멤버만 멤버 목록을 볼 수 있습니다');
     }
 
     // 3. 모든 멤버 목록 조회 (모든 상태)

@@ -5,7 +5,7 @@ import { Server } from "../entities/server.entity";
 import { ServerMember } from "../entities/server-member.entity";
 import { User } from "../../user/entities/user.entity";
 import { UserService } from "../../user/services/user.service";
-import { ServerRoleUtils } from "../../../common/enums/member-role.enum";
+import { ServerRolePermissionService } from "./server-role-permission.service";
 import { BulkRoleUpdateDto, BulkActionDto, BulkOperationResult } from '../dto';
 
 @Injectable()
@@ -18,9 +18,10 @@ export class ServerMemberManagementService {
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
         private readonly userService: UserService,
+        private readonly serverRolePermissionService: ServerRolePermissionService,
     ) {}
 
-    // 멤버 권한 일괄 변경 (owner 전용)
+    // 멤버 권한 일괄 변경 (manage_roles 권한 필요)
     async bulkUpdateMemberRoles(
         serverPk: number,
         changes: Array<{ userEmail: string; newRole: 'member' | 'admin' }>,
@@ -32,21 +33,18 @@ export class ServerMemberManagementService {
         });
 
         if (!server) {
-            throw new NotFoundException(`Server with ID ${serverPk} not found`);
+            throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없습니다`);
         }
 
-        // 2. owner인지 확인
-        const ownerMember = await this.serverMemberRepository.findOne({
-            where: {
-                serverPk,
-                userPk: ownerUserPk,
-                sStatus: 'Active',
-                serverRole: 'owner'
-            }
-        });
+        // 2. manage_roles 권한 확인 (DB 권한 시스템 사용)
+        const hasManageRolesPermission = await this.serverRolePermissionService.hasPermission(
+            serverPk,
+            ownerUserPk,
+            'manageRoles'
+        );
 
-        if (!ownerMember) {
-            throw new ForbiddenException('Only server owner can change member roles');
+        if (!hasManageRolesPermission) {
+            throw new ForbiddenException('역할 관리 권한이 없습니다');
         }
 
         const results: BulkOperationResult = {
@@ -72,7 +70,7 @@ export class ServerMemberManagementService {
                 if (!serverMember) {
                     results.failed.push({
                         userEmail: change.userEmail,
-                        reason: 'User is not an active member of this server'
+                        reason: '사용자가 이 서버의 활성 멤버가 아닙니다'
                     });
                     continue;
                 }
@@ -81,7 +79,7 @@ export class ServerMemberManagementService {
                 if (serverMember.serverRole === 'owner') {
                     results.failed.push({
                         userEmail: change.userEmail,
-                        reason: 'Cannot change owner role'
+                        reason: '소유자 권한은 변경할 수 없습니다'
                     });
                     continue;
                 }
@@ -94,14 +92,14 @@ export class ServerMemberManagementService {
             } catch (error) {
                 results.failed.push({
                     userEmail: change.userEmail,
-                    reason: error.message || 'Unknown error occurred'
+                    reason: error.message || '알 수 없는 오류가 발생했습니다'
                 });
             }
         }
         return results;
     }
 
-    // 멤버 일괄 강퇴/밴 (Admin 이상 가능)
+    // 멤버 일괄 강퇴/밴 (kick_members 또는 ban_members 권한 필요)
     async bulkMemberAction(
         serverPk: number,
         action: 'kick' | 'ban',
@@ -114,10 +112,22 @@ export class ServerMemberManagementService {
         });
 
         if (!server) {
-            throw new NotFoundException(`Server with ID ${serverPk} not found`);
+            throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없습니다`);
         }
 
-        // 2. 요청자가 Admin 이상인지 확인
+        // 2. 요청자의 권한 확인 (DB 권한 시스템 사용)
+        const requiredPermission = action === 'kick' ? 'kickMembers' : 'banMembers';
+        const hasRequiredPermission = await this.serverRolePermissionService.hasPermission(
+            serverPk,
+            adminUserPk,
+            requiredPermission
+        );
+
+        if (!hasRequiredPermission) {
+            throw new ForbiddenException(`${action === 'kick' ? '강퇴' : '차단'} 권한이 없습니다`);
+        }
+
+        // 요청자 정보 조회 (Owner 여부 확인용)
         const adminMember = await this.serverMemberRepository.findOne({
             where: {
                 serverPk,
@@ -126,8 +136,8 @@ export class ServerMemberManagementService {
             }
         });
 
-        if (!adminMember || !ServerRoleUtils.hasAdminPermission(adminMember.serverRole)) {
-            throw new ForbiddenException('Only server admin or owner can kick/ban members');
+        if (!adminMember) {
+            throw new ForbiddenException('서버 멤버가 아닙니다');
         }
 
         const results: BulkOperationResult = {
@@ -153,7 +163,7 @@ export class ServerMemberManagementService {
                 if (!targetMember) {
                     results.failed.push({
                         userEmail,
-                        reason: 'User is not an active member of this server'
+                        reason: '사용자가 이 서버의 활성 멤버가 아닙니다'
                     });
                     continue;
                 }
@@ -162,7 +172,7 @@ export class ServerMemberManagementService {
                 if (targetMember.serverRole === 'owner') {
                     results.failed.push({
                         userEmail,
-                        reason: 'Cannot kick/ban server owner'
+                        reason: '서버 소유자는 강퇴/차단할 수 없습니다'
                     });
                     continue;
                 }
@@ -171,7 +181,7 @@ export class ServerMemberManagementService {
                 if (targetMember.serverRole === 'admin' && adminMember.serverRole !== 'owner') {
                     results.failed.push({
                         userEmail,
-                        reason: 'Only server owner can kick/ban admin members'
+                        reason: '서버 소유자만 관리자 멤버를 강퇴/차단할 수 있습니다'
                     });
                     continue;
                 }
@@ -191,11 +201,12 @@ export class ServerMemberManagementService {
             } catch (error) {
                 results.failed.push({
                     userEmail,
-                    reason: error.message || 'Unknown error occurred'
+                    reason: error.message || '알 수 없는 오류가 발생했습니다'
                 });
             }
         }
 
         return results;
     }
+
 }

@@ -10,7 +10,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { User } from '../../user/entities/user.entity';
 import { Channel } from './channel.entity';
 
-@Entity('channelmember')
+@Entity('channel_member')
 @Unique(['channelPk', 'userPk']) // 복합 유니크 제약
 export class ChannelMember {
   @ApiProperty({ description: '채널멤버 기본키' })

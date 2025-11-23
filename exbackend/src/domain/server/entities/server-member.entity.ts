@@ -10,7 +10,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { User } from '../../user/entities/user.entity';
 import { Server } from './server.entity';
 
-@Entity('servermember')
+@Entity('server_member')
 @Unique(['userPk', 'serverPk'])
 export class ServerMember {
   @ApiProperty({ description: '서버멤버 기본키' })
@@ -25,25 +25,17 @@ export class ServerMember {
   @Column()
   serverPk: number;
 
-  @ApiProperty({ description: '서버 멤버 상태 (활성/비활성/밴)' })
-  @Column({ type: 'varchar', length: 20, name: 's_status', default: 'Active' })
-  sStatus: 'Active' | 'Inactive' | 'Banned';
-
   @ApiProperty({
-    description: '멤버 승인 상태',
-    enum: ['Pending', 'Approved', 'Rejected', 'Banned'],
+    description: '서버 멤버 상태',
+    enum: ['Pending', 'Active', 'Inactive', 'Banned'],
     default: 'Pending',
   })
-  @Column({
-    type: 'varchar',
-    length: 20,
-    default: 'Pending',
-  })
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Banned';
+  @Column({ type: 'varchar', length: 20, name: 's_status', default: 'Pending' })
+  sStatus: 'Pending' | 'Active' | 'Inactive' | 'Banned';
 
   @ApiProperty({
     description: '서버 역할',
-    enum: ['member', 'admin', 'owner'],
+    enum: ['member', 'admin', 'owner', 'projectManager'],
     default: 'member',
   })
   @Column({
@@ -51,7 +43,7 @@ export class ServerMember {
     length: 20,
     default: 'member',
   })
-  serverRole: 'member' | 'admin' | 'owner';
+  serverRole: 'member' | 'admin' | 'owner' | 'projectManager';
 
   //관계 설정
   @ManyToOne(() => User, (user) => user.serverMembers)

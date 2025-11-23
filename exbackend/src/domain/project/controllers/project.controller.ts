@@ -188,4 +188,24 @@ export class ProjectController {
     );
     return { message: '차단 해제 성공' };
   }
+
+  @Post(':projectPk/leave')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '프로젝트 나가기 (PM 특별 로직 포함)' })
+  @ApiResponse({ status: 200, description: '프로젝트 나가기 성공' })
+  async leaveProject(
+    @Param('projectPk', ParseIntPipe) projectPk: number,
+    @CurrentUser() user: User
+  ): Promise<{ message: string }> {
+    const userPk = user.userPk;
+
+    // 프로젝트 나가기 로직 실행 (PM 특별 검증 포함)
+    const result = await this.projectInvitationService.leaveProject(
+      projectPk,
+      userPk
+    );
+
+    return result;
+  }
 }

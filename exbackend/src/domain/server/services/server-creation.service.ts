@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, ConflictException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Server } from "../entities/server.entity";
 import { ServerMember } from "../entities/server-member.entity";
 import { User } from "../../user/entities/user.entity";
 import { ProjectCreationService } from "../../project/services/project-creation.service";
+import { ServerRolePermissionService } from "./server-role-permission.service";
 import { CreateServerDto, ServerResponseDto, ServerListDto } from "../dto";
 
 @Injectable()
@@ -17,6 +18,7 @@ export class ServerCreationService {
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
         private readonly projectCreationService: ProjectCreationService,
+        private readonly serverRolePermissionService: ServerRolePermissionService,
     ) {}
 
     async createServer(createServerDto: CreateServerDto): Promise<ServerResponseDto> {
@@ -26,27 +28,38 @@ export class ServerCreationService {
         });
 
         if (!user) {
-        throw new NotFoundException(`User with ID ${createServerDto.creatorUserPk} not found`);
+        throw new NotFoundException(`사용자 ID ${createServerDto.serverUrl}를 찾을 수 없습니다`);
         }
 
         // 2. 서버 생성
+        const isExistServer = await this.serverRepository.findOne({
+            where: {serverUrl: createServerDto.serverUrl, isDeletedServer: false}
+        })
+
+        if (isExistServer) {
+            throw new ConflictException(`이미 중복된 URL ${createServerDto.creatorUserPk}이 존재합니다.`);
+        }
         const server = this.serverRepository.create({
         serverName: createServerDto.serverName,
         serverUrl: createServerDto.serverUrl,
         });
         const savedServer = await this.serverRepository.save(server);
 
+
+        
         // 3. 생성자를 owner로 서버 멤버에 추가
         const serverMember = this.serverMemberRepository.create({
         userPk: createServerDto.creatorUserPk,
         serverPk: savedServer.serverPk,
-        status: 'Approved', // 생성자는 자동 승인
         sStatus: 'Active',
         serverRole: 'owner', // 생성자는 owner 권한
         });
         await this.serverMemberRepository.save(serverMember);
 
-        // 4. 기본 "일반" 프로젝트 생성 (채널도 함께 생성됨)
+        // 4. 서버 기본 권한 생성
+        await this.serverRolePermissionService.createDefaultPermissions(savedServer.serverPk);
+
+        // 5. 기본 "일반" 프로젝트 생성 (채널도 함께 생성됨)
         await this.projectCreationService.createProject({
             serverPk: savedServer.serverPk,
             projectName: '일반',
@@ -68,8 +81,7 @@ export class ServerCreationService {
     async getUserServers(userPk: number): Promise<ServerListDto[]> {
         const serverMembers = await this.serverMemberRepository.find({
             where: { 
-                userPk: userPk,
-                status: 'Approved'
+                userPk: userPk
             },
             relations: ['server'],
         });
@@ -113,7 +125,7 @@ export class ServerCreationService {
         });
 
         if (!server) {
-        throw new NotFoundException(`Server with ID ${serverPk} not found`);
+        throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없습니다`);
         }
 
         const owner = server.serverMembers.find(member => member.serverRole === 'owner');
@@ -138,7 +150,7 @@ export class ServerCreationService {
         });
 
         if (!server) {
-        throw new NotFoundException(`Server with URL ${serverUrl} not found`);
+        throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다`);
         }
 
         const owner = server.serverMembers.find(member => member.serverRole === 'owner');

@@ -35,7 +35,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         const user = await this.userService.findByEmail(userEmail);
 
         if (!user || user.isDeleted) {
-        throw new UnauthorizedException('Invalid user');
+        throw new UnauthorizedException('유효하지 않은 사용자입니다');
         }
 
         return user; // 이게 @CurrentUser()로 전달됨

@@ -22,7 +22,7 @@ export class UserService {
   async findByEmailOrThrow(email: string): Promise<User> {
     const user = await this.findByEmail(email);
     if (!user) {
-      throw new NotFoundException(`User with email ${email} not found`);
+      throw new NotFoundException(`이메일 ${email}을 가진 사용자를 찾을 수 없습니다`);
     }
     return user;
   }
@@ -39,7 +39,7 @@ export class UserService {
   async findByPkOrThrow(userPk: number): Promise<User> {
     const user = await this.findByPk(userPk);
     if (!user) {
-      throw new NotFoundException(`User with ID ${userPk} not found`);
+      throw new NotFoundException(`사용자 ID ${userPk}를 찾을 수 없습니다`);
     }
     return user;
   }

@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { ServerMember } from './server-member.entity';
 import { Project } from '../../project/entities/project.entity';
+import { ServerRolePermission } from './server-role-permission.entity';
 
 @Entity('server')
 export class Server {
@@ -27,4 +28,7 @@ export class Server {
 
   @OneToMany(() => Project, (project) => project.server)
   projects: Project[];
+
+  @OneToMany(() => ServerRolePermission, (permission) => permission.server)
+  rolePermissions: ServerRolePermission[];
 }

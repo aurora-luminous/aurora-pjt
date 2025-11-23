@@ -19,11 +19,11 @@ export class ChannelMemberDto {
   })
   cStatus: 'Active' | 'Inactive' | 'Banned';
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: '채널 역할',
-    enum: ['member', 'admin', 'owner']
+    enum: ['member', 'admin']
   })
-  channelRole: 'member' | 'admin' | 'owner';
+  channelRole: 'member' | 'admin';
 
   @ApiProperty({ description: '음소거 여부' })
   isMute: boolean;

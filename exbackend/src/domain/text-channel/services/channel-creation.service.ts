@@ -37,7 +37,7 @@ export class ChannelCreationService {
 
     if (!user) {
       throw new NotFoundException(
-        `User with ID ${createChannelDto.creatorUserPk} not found`,
+        `사용자 ID ${createChannelDto.creatorUserPk}를 찾을 수 없습니다`,
       );
     }
 
@@ -48,7 +48,7 @@ export class ChannelCreationService {
 
     if (!project) {
       throw new NotFoundException(
-        `Project with ID ${createChannelDto.projectPk} not found`,
+        `프로젝트 ID ${createChannelDto.projectPk}를 찾을 수 없습니다`,
       );
     }
 
@@ -61,7 +61,7 @@ export class ChannelCreationService {
     });
 
     if (!projectMember) {
-      throw new ForbiddenException('User is not a member of this project');
+      throw new ForbiddenException('사용자가 이 프로젝트의 멤버가 아닙니다');
     }
 
     // 4. 채널명 중복 확인 (같은 프로젝트 내에서)
@@ -75,7 +75,7 @@ export class ChannelCreationService {
 
     if (existingChannel) {
       throw new ForbiddenException(
-        `Channel with name '${createChannelDto.channelName}' already exists in this project`,
+        `채널명 '${createChannelDto.channelName}'이 이 프로젝트에 이미 존재합니다`,
       );
     }
 
@@ -139,7 +139,7 @@ export class ChannelCreationService {
     });
 
     if (!project) {
-      throw new NotFoundException(`Project with ID ${projectPk} not found`);
+      throw new NotFoundException(`프로젝트 ID ${projectPk}를 찾을 수 없습니다`);
     }
 
     let channels: Channel[];
@@ -194,7 +194,7 @@ export class ChannelCreationService {
     });
 
     if (!channel) {
-      throw new NotFoundException(`Channel with ID ${channelPk} not found`);
+      throw new NotFoundException(`채널 ID ${channelPk}를 찾을 수 없습니다`);
     }
 
     const admin = channel.channelMembers.find(

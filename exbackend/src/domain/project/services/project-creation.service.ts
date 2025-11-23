@@ -38,17 +38,17 @@ export class ProjectCreationService {
                 where: { serverUrl: createProjectDto.serverUrl, isDeletedServer: false }
             });
             if (!server) {
-                throw new NotFoundException(`Server with URL ${createProjectDto.serverUrl} not found`);
+                throw new NotFoundException(`서버 URL ${createProjectDto.serverUrl}을 찾을 수 없습니다`);
             }
         } else if (createProjectDto.serverPk) {
             server = await this.serverRepository.findOne({
                 where: { serverPk: createProjectDto.serverPk, isDeletedServer: false }
             });
             if (!server) {
-                throw new NotFoundException(`Server with ID ${createProjectDto.serverPk} not found`);
+                throw new NotFoundException(`서버 ID ${createProjectDto.serverPk}를 찾을 수 없습니다`);
             }
         } else {
-            throw new NotFoundException('Either serverUrl or serverPk must be provided');
+            throw new NotFoundException('serverUrl 또는 serverPk 중 하나는 반드시 제공되어야 합니다');
         }
 
         // 2. 사용자가 해당 서버의 멤버인지 확인
@@ -56,18 +56,18 @@ export class ProjectCreationService {
         where: { 
             serverPk: server.serverPk, 
             userPk: createProjectDto.creatorUserPk,
-            status: 'Approved'
+            sStatus: 'Active'
         },
         relations: ['user']
         });
 
         if (!serverMember) {
-        throw new ForbiddenException('User is not a member of this server');
+            throw new ForbiddenException('사용자가 이 서버의 멤버가 아닙니다');
         }
 
-        // 3. 관리자 권한 확인 (admin 또는 owner만 프로젝트 생성 가능)
-        if (!ServerRoleUtils.hasAdminPermission(serverMember.serverRole)) {
-        throw new ForbiddenException('Only admin or owner can create projects');
+        // 3. 프로젝트 생성 권한 확인 (admin, owner, projectManager 가능)
+        if (!ServerRoleUtils.hasProjectCreatePermission(serverMember.serverRole)) {    
+            throw new ForbiddenException('관리자, 소유자 또는 프로젝트 매니저만 프로젝트를 생성할 수 있습니다');
         }
 
         // 4. 프로젝트 생성
@@ -125,7 +125,7 @@ export class ProjectCreationService {
         });
 
         if (!server) {
-        throw new NotFoundException(`Server with URL ${serverUrl} not found`);
+        throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다`);
         }
 
         // 사용자가 속한 프로젝트만 조회
@@ -152,7 +152,7 @@ export class ProjectCreationService {
         });
 
         if (!server) {
-        throw new NotFoundException(`Server with URL ${serverUrl} not found`);
+        throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다`);
         }
 
         const projects = await this.projectRepository.find({
@@ -187,7 +187,7 @@ export class ProjectCreationService {
         });
 
         if (!project) {
-        throw new NotFoundException(`Project with ID ${projectPk} not found`);
+        throw new NotFoundException(`프로젝트 ID ${projectPk}를 찾을 수 없습니다`);
         }
 
         const admin = project.projectMembers.find(member => member.projectRole === 'admin');

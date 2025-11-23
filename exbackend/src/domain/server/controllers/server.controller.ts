@@ -211,10 +211,10 @@ export class ServerController {
     return await this.serverInvitationService.getServerMembersByUrl(serverUrl, requestUserPk);
   }
 
-  @Patch(':serverUrl/members/roles')
+  @Patch(':serverUrl/members')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: '멤버 권한 일괄 변경 (Owner만)' })
+  @ApiOperation({ summary: '멤버 권한 일괄 변경 (Owner만 가능)' })
   async bulkUpdateMemberRoles(
     @Param('serverUrl') serverUrl: string,
     @Body() updateDto: {
@@ -274,4 +274,5 @@ export class ServerController {
       failed: result.failed
     };
   }
+
 }

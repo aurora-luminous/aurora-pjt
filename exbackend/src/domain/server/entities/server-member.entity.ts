@@ -10,7 +10,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { User } from '../../user/entities/user.entity';
 import { Server } from './server.entity';
 
-@Entity('servermember')
+@Entity('server_member')
 @Unique(['userPk', 'serverPk'])
 export class ServerMember {
   @ApiProperty({ description: '서버멤버 기본키' })

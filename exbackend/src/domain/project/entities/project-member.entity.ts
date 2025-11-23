@@ -11,7 +11,7 @@ import { User } from '../../user/entities/user.entity';
 import { Project } from './project.entity';
 import { Channel } from '../../text-channel/entities/channel.entity';
 
-@Entity('projectmember')
+@Entity('project_member')
 @Unique(['projectPk', 'userPk']) // 복합 유니크 제약
 export class ProjectMember {
   @ApiProperty({ description: '프로젝트멤버 기본키' })

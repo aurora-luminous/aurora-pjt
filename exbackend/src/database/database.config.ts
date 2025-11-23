@@ -5,6 +5,7 @@ import { User } from '../domain/user/entities/user.entity';
 import { UserOption } from '../domain/user/entities/user-option.entity';
 import { Server } from '../domain/server/entities/server.entity';
 import { ServerMember } from '../domain/server/entities/server-member.entity';
+import { ServerRolePermission } from '../domain/server/entities/server-role-permission.entity';
 import { Project } from '../domain/project/entities/project.entity';
 import { ProjectMember } from '../domain/project/entities/project-member.entity';
 import { Event } from '../domain/project/entities/event.entity';
@@ -23,6 +24,7 @@ export const getDatabaseConfig = (ConfigService: ConfigService): TypeOrmModuleOp
         UserOption,
         Server,
         ServerMember,
+        ServerRolePermission,
         Project,
         ProjectMember,
         Event,

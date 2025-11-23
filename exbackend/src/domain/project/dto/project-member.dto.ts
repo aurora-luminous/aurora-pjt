@@ -24,11 +24,11 @@ export class ProjectMemberDto {
   })
   pStatus: 'Active' | 'Inactive' | 'Banned';
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: '프로젝트 역할',
-    enum: ['member', 'admin', 'owner']
+    enum: ['member', 'admin']
   })
-  projectRole: 'member' | 'admin' | 'owner';
+  projectRole: 'member' | 'admin';
 
   @ApiProperty({ 
     description: '사용자 정보',

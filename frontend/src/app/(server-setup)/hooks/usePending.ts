@@ -41,7 +41,7 @@ export const usePending = () => {
     const currentUserAccess = serverAccessList[0];
 
     if (currentUserAccess) {
-      switch (currentUserAccess.status) {
+      switch (currentUserAccess.sStatus) {
         case "Pending":
           setApprovalStatus("pending");
           break;

@@ -4,9 +4,14 @@ import {
   useServerAccessQuery,
   usePatchServerAccessMutation,
   useServerListQuery,
+  usePatchServerRolePermessionMutation,
+  useServerRolePermessionQuery,
+  useServerRoleMutation,
+  useUserMemberListQuery,
 } from "@/app/(server-setup)/hooks/useServerMutation";
 import { useMemo, useState, useCallback } from "react";
 import { ServerAccess } from "@/app/(servers)/types/ServerAccess";
+import { Permession, MemberInfo } from "@/app/(server-setup)/types/Server";
 
 // JoinRequest 타입 정의
 export interface JoinRequest {
@@ -35,7 +40,7 @@ const mapServerAccessToJoinRequest = (
     userAvatar: serverAccess.userInfo.profile_image_path || undefined,
     message: `${serverAccess.userInfo.user_name}님이 서버 가입을 요청했습니다.`,
     requestDate: new Date().toISOString(),
-    status: statusMap[serverAccess.status] || "pending",
+    status: statusMap[serverAccess.sStatus] || "pending",
     userEmail: serverAccess.userInfo.user_email || "",
   };
 };
@@ -92,7 +97,7 @@ export const useAdminSidebar = () => {
 
   const pendingRequestsCount = useMemo(() => {
     return (
-      serverAccessList?.filter((access) => access.status === "Pending")
+      serverAccessList?.filter((access) => access.sStatus === "Pending")
         .length || 0
     );
   }, [serverAccessList]);
@@ -229,7 +234,7 @@ export const useJoinRequestsPage = () => {
         console.log("가입 요청 승인:", userEmail);
 
         await patchServerAccessMutation.mutateAsync({
-          status: "Approved",
+          sStatus: "Approved",
           userEmail: userEmail,
         });
 
@@ -239,7 +244,7 @@ export const useJoinRequestsPage = () => {
         console.error("❌ 가입 요청 승인 실패:", error);
       }
     },
-    [serverUrl, patchServerAccessMutation, refetch]
+    [patchServerAccessMutation, refetch]
   );
 
   const handleReject = useCallback(
@@ -248,7 +253,7 @@ export const useJoinRequestsPage = () => {
         console.log("가입 요청 거절:", userEmail);
 
         await patchServerAccessMutation.mutateAsync({
-          status: "Banned",
+          sStatus: "Banned",
           userEmail: userEmail,
         });
 
@@ -258,7 +263,7 @@ export const useJoinRequestsPage = () => {
         console.error("❌ 가입 요청 거절 실패:", error);
       }
     },
-    [serverUrl, patchServerAccessMutation, refetch]
+    [patchServerAccessMutation, refetch]
   );
 
   const handleBulkApprove = useCallback(async () => {
@@ -358,6 +363,157 @@ export const useJoinRequestsPage = () => {
     handleSelectRequest,
     handleSelectAll,
     handleFilterChange,
+    refetch,
+  };
+};
+
+// 역할별 권한(Permission) 관리 훅
+export const useRolePermissions = () => {
+  const params = useParams();
+  const serverUrl = params.server_id as string;
+
+  const { isAdmin } = useAdminPermission();
+
+  // 역할별 권한 조회
+  const {
+    data: rolePermissionsData,
+    isLoading,
+    error,
+    refetch,
+  } = useServerRolePermessionQuery(serverUrl);
+
+  const patchPermissionMutation =
+    usePatchServerRolePermessionMutation(serverUrl);
+
+  // 디버깅: API 응답 확인
+  console.log("🔍 useRolePermissions - API 응답:", {
+    rolePermissionsData,
+    isAdmin,
+    serverUrl,
+    isLoading,
+    error,
+  });
+
+  // 권한 변경 핸들러
+  const handleChangePermission = useCallback(
+    async (serverRole: string, permissions: Permession) => {
+      try {
+        console.log("권한 변경 시작:", { serverRole, permissions });
+
+        await patchPermissionMutation.mutateAsync({
+          serverRole,
+          permissions: permissions,
+        });
+
+        refetch();
+        console.log("✅ 권한 변경 완료");
+      } catch (error) {
+        console.error("❌ 권한 변경 실패:", error);
+        throw error;
+      }
+    },
+    [patchPermissionMutation, refetch]
+  );
+
+  const rolePermissions = isAdmin ? rolePermissionsData?.rolePermissions : [];
+
+  console.log("🔍 useRolePermissions - 반환 데이터:", {
+    rolePermissions,
+    length: rolePermissions?.length,
+  });
+
+  return {
+    rolePermissions,
+    isLoading: isAdmin ? isLoading : false,
+    error: isAdmin ? error : null,
+    isAdmin,
+    handleChangePermission,
+    isChanging: patchPermissionMutation.isPending,
+  };
+};
+
+// 멤버 역할(Role) 변경 훅
+export const useMemberRoleManagement = () => {
+  const params = useParams();
+  const serverUrl = params.server_id as string;
+
+  const { isAdmin } = useAdminPermission();
+
+  // 멤버 목록 조회
+  const {
+    data: members = [],
+    isLoading,
+    error,
+    refetch,
+  } = useUserMemberListQuery(serverUrl);
+
+  const changeRoleMutation = useServerRoleMutation(serverUrl);
+
+  // 단일 멤버 역할 변경
+  const handleChangeMemberRole = useCallback(
+    async (userEmail: string, newRole: "member" | "admin") => {
+      try {
+        console.log("멤버 역할 변경 시작:", { userEmail, newRole });
+
+        await changeRoleMutation.mutateAsync({
+          changes: [{ userEmail, newRole }],
+        });
+
+        refetch();
+        console.log("✅ 멤버 역할 변경 완료");
+      } catch (error) {
+        console.error("❌ 멤버 역할 변경 실패:", error);
+        throw error;
+      }
+    },
+    [changeRoleMutation, refetch]
+  );
+
+  // 여러 멤버 역할 일괄 변경
+  const handleBulkChangeMemberRole = useCallback(
+    async (
+      changes: Array<{ userEmail: string; newRole: "member" | "admin" }>
+    ) => {
+      try {
+        console.log("멤버 역할 일괄 변경 시작:", changes);
+
+        await changeRoleMutation.mutateAsync({
+          changes,
+        });
+
+        refetch();
+        console.log("✅ 멤버 역할 일괄 변경 완료");
+      } catch (error) {
+        console.error("❌ 멤버 역할 일괄 변경 실패:", error);
+        throw error;
+      }
+    },
+    [changeRoleMutation, refetch]
+  );
+
+  // 역할별로 멤버 필터링
+  const membersByRole = useMemo(() => {
+    if (!members) {
+      return { owners: [], admins: [], members: [] };
+    }
+    return {
+      owners: members.filter((m: MemberInfo) => m.serverRole === "owner"),
+      admins: members.filter((m: MemberInfo) => m.serverRole === "admin"),
+      members: members.filter((m: MemberInfo) => m.serverRole === "member"),
+    };
+  }, [members]);
+
+  return {
+    members: isAdmin ? members : [],
+    membersByRole: isAdmin
+      ? membersByRole
+      : { owners: [], admins: [], members: [] },
+    isLoading: isAdmin ? isLoading : false,
+    error: isAdmin ? error : null,
+    isAdmin,
+    handleChangeMemberRole,
+    handleBulkChangeMemberRole,
+    isChanging: changeRoleMutation.isPending,
     refetch,
   };
 };

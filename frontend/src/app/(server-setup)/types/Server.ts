@@ -45,23 +45,47 @@ export interface ProjectMemberInfo {
   userInfo: UserInfo;
 }
 
-export interface PermissonUsers {
-  changes: Permisson[];
+export interface RoleUsers {
+  changes: UserRole[];
 }
 
-export interface Permisson {
+export interface Role {
   userEmail: string;
 }
 
-export interface UserPermission extends Permisson {
-  newRole: string;
+export interface UserRole extends Role {
+  newRole: "member" | "admin";
 }
 
-export interface FailedPermission extends Permisson {
+export interface FailedRole extends Role {
   reason: string;
 }
 
-export interface PermissionResponse {
+export interface RoleResponse {
   processed: number;
-  failed: FailedPermission[];
+  failed: FailedRole[];
+}
+
+export interface RolePermessionResponse {
+  rolePermissions: RolePermisson[];
+}
+
+export interface RolePermisson {
+  permissonPk: number;
+  serverPk: number;
+  serverRole: string;
+  kickMembers: boolean;
+  banMembers: boolean;
+  manageRoles: boolean;
+}
+
+export interface ChangePermission {
+  serverRole: string;
+  permissions: Permission;
+}
+
+export interface Permission {
+  kickMembers: boolean;
+  banMembers: boolean;
+  manageRoles: boolean;
 }

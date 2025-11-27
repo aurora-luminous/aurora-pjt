@@ -1,5 +1,5 @@
 export interface ServerAccess {
-  status: string;
+  sStatus: string;
   userInfo: UserInfo;
 }
 

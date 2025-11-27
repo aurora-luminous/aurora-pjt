@@ -211,7 +211,7 @@ export class ServerController {
     return await this.serverInvitationService.getServerMembersByUrl(serverUrl, requestUserPk);
   }
 
-  @Patch(':serverUrl/members')
+  @Patch(':serverUrl/members/roles')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '멤버 권한 일괄 변경 (Owner만 가능)' })

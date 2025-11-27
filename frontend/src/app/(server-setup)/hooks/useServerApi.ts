@@ -8,8 +8,11 @@ import {
   MemberEmail,
   ChannelMemberInfo,
   ProjectMemberInfo,
-  PermissionResponse,
-  PermissonUsers,
+  RoleResponse,
+  RoleUsers,
+  RolePermessionResponse,
+  ChangePermession,
+  RolePermisson,
 } from "../types/Server";
 import { expressClient } from "@/app/lib/axiosClient";
 import { Project } from "../types/Projcets";
@@ -93,7 +96,7 @@ export const useServerJoinStatusApi = (serverUrl: string) => {
 
 // 서버 접근 권한 수정
 export const usePatchServerAccessApi = (serverUrl: string) => {
-  return useApi<ServerAccess, { status: ServerStatus; userEmail: string }>({
+  return useApi<ServerAccess, { sStatus: ServerStatus; userEmail: string }>({
     endpoint: `/ex/servers/${serverUrl}/members`,
     method: "PATCH",
     axiosInstance: expressClient,
@@ -227,9 +230,25 @@ export const useUnbanChannelMemberApi = (
   });
 };
 
-export const useServerPermissionApi = (serverUrl: string) => {
-  return useApi<PermissionResponse, PermissonUsers>({
+export const useServerRoleApi = (serverUrl: string) => {
+  return useApi<RoleResponse, RoleUsers>({
     endpoint: `/ex/servers/${serverUrl}/members/roles`,
+    method: "PATCH",
+    axiosInstance: expressClient,
+  });
+};
+
+export const useServerPermessionApi = (serverUrl: string) => {
+  return useApi<RolePermessionResponse, void>({
+    endpoint: `/ex/servers/${serverUrl}/permissions`,
+    method: "GET",
+    axiosInstance: expressClient,
+  });
+};
+
+export const usePatchServerPermessionApi = (serverUrl: string) => {
+  return useApi<RolePermisson, ChangePermession>({
+    endpoint: `/ex/servers/${serverUrl}/permissions/roles`,
     method: "PATCH",
     axiosInstance: expressClient,
   });

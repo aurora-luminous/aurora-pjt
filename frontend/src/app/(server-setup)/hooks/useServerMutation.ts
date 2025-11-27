@@ -1,4 +1,5 @@
-import { ServerRequest, UserPermission } from "../types/Server";
+import { ServerRequest, ChangePermession } from "../types/Server";
+import { RoleUsers } from "../types/Server";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Channel } from "../types/Channel";
 import { ServerStatus } from "@/app/(servers)/types/ServerAccess";
@@ -24,7 +25,9 @@ import {
   useLeaveProjectApi,
   useBanProjectMemberApi,
   useUnbanProjectMemberApi,
-  useServerPermissionApi,
+  useServerRoleApi,
+  useServerPermessionApi,
+  usePatchServerPermessionApi,
 } from "./useServerApi";
 
 export const useAddServerMutation = () => {
@@ -181,13 +184,13 @@ export const usePatchServerAccessMutation = (serverUrl: string) => {
 
   return useMutation({
     mutationFn: async ({
-      status,
+      sStatus,
       userEmail,
     }: {
-      status: ServerStatus;
+      sStatus: ServerStatus;
       userEmail: string;
     }) => {
-      const result = await patchServerAccess({ status, userEmail });
+      const result = await patchServerAccess({ sStatus, userEmail });
       return result;
     },
     onSuccess: (data) => {
@@ -412,15 +415,40 @@ export const useUnbanChannelMemberMutation = (
   });
 };
 
-export const useServerPermissionMutation = (serverUrl: string) => {
-  const { execute: patchServerPermission } = useServerPermissionApi(serverUrl);
+export const useServerRoleMutation = (serverUrl: string) => {
+  const { execute: patchServerRole } = useServerRoleApi(serverUrl);
 
   return useMutation({
-    mutationFn: async (changes: UserPermission[]) => {
-      const result = await patchServerPermission({
-        changes,
-      });
+    mutationFn: async (changes: RoleUsers) => {
+      const result = await patchServerRole(changes);
       return result;
+    },
+  });
+};
+
+export const useServerRolePermessionQuery = (serverUrl: string) => {
+  const { execute: getServerRolePermession } = useServerPermessionApi(serverUrl);
+  return useQuery({
+    queryKey: ["serverRolePermession", serverUrl],
+    queryFn: () => getServerRolePermession(),
+    enabled: !!serverUrl,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+};
+
+export const usePatchServerRolePermessionMutation = (serverUrl: string) => {
+  const { execute: patchServerRolePermession } = usePatchServerPermessionApi(serverUrl);
+  return useMutation({
+    mutationFn: async (changePermession: ChangePermession) => {
+      const result = await patchServerRolePermession(changePermession);
+      return result;
+    },
+    onSuccess: (data) => {
+      console.log("🎉 서버 권한 수정 성공:", data);
+    },
+    onError: (error) => {
+      console.error("❌ 서버 권한 수정 실패:", error);
     },
   });
 };

@@ -24,6 +24,7 @@ const MembersPage = () => {
     searchQuery,
     isLoading,
     memberListError,
+    isChanging,
     handleSelectMember,
     handleSelectAll,
     handleFilterChange,
@@ -248,6 +249,7 @@ const MembersPage = () => {
               isSelected={selectedMembers.has(member.userInfo.userEmail)}
               onSelect={handleSelectMember}
               onRoleChange={handleRoleChange}
+              isChanging={isChanging}
             />
           ))}
         </div>

@@ -8,6 +8,7 @@ import { UserModule } from '../user/user.module';
 import { Project } from '../project/entities/project.entity';
 import { ProjectMember } from '../project/entities/project-member.entity';
 import { Channel } from '../text-channel/entities/channel.entity';
+import { ChannelMember } from '../text-channel/entities/channel-member.entity';
 import { ServerCreationService } from './services/server-creation.service';
 import { ServerInvitationService } from './services/server-invitation.service';
 import { ServerRolePermissionService } from './services/server-role-permission.service';
@@ -26,6 +27,7 @@ import { ServerMemberManagementService } from './services/server-member-manageme
       Project,
       ProjectMember,
       Channel,
+      ChannelMember,
     ]),
     UserModule,
     ProjectModule,

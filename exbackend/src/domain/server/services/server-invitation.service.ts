@@ -10,7 +10,9 @@ import { UserService } from '../../user/services/user.service';
 import { ServerRoleUtils, ServerRoleType } from '../../../common/enums/member-role.enum';
 import { MemberStatus, ServerMemberStatus, MemberStatusUtils } from '../../../common/enums/member-status.enum';
 import { Project } from '../../project/entities/project.entity';
+import { ProjectMember } from '../../project/entities/project-member.entity';
 import { Channel } from '../../text-channel/entities/channel.entity';
+import { ChannelMember } from '../../text-channel/entities/channel-member.entity';
 import { ServerRolePermissionService } from './server-role-permission.service';
 import { PendingMemberDto, ServerMemberInfoDto, ServerMemberDetailDto, UpdateMemberStatusDto, JoinServerDto, ServerInviteDto } from '../dto';
 
@@ -28,8 +30,12 @@ export class ServerInvitationService {
     private readonly userService: UserService,
     @InjectRepository(Project)
     private readonly projectRepository: Repository<Project>,
+    @InjectRepository(ProjectMember)
+    private readonly projectMemberRepository: Repository<ProjectMember>,
     @InjectRepository(Channel)
     private readonly channelRepository: Repository<Channel>,
+    @InjectRepository(ChannelMember)
+    private readonly channelMemberRepository: Repository<ChannelMember>,
     private readonly configService: ConfigService,
     private readonly serverRolePermissionService: ServerRolePermissionService,
   ) {}
@@ -356,6 +362,11 @@ export class ServerInvitationService {
     serverMember.sStatus = sStatus;
     const updatedMember = await this.serverMemberRepository.save(serverMember);
 
+    // 6. Active로 승인된 경우, 기본 "일반" 프로젝트와 채널에 자동 가입
+    if (sStatus === 'Active') {
+      await this.addMemberToDefaultProjectAndChannel(serverPk, user.userPk);
+    }
+
     return {
       sStatus: updatedMember.sStatus,
       userInfo: {
@@ -364,6 +375,70 @@ export class ServerInvitationService {
         profile_image_path: user.profileImagePath,
       },
     };
+  }
+
+  // 기본 프로젝트와 채널에 멤버 자동 추가 (private helper)
+  private async addMemberToDefaultProjectAndChannel(serverPk: number, userPk: number): Promise<void> {
+    // 1. 기본 "일반" 프로젝트 찾기
+    const defaultProject = await this.projectRepository.findOne({
+      where: {
+        serverPk,
+        projectName: '일반',
+        isDeletedProject: false
+      }
+    });
+
+    if (!defaultProject) {
+      // 일반 프로젝트가 없으면 자동 가입 스킵 (에러는 던지지 않음)
+      console.warn(`서버 ${serverPk}에 기본 "일반" 프로젝트가 없습니다.`);
+      return;
+    }
+
+    // 2. 이미 프로젝트 멤버인지 확인
+    const existingProjectMember = await this.projectMemberRepository.findOne({
+      where: { projectPk: defaultProject.projectPk, userPk }
+    });
+
+    if (!existingProjectMember) {
+      // 프로젝트 멤버로 추가
+      const projectMember = this.projectMemberRepository.create({
+        projectPk: defaultProject.projectPk,
+        userPk,
+        pStatus: 'Active',
+        projectRole: 'member'
+      });
+      await this.projectMemberRepository.save(projectMember);
+    }
+
+    // 3. 기본 "일반" 채널 찾기
+    const defaultChannel = await this.channelRepository.findOne({
+      where: {
+        projectPk: defaultProject.projectPk,
+        channelName: '일반',
+        isDeletedChannel: false
+      }
+    });
+
+    if (!defaultChannel) {
+      console.warn(`프로젝트 ${defaultProject.projectPk}에 기본 "일반" 채널이 없습니다.`);
+      return;
+    }
+
+    // 4. 이미 채널 멤버인지 확인
+    const existingChannelMember = await this.channelMemberRepository.findOne({
+      where: { channelPk: defaultChannel.channelPk, userPk }
+    });
+
+    if (!existingChannelMember) {
+      // 채널 멤버로 추가
+      const channelMember = this.channelMemberRepository.create({
+        channelPk: defaultChannel.channelPk,
+        userPk,
+        cStatus: 'Active',
+        channelRole: 'member'
+      });
+      await this.channelMemberRepository.save(channelMember);
+    }
   }
 
   // 서버 멤버 목록 조회 (모든 상태)

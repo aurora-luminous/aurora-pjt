@@ -46,7 +46,7 @@ export class ServerRolePermissionController {
     return this.permissionService.getServerPermissions(serverUrl, user.userPk);
   }
 
-  @Patch('roles')
+  @Patch()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '서버 역할 권한 업데이트 (소유자만 가능)' })

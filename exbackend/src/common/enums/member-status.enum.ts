@@ -12,8 +12,8 @@ export enum MemberStatus {
  */
 export enum ServerMemberStatus {
   PENDING = 'Pending',
-  APPROVED = 'Approved',
-  REJECTED = 'Rejected',
+  ACTIVE = 'Active',
+  INACTIVE = 'Inactive',
   BANNED = 'Banned',
 }
 
@@ -24,14 +24,14 @@ export class MemberStatusUtils {
   // 활성 상태들
   static readonly ACTIVE_STATUSES = [
     MemberStatus.ACTIVE,
-    ServerMemberStatus.APPROVED,
+    ServerMemberStatus.ACTIVE,
   ];
 
   // 비활성 상태들
   static readonly INACTIVE_STATUSES = [
     MemberStatus.INACTIVE,
     ServerMemberStatus.PENDING,
-    ServerMemberStatus.REJECTED,
+    ServerMemberStatus.INACTIVE,
   ];
 
   // 차단 상태들
@@ -66,7 +66,7 @@ export class MemberStatusUtils {
    */
   static serverToMemberStatus(serverStatus: ServerMemberStatus): MemberStatus {
     switch (serverStatus) {
-      case ServerMemberStatus.APPROVED:
+      case ServerMemberStatus.ACTIVE:
         return MemberStatus.ACTIVE;
       case ServerMemberStatus.BANNED:
         return MemberStatus.BANNED;

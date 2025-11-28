@@ -72,8 +72,8 @@ export interface UserType {
  */
 export type ServerMemberStatusType =
   | 'Pending'
-  | 'Approved'
-  | 'Rejected'
+  | 'Active'
+  | 'Inactive'
   | 'Banned';
 export type ProjectMemberStatusType = 'Active' | 'Inactive' | 'Banned';
 export type ChannelMemberStatusType = 'Active' | 'Inactive' | 'Banned';

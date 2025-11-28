@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { Server } from '../entities/server.entity';
@@ -377,7 +377,7 @@ export class ServerInvitationService {
     };
   }
 
-  // 기본 프로젝트와 채널에 멤버 자동 추가 (private helper)
+  // 기본 프로젝트와 모든 public 채널에 멤버 자동 추가 (private helper)
   private async addMemberToDefaultProjectAndChannel(serverPk: number, userPk: number): Promise<void> {
     // 1. 기본 "일반" 프로젝트 찾기
     const defaultProject = await this.projectRepository.findOne({
@@ -410,34 +410,50 @@ export class ServerInvitationService {
       await this.projectMemberRepository.save(projectMember);
     }
 
-    // 3. 기본 "일반" 채널 찾기
-    const defaultChannel = await this.channelRepository.findOne({
+    // 3. 일반 프로젝트의 모든 public 채널에 자동 추가
+    await this.addMemberToPublicChannels(defaultProject.projectPk, userPk);
+  }
+
+  // 프로젝트의 모든 public 채널에 멤버를 추가하는 헬퍼 메서드
+  private async addMemberToPublicChannels(projectPk: number, userPk: number): Promise<void> {
+    // 해당 프로젝트의 모든 public 채널 조회
+    const publicChannels = await this.channelRepository.find({
       where: {
-        projectPk: defaultProject.projectPk,
-        channelName: '일반',
-        isDeletedChannel: false
+        projectPk,
+        isDeletedChannel: false,
+        isPrivate: false
       }
     });
 
-    if (!defaultChannel) {
-      console.warn(`프로젝트 ${defaultProject.projectPk}에 기본 "일반" 채널이 없습니다.`);
+    if (publicChannels.length === 0) {
+      console.warn(`프로젝트 ${projectPk}에 public 채널이 없습니다.`);
       return;
     }
 
-    // 4. 이미 채널 멤버인지 확인
-    const existingChannelMember = await this.channelMemberRepository.findOne({
-      where: { channelPk: defaultChannel.channelPk, userPk }
+    // 이미 가입된 채널 확인
+    const existingChannelMembers = await this.channelMemberRepository.find({
+      where: {
+        userPk,
+        channelPk: In(publicChannels.map(ch => ch.channelPk))
+      }
     });
 
-    if (!existingChannelMember) {
-      // 채널 멤버로 추가
-      const channelMember = this.channelMemberRepository.create({
-        channelPk: defaultChannel.channelPk,
-        userPk,
-        cStatus: 'Active',
-        channelRole: 'member'
-      });
-      await this.channelMemberRepository.save(channelMember);
+    const existingChannelPks = new Set(existingChannelMembers.map(m => m.channelPk));
+
+    // 아직 가입되지 않은 public 채널에만 추가
+    const channelMembersToAdd = publicChannels
+      .filter(channel => !existingChannelPks.has(channel.channelPk))
+      .map(channel =>
+        this.channelMemberRepository.create({
+          channelPk: channel.channelPk,
+          userPk: userPk,
+          cStatus: 'Active',
+          channelRole: 'member',
+        })
+      );
+
+    if (channelMembersToAdd.length > 0) {
+      await this.channelMemberRepository.save(channelMembersToAdd);
     }
   }
 

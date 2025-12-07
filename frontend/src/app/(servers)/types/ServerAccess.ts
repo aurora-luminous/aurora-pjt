@@ -10,4 +10,4 @@ export interface UserInfo {
 }
 
 // ServerStatus를 단순한 문자열 유니온 타입으로 변경
-export type ServerStatus = "Approved" | "Pending" | "Banned";
+export type ServerStatus = "Active" | "Pending" | "Inactive" | "Banned";

@@ -1,7 +1,8 @@
-import { ServerRequest, ChangePermession } from "../types/Server";
+import { ServerRequest, ChangePermission } from "../types/Server";
 import { RoleUsers } from "../types/Server";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Channel } from "../types/Channel";
+import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
 import { ServerStatus } from "@/app/(servers)/types/ServerAccess";
 import {
   useAddServerApi,
@@ -68,12 +69,16 @@ export const useProjectListQuery = (serverUrl: string) => {
 
 // 🔄 Query: 서버 목록 조회 (GET)
 export const useServerListQuery = (enabled: boolean = false) => {
+  const { data: userInfo } = useGetUserInfoQuery();
   const { execute: getServerList } = useServerListApi();
 
   return useQuery({
-    queryKey: ["serverList"],
-    queryFn: () => getServerList(),
-    enabled: enabled, // 명시적으로 enabled가 true일 때만 실행
+    queryKey: ["serverList", userInfo?.userEmail],
+    queryFn: async () => {
+      const result = await getServerList();
+      return result;
+    },
+    enabled: userInfo?.userEmail ? enabled : false, // 명시적으로 enabled가 true일 때만 실행
     staleTime: 5 * 60 * 1000, // 5분간 fresh
     gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
   });
@@ -163,14 +168,14 @@ export const useServerAccessQuery = (
 // 🔄 Query: 사용자 본인의 서버 가입 상태 조회 (POST) - 승인 대기 페이지용
 export const useServerJoinStatusQuery = (
   serverUrl: string,
-  approvalStatus?: "pending" | "approved" | "rejected" | "checking"
+  approvalStatus?: "pending" | "active" | "inactive" | "checking"
 ) => {
   const { execute: getServerJoinStatus } = useServerJoinStatusApi(serverUrl);
 
   return useQuery({
     queryKey: ["serverJoinStatus", serverUrl],
     queryFn: () => getServerJoinStatus(),
-    enabled: !!serverUrl && approvalStatus !== "approved", // serverUrl이 있고 승인되지 않았을 때만 실행
+    enabled: !!serverUrl && approvalStatus !== "active", // serverUrl이 있고 승인되지 않았을 때만 실행
     staleTime: 0, // 항상 최신 데이터 확인
     gcTime: 1 * 60 * 1000, // 1분간 캐시 유지
     refetchInterval: 5000, // 5초마다 자동 refetch
@@ -427,7 +432,8 @@ export const useServerRoleMutation = (serverUrl: string) => {
 };
 
 export const useServerRolePermessionQuery = (serverUrl: string) => {
-  const { execute: getServerRolePermession } = useServerPermessionApi(serverUrl);
+  const { execute: getServerRolePermession } =
+    useServerPermessionApi(serverUrl);
   return useQuery({
     queryKey: ["serverRolePermession", serverUrl],
     queryFn: () => getServerRolePermession(),
@@ -438,10 +444,11 @@ export const useServerRolePermessionQuery = (serverUrl: string) => {
 };
 
 export const usePatchServerRolePermessionMutation = (serverUrl: string) => {
-  const { execute: patchServerRolePermession } = usePatchServerPermessionApi(serverUrl);
+  const { execute: patchServerRolePermession } =
+    usePatchServerPermessionApi(serverUrl);
   return useMutation({
-    mutationFn: async (changePermession: ChangePermession) => {
-      const result = await patchServerRolePermession(changePermession);
+    mutationFn: async (changePermission: ChangePermission) => {
+      const result = await patchServerRolePermession(changePermission);
       return result;
     },
     onSuccess: (data) => {

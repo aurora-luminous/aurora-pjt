@@ -6,13 +6,14 @@ import {
   useLogoutMutation,
 } from "./useAuthMutations";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const useAuth = (type: "login" | "register" = "register") => {
   const router = useRouter();
   const signUpMutation = useSignUpMutation();
   const loginMutation = useLoginMutation();
   const logoutMutation = useLogoutMutation();
-
+  const queryClient = useQueryClient();
   // 회원가입 처리 함수
   const handleRegister = async (data: AuthFormData) => {
     console.log("회원가입 프로세스 시작 - 폼 데이터:", data);
@@ -56,7 +57,7 @@ export const useAuth = (type: "login" | "register" = "register") => {
       console.log(
         `💾 로그인 상태 유지: ${data.rememberMe ? "활성화" : "비활성화"}`
       );
-
+      queryClient.invalidateQueries({ queryKey: ["userInfo"] });
       // 로그인 성공 후 서버 연결 페이지로 이동
       router.push("/server-connect");
     } catch (error) {
@@ -71,6 +72,7 @@ export const useAuth = (type: "login" | "register" = "register") => {
     logoutMutation.mutate(undefined, {
       onSuccess: () => {
         console.log("✅ 로그아웃 성공");
+        queryClient.clear();
         router.push("/login");
       },
       onError: (error) => {

@@ -9,9 +9,9 @@ import {
   useServerRoleMutation,
   useUserMemberListQuery,
 } from "@/app/(server-setup)/hooks/useServerMutation";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { ServerAccess } from "@/app/(servers)/types/ServerAccess";
-import { Permession, MemberInfo } from "@/app/(server-setup)/types/Server";
+import { MemberInfo, Permission } from "@/app/(server-setup)/types/Server";
 
 // JoinRequest 타입 정의
 export interface JoinRequest {
@@ -21,17 +21,21 @@ export interface JoinRequest {
   message: string;
   requestDate: string;
   userEmail: string;
-  status: "pending" | "approved" | "rejected";
+  sStatus: "Pending" | "Active" | "Inactive" | "Banned";
 }
 
 // ServerAccess를 JoinRequest로 변환하는 함수
 const mapServerAccessToJoinRequest = (
   serverAccess: ServerAccess
 ): JoinRequest => {
-  const statusMap: Record<string, "pending" | "approved" | "rejected"> = {
-    Pending: "pending",
-    Approved: "approved",
-    Banned: "rejected",
+  const statusMap: Record<
+    string,
+    "Pending" | "Active" | "Inactive" | "Banned"
+  > = {
+    Pending: "Pending",
+    Active: "Active",
+    Inactive: "Inactive",
+    Banned: "Banned",
   };
 
   return {
@@ -40,29 +44,29 @@ const mapServerAccessToJoinRequest = (
     userAvatar: serverAccess.userInfo.profile_image_path || undefined,
     message: `${serverAccess.userInfo.user_name}님이 서버 가입을 요청했습니다.`,
     requestDate: new Date().toISOString(),
-    status: statusMap[serverAccess.sStatus] || "pending",
+    sStatus: statusMap[serverAccess.sStatus] || "Pending",
     userEmail: serverAccess.userInfo.user_email || "",
   };
 };
 
 export const useAdminPermission = () => {
   const serverInfo = useCurrentServerInfo();
-  const serverListQuery = useServerListQuery(true);
+  const { data: serverList } = useServerListQuery(true);
 
-  // 현재 서버에서의 사용자 role 찾기
-  const currentServerRole = serverListQuery.data?.find(
-    (server) => server.serverUrl === serverInfo?.serverUrl
-  )?.serverRole;
+  const currentServerRole = serverList?.find(
+    (s) => s.serverUrl === serverInfo?.serverUrl
+  );
 
-  // 관리자 권한 확인 (owner 또는 admin)
-  const isAdmin =
-    currentServerRole === "owner" || currentServerRole === "admin";
+  const isAdmin = currentServerRole
+    ? currentServerRole.serverRole === "owner" ||
+      currentServerRole.serverRole === "admin"
+    : false;
 
   return {
     isAdmin,
     currentServerRole,
-    isLoading: serverListQuery.isLoading,
-    error: serverListQuery.error,
+    isLoading: serverList ? serverList.length > 0 : false,
+    error: null,
   };
 };
 
@@ -148,15 +152,17 @@ export const useJoinRequestItem = (
   );
 
   const getStatusBadge = useCallback(() => {
-    switch (request.status) {
-      case "approved":
+    switch (request.sStatus) {
+      case "Active":
         return { text: "✅ 승인됨", className: "text-green-400 text-sm" };
-      case "rejected":
+      case "Inactive":
         return { text: "❌ 거절됨", className: "text-red-400 text-sm" };
+      case "Banned":
+        return { text: "❌ 차단됨", className: "text-red-400 text-sm" };
       default:
         return null;
     }
-  }, [request.status]);
+  }, [request.sStatus]);
 
   return {
     isProcessing,
@@ -192,7 +198,7 @@ export const useJoinRequestsPage = () => {
     new Set()
   );
   const [filterStatus, setFilterStatus] = useState<
-    "all" | "pending" | "approved" | "rejected"
+    "all" | "Pending" | "Active" | "Inactive" | "Banned"
   >("all");
 
   // API 호출 - 관리자 권한이 있을 때만
@@ -205,6 +211,12 @@ export const useJoinRequestsPage = () => {
     enabled: isAdmin, // 관리자 권한이 있을 때만 API 호출
   });
 
+  useEffect(() => {
+    if (isAdmin && serverUrl) {
+      refetch();
+    }
+  }, [isAdmin, refetch, serverUrl]);
+
   const patchServerAccessMutation = usePatchServerAccessMutation(serverUrl);
 
   // 데이터 변환 및 계산
@@ -214,12 +226,12 @@ export const useJoinRequestsPage = () => {
 
   const filteredRequests = useMemo(() => {
     if (filterStatus === "all") return requests;
-    return requests?.filter((request) => request.status === filterStatus);
+    return requests?.filter((request) => request.sStatus === filterStatus);
   }, [requests, filterStatus]);
 
   const pendingCount = useMemo(() => {
     return (
-      requests?.filter((request) => request.status === "pending").length || 0
+      requests?.filter((request) => request.sStatus === "Pending").length || 0
     );
   }, [requests]);
 
@@ -234,7 +246,7 @@ export const useJoinRequestsPage = () => {
         console.log("가입 요청 승인:", userEmail);
 
         await patchServerAccessMutation.mutateAsync({
-          sStatus: "Approved",
+          sStatus: "Active",
           userEmail: userEmail,
         });
 
@@ -253,7 +265,7 @@ export const useJoinRequestsPage = () => {
         console.log("가입 요청 거절:", userEmail);
 
         await patchServerAccessMutation.mutateAsync({
-          sStatus: "Banned",
+          sStatus: "Inactive",
           userEmail: userEmail,
         });
 
@@ -315,7 +327,7 @@ export const useJoinRequestsPage = () => {
         setSelectedRequests(
           new Set(
             filteredRequests
-              ?.filter((r) => r.status === "pending")
+              ?.filter((r) => r.sStatus === "Pending")
               .map((r) => r.id)
           )
         );
@@ -327,7 +339,7 @@ export const useJoinRequestsPage = () => {
   );
 
   const handleFilterChange = useCallback(
-    (status: "all" | "pending" | "approved" | "rejected") => {
+    (status: "all" | "Pending" | "Active" | "Inactive" | "Banned") => {
       setFilterStatus(status);
     },
     []
@@ -396,7 +408,7 @@ export const useRolePermissions = () => {
 
   // 권한 변경 핸들러
   const handleChangePermission = useCallback(
-    async (serverRole: string, permissions: Permession) => {
+    async (serverRole: string, permissions: Permission) => {
       try {
         console.log("권한 변경 시작:", { serverRole, permissions });
 

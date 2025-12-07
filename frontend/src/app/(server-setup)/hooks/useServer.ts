@@ -15,23 +15,14 @@ export interface ServerInfo {
  * 현재 서버 정보를 가져오는 커스텀 훅
  */
 export const useCurrentServerInfo = (): ServerInfo | null => {
-  const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null);
+  if (typeof window === "undefined") return null;
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const stored = sessionStorage.getItem("currentServerInfo");
-      if (stored) {
-        try {
-          setServerInfo(JSON.parse(stored));
-        } catch (error) {
-          console.error("서버 정보 파싱 실패:", error);
-          setServerInfo(null);
-        }
-      }
-    }
-  }, []);
-
-  return serverInfo;
+  try {
+    const stored = sessionStorage.getItem("currentServerInfo");
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
 };
 
 /**

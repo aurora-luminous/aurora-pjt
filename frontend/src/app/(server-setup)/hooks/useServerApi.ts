@@ -11,7 +11,7 @@ import {
   RoleResponse,
   RoleUsers,
   RolePermessionResponse,
-  ChangePermession,
+  ChangePermission,
   RolePermisson,
 } from "../types/Server";
 import { expressClient } from "@/app/lib/axiosClient";
@@ -247,7 +247,7 @@ export const useServerPermessionApi = (serverUrl: string) => {
 };
 
 export const usePatchServerPermessionApi = (serverUrl: string) => {
-  return useApi<RolePermisson, ChangePermession>({
+  return useApi<RolePermisson, ChangePermission>({
     endpoint: `/ex/servers/${serverUrl}/permissions/roles`,
     method: "PATCH",
     axiosInstance: expressClient,

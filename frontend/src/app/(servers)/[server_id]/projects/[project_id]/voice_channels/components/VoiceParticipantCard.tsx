@@ -5,21 +5,30 @@ interface VoiceParticipantCardProps {
   participant: VoiceParticipant;
   isCompact?: boolean; // 화면 공유 모드일 때 작은 크기
   videoStream?: MediaStream; // 비디오 스트림
+  mikeStream?: MediaStream; // 마이크 스트림
 }
 
 export const VoiceParticipantCard = ({
   participant,
   isCompact = false,
   videoStream,
+  mikeStream,
 }: VoiceParticipantCardProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-
+  const mikeRef = useRef<HTMLAudioElement>(null);
   // 비디오 스트림 연결
   useEffect(() => {
     if (videoRef.current && videoStream) {
       videoRef.current.srcObject = videoStream;
     }
   }, [videoStream, participant.isVideoOn, participant.username]);
+
+  // 마이크 스트림 연결
+  useEffect(() => {
+    if (mikeRef.current && mikeStream) {
+      mikeRef.current.srcObject = mikeStream;
+    }
+  }, [mikeStream, participant.isMicOn, participant.username]);
 
   const avatarSize = isCompact ? "w-12 h-12" : "w-24 h-24";
   const textSize = isCompact ? "text-xs" : "text-sm";

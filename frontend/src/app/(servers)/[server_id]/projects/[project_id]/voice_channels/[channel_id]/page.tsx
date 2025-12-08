@@ -35,13 +35,13 @@ const VoiceChannelPage = () => {
     isScreenSharing,
     participants,
     participantCount,
-    toggleMic,
     toggleFullScreen,
     toggleScreenShare,
   } = useVoiceChannelPage();
 
   // 미디어 제어 (카메라 포함)
-  const { cameraStream, handleToggleVideo } = useMediaControl();
+  const { cameraStream, handleToggleVideo, mikeStream, handleToggleMic } =
+    useMediaControl();
 
   // 참여자 수에 따른 그리드 레이아웃 계산
   const { gridLayout, gridRows } = useVoiceGrid(
@@ -80,6 +80,7 @@ const VoiceChannelPage = () => {
             gridRows={gridRows}
             currentUserId={currentUserId}
             cameraStream={cameraStream}
+            mikeStream={mikeStream}
           />
         )}
       </div>
@@ -89,7 +90,7 @@ const VoiceChannelPage = () => {
         isMicOn={isMicOn}
         isVideoOn={isVideoOn}
         isScreenSharing={isScreenSharing}
-        onToggleMic={toggleMic}
+        onToggleMic={handleToggleMic}
         onToggleVideo={handleToggleVideo}
         onToggleScreenShare={toggleScreenShare}
       />

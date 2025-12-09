@@ -45,7 +45,7 @@ export const useVoiceChannelInit = ({
         isMicOn: true,
         isVideoOn: false,
         isAudioOn: true,
-        isSpeaking: true,
+        isSpeaking: false,
       },
       {
         userId: "user-4",

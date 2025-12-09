@@ -100,7 +100,7 @@ export default function JoinRequestsPage() {
           >
             현재 권한:{" "}
             <span className="text-yellow-400">
-              {currentServerRole || "member"}
+              {currentServerRole ? currentServerRole.serverRole : "Member"}
             </span>
           </p>
         </div>

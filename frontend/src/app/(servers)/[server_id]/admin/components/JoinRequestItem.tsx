@@ -144,7 +144,7 @@ const JoinRequestItem: React.FC<JoinRequestItemProps> = ({
         </div>
 
         {/* 액션 버튼들 */}
-        {request.status === "pending" && (
+        {request.sStatus === "Pending" && (
           <div
             className={`
             flex flex-shrink-0

@@ -7,6 +7,7 @@ interface VoiceGridProps {
   gridRows: string;
   currentUserId?: string; // 현재 사용자 ID
   cameraStream?: MediaStream | null; // 카메라 스트림
+  mikeStream?: MediaStream | null; // 마이크 스트림
 }
 
 export const VoiceGrid = ({
@@ -15,6 +16,7 @@ export const VoiceGrid = ({
   gridRows,
   currentUserId,
   cameraStream,
+  mikeStream,
 }: VoiceGridProps) => {
   return (
     <div
@@ -28,6 +30,11 @@ export const VoiceGrid = ({
           videoStream={
             userId === currentUserId && participant.isVideoOn
               ? cameraStream || undefined
+              : undefined
+          }
+          mikeStream={
+            userId === currentUserId && participant.isMicOn
+              ? mikeStream || undefined
               : undefined
           }
         />

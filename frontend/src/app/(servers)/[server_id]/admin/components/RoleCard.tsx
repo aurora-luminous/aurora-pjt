@@ -30,6 +30,7 @@ interface RoleCardProps {
     permissionId: string,
     enabled: boolean
   ) => void;
+  isChanging?: boolean; // 권한 변경 중 상태
 }
 
 const RoleCard: React.FC<RoleCardProps> = ({
@@ -38,6 +39,7 @@ const RoleCard: React.FC<RoleCardProps> = ({
   onEdit,
   onDelete,
   onPermissionChange,
+  isChanging = false,
 }) => {
   const { isMobile, isTablet } = useResponsive();
   const [expanded, setExpanded] = useState(false);
@@ -216,7 +218,7 @@ const RoleCard: React.FC<RoleCardProps> = ({
                   className={`rounded border-gray-600 bg-gray-700 ${
                     isMobile ? "mt-0.5" : "mt-1"
                   }`}
-                  disabled={role.isOwner}
+                  disabled={role.isOwner || isChanging}
                 />
                 <div className="flex-1">
                   <div

@@ -1,213 +1,150 @@
-import { useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useCallback, useMemo } from "react";
 import { Role, Permission } from "../[server_id]/admin/components/RoleCard";
+import { useRolePermissions } from "./useAdmin";
+import { RolePermisson } from "@/app/(server-setup)/types/Server";
 
-// 임시 데이터 (실제로는 API에서 가져올 데이터)
-const defaultPermissions: Permission[] = [
-  {
-    id: "view_channels",
-    name: "채널 보기",
-    description: "텍스트 및 음성 채널을 볼 수 있습니다",
-    enabled: true,
-  },
-  {
-    id: "send_messages",
-    name: "메시지 보내기",
-    description: "텍스트 채널에 메시지를 보낼 수 있습니다",
-    enabled: true,
-  },
-  {
-    id: "connect_voice",
-    name: "음성 연결",
-    description: "음성 채널에 연결할 수 있습니다",
-    enabled: true,
-  },
-  {
-    id: "speak",
-    name: "말하기",
-    description: "음성 채널에서 말할 수 있습니다",
-    enabled: true,
-  },
-  {
-    id: "manage_messages",
-    name: "메시지 관리",
-    description: "다른 사용자의 메시지를 삭제할 수 있습니다",
-    enabled: false,
-  },
-  {
-    id: "manage_channels",
-    name: "채널 관리",
-    description: "채널을 생성, 수정, 삭제할 수 있습니다",
-    enabled: false,
-  },
-  {
-    id: "kick_members",
-    name: "멤버 추방",
-    description: "멤버를 서버에서 추방할 수 있습니다",
-    enabled: false,
-  },
-  {
-    id: "ban_members",
-    name: "멤버 차단",
-    description: "멤버를 서버에서 차단할 수 있습니다",
-    enabled: false,
-  },
-  {
-    id: "manage_roles",
-    name: "역할 관리",
-    description: "역할을 생성, 수정, 삭제할 수 있습니다",
-    enabled: false,
-  },
-  {
-    id: "administrator",
-    name: "관리자",
-    description: "모든 권한을 가집니다",
-    enabled: false,
-  },
-];
+// API 권한 데이터를 UI 형식으로 변환
+const convertApiPermissionsToUIPermissions = (
+  apiPermissions: RolePermisson
+): Permission[] => {
+  return [
+    {
+      id: "kickMembers",
+      name: "멤버 추방",
+      description: "멤버를 서버에서 추방할 수 있습니다",
+      enabled: apiPermissions.kickMembers,
+    },
+    {
+      id: "banMembers",
+      name: "멤버 차단",
+      description: "멤버를 서버에서 차단할 수 있습니다",
+      enabled: apiPermissions.banMembers,
+    },
+    {
+      id: "manageRoles",
+      name: "역할 관리",
+      description: "역할을 생성하고 멤버의 역할을 변경할 수 있습니다",
+      enabled: apiPermissions.manageRoles,
+    },
+  ];
+};
 
-const mockRoles: Role[] = [
-  {
-    id: "owner",
-    name: "Owner",
-    color: "#FFD700",
-    permissions: defaultPermissions.map((p) => ({ ...p, enabled: true })),
-    memberCount: 1,
-    isOwner: true,
-  },
-  {
-    id: "admin",
-    name: "Admin",
-    color: "#FF6B6B",
-    permissions: defaultPermissions.map((p) => ({
-      ...p,
-      enabled: p.id !== "administrator",
-    })),
-    memberCount: 2,
-  },
-  {
-    id: "member",
-    name: "Member",
-    color: "#95A5A6",
-    permissions: defaultPermissions.map((p) => ({
-      ...p,
-      enabled: [
-        "view_channels",
-        "send_messages",
-        "connect_voice",
-        "speak",
-      ].includes(p.id),
-    })),
-    memberCount: 50,
-    isDefault: true,
-  },
-];
+// serverRole을 한글 이름과 색상으로 변환
+const getRoleDisplayInfo = (serverRole: string) => {
+  switch (serverRole) {
+    case "owner":
+      return { name: "서버 오너", color: "#FFD700", isOwner: true };
+    case "admin":
+      return { name: "관리자", color: "#FF6B6B" };
+    case "member":
+      return { name: "멤버", color: "#95A5A6", isDefault: true };
+    default:
+      return { name: serverRole, color: "#6B7280" };
+  }
+};
+
+// API 역할 데이터를 UI 형식으로 변환
+const convertApiRoleToUIRole = (
+  apiRole: RolePermisson,
+  memberCount: number = 0
+): Role => {
+  const displayInfo = getRoleDisplayInfo(apiRole.serverRole);
+
+  return {
+    id: apiRole.serverRole,
+    name: displayInfo.name,
+    color: displayInfo.color,
+    permissions: convertApiPermissionsToUIPermissions(apiRole),
+    memberCount,
+    isDefault: displayInfo.isDefault,
+    isOwner: displayInfo.isOwner,
+  };
+};
 
 export const useRolesPage = () => {
-  const params = useParams();
-  const serverId = params.server_id as string;
+  // 실제 API 훅 사용
+  const {
+    rolePermissions,
+    isLoading: permissionsLoading,
+    error: permissionsError,
+    handleChangePermission,
+    isChanging,
+  } = useRolePermissions();
 
-  // 상태 관리
-  const [roles, setRoles] = useState<Role[]>(mockRoles);
-  const [isLoading] = useState(false);
-  const [error] = useState<Error | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingRole, setEditingRole] = useState<Role | null>(null);
+  console.log("🔍 useRolesPage - rolePermissions:", {
+    rolePermissions,
+    length: rolePermissions?.length,
+    type: typeof rolePermissions,
+    isArray: Array.isArray(rolePermissions),
+  });
 
-  // 역할 생성
-  const handleCreateRole = useCallback(
-    async (roleData: Omit<Role, "id" | "memberCount">) => {
-      console.log("역할 생성:", roleData);
+  // API 데이터를 UI 형식으로 변환
+  const roles = useMemo(() => {
+    if (!rolePermissions || rolePermissions.length === 0) {
+      console.log("⚠️ rolePermissions가 비어있음:", rolePermissions);
+      return [];
+    }
 
-      try {
-        // 실제 API 호출 로직
-        // await createRole(serverId, roleData);
+    const convertedRoles = rolePermissions.map((apiRole) => {
+      // 멤버 수는 표시하지 않음 (역할 관리 페이지에서는 불필요)
+      return convertApiRoleToUIRole(apiRole, 0);
+    });
 
-        const newRole: Role = {
-          ...roleData,
-          id: Date.now().toString(), // 임시 ID
-          memberCount: 0,
-        };
+    console.log("✅ 변환된 roles:", convertedRoles);
+    return convertedRoles;
+  }, [rolePermissions]);
 
-        setRoles((prev) => [...prev, newRole]);
-        console.log("✅ 역할 생성 완료");
-      } catch (error) {
-        console.error("❌ 역할 생성 실패:", error);
-      }
-    },
-    [serverId]
-  );
+  const isLoading = permissionsLoading;
+  const error = permissionsError;
 
-  // 역할 수정
-  const handleEditRole = useCallback(
-    async (roleId: string, roleData: Partial<Role>) => {
-      console.log("역할 수정:", { roleId, roleData });
+  // 역할 삭제 (현재 API에서는 미지원 - 기본 역할만 존재)
+  const handleDeleteRole = useCallback(async (roleId: string) => {
+    console.log("⚠️ 역할 삭제는 현재 지원되지 않습니다:", roleId);
+    alert("기본 역할(Owner, Admin, Member)은 삭제할 수 없습니다.");
+  }, []);
 
-      try {
-        // 실제 API 호출 로직
-        // await updateRole(serverId, roleId, roleData);
-
-        setRoles((prev) =>
-          prev.map((role) =>
-            role.id === roleId ? { ...role, ...roleData } : role
-          )
-        );
-        console.log("✅ 역할 수정 완료");
-      } catch (error) {
-        console.error("❌ 역할 수정 실패:", error);
-      }
-    },
-    [serverId]
-  );
-
-  // 역할 삭제
-  const handleDeleteRole = useCallback(
-    async (roleId: string) => {
-      console.log("역할 삭제:", roleId);
-
-      try {
-        // 실제 API 호출 로직
-        // await deleteRole(serverId, roleId);
-
-        setRoles((prev) => prev.filter((role) => role.id !== roleId));
-        console.log("✅ 역할 삭제 완료");
-      } catch (error) {
-        console.error("❌ 역할 삭제 실패:", error);
-      }
-    },
-    [serverId]
-  );
-
-  // 권한 변경
-  const handlePermissionChange = useCallback(
+  // 권한 변경 - 실제 API 호출
+  const handlePermissionChangeWrapper = useCallback(
     async (roleId: string, permissionId: string, enabled: boolean) => {
       console.log("권한 변경:", { roleId, permissionId, enabled });
 
       try {
-        // 실제 API 호출 로직
-        // await updateRolePermission(serverId, roleId, permissionId, enabled);
-
-        setRoles((prev) =>
-          prev.map((role) =>
-            role.id === roleId
-              ? {
-                  ...role,
-                  permissions: role.permissions.map((permission) =>
-                    permission.id === permissionId
-                      ? { ...permission, enabled }
-                      : permission
-                  ),
-                }
-              : role
-          )
+        // 현재 역할의 모든 권한 가져오기
+        const currentRole = rolePermissions?.find(
+          (r) => r.serverRole === roleId
         );
+
+        if (!currentRole) {
+          console.error("역할을 찾을 수 없습니다:", roleId);
+          return;
+        }
+
+        // 변경할 권한 객체 생성
+        const updatedPermissions = {
+          kickMembers: currentRole.kickMembers,
+          banMembers: currentRole.banMembers,
+          manageRoles: currentRole.manageRoles,
+        };
+
+        // 특정 권한만 업데이트
+        if (permissionId === "kickMembers") {
+          updatedPermissions.kickMembers = enabled;
+        } else if (permissionId === "banMembers") {
+          updatedPermissions.banMembers = enabled;
+        } else if (permissionId === "manageRoles") {
+          updatedPermissions.manageRoles = enabled;
+        }
+
+        // API 호출
+        await handleChangePermission(roleId, updatedPermissions);
+
         console.log("✅ 권한 변경 완료");
       } catch (error) {
         console.error("❌ 권한 변경 실패:", error);
+        alert("권한 변경에 실패했습니다. 다시 시도해주세요.");
       }
     },
-    [serverId]
+    [rolePermissions, handleChangePermission]
   );
 
   return {
@@ -215,19 +152,10 @@ export const useRolesPage = () => {
     roles,
     isLoading,
     error,
-    showCreateModal,
-    showEditModal,
-    editingRole,
-
-    // 상태 설정
-    setShowCreateModal,
-    setShowEditModal,
-    setEditingRole,
+    isChanging, // 권한 변경 중 상태
 
     // 핸들러
-    handleCreateRole,
-    handleEditRole,
     handleDeleteRole,
-    handlePermissionChange,
+    handlePermissionChange: handlePermissionChangeWrapper,
   };
 };

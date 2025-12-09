@@ -3,13 +3,11 @@
 import React from "react";
 import { useRolesPage } from "@/app/(servers)/hooks/useRoles";
 import RoleCard from "../components/RoleCard";
-import CreateRoleModal from "../components/CreateRoleModal";
-import EditRoleModal from "../components/EditRoleModal";
 import { useResponsive } from "../../../../lib/useResponsive";
 import { useAdminPermission } from "../../../hooks/useAdmin";
 
 const RolesPage = () => {
-  const { isMobile, isTablet } = useResponsive();
+  const { isMobile } = useResponsive();
   const {
     isAdmin,
     currentServerRole,
@@ -19,16 +17,9 @@ const RolesPage = () => {
     roles,
     isLoading,
     error,
-    showCreateModal,
-    showEditModal,
-    editingRole,
-    handleCreateRole,
-    handleEditRole,
+    isChanging,
     handleDeleteRole,
     handlePermissionChange,
-    setShowCreateModal,
-    setShowEditModal,
-    setEditingRole,
   } = useRolesPage();
 
   // 권한 확인 로딩 중일 때
@@ -92,7 +83,7 @@ const RolesPage = () => {
           >
             현재 권한:{" "}
             <span className="text-yellow-400">
-              {currentServerRole || "member"}
+              {currentServerRole ? currentServerRole.serverRole : "Member"}
             </span>
           </p>
         </div>
@@ -137,37 +128,17 @@ const RolesPage = () => {
   return (
     <div className={`h-full overflow-auto ${isMobile ? "p-4" : "p-6"}`}>
       {/* 헤더 */}
-      <div
-        className={`mb-6 ${
-          isMobile
-            ? "flex flex-col space-y-4"
-            : "flex items-center justify-between"
-        }`}
-      >
-        <div>
-          <h1
-            className={`font-bold text-white mb-2 ${
-              isMobile ? "text-xl" : "text-2xl"
-            }`}
-          >
-            역할
-          </h1>
-          <p className={`text-gray-400 ${isMobile ? "text-sm" : "text-base"}`}>
-            서버 권한을 관리하고 멤버에게 역할을 할당하세요. 총 {roles.length}
-            개의 역할
-          </p>
-        </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className={`bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center ${
-            isMobile
-              ? "px-3 py-2 text-sm space-x-1 w-full justify-center"
-              : "px-4 py-2 space-x-2"
+      <div className="mb-6">
+        <h1
+          className={`font-bold text-white mb-2 ${
+            isMobile ? "text-xl" : "text-2xl"
           }`}
         >
-          <span>➕</span>
-          <span>역할 만들기</span>
-        </button>
+          역할 관리
+        </h1>
+        <p className={`text-gray-400 ${isMobile ? "text-sm" : "text-base"}`}>
+          서버의 각 역할이 가질 수 있는 권한을 설정하세요.
+        </p>
       </div>
 
       {/* 안내 메시지 */}
@@ -190,11 +161,11 @@ const RolesPage = () => {
                 isMobile ? "text-sm" : "text-base"
               }`}
             >
-              역할 관리 팁
+              역할 권한 안내
             </h3>
             <p className={`text-blue-300 ${isMobile ? "text-xs" : "text-sm"}`}>
-              역할은 위에서 아래로 우선순위가 적용됩니다. 드래그하여 순서를
-              변경할 수 있습니다.
+              각 역할(Owner, Admin, Member)이 가질 수 있는 권한을 설정합니다.
+              권한을 변경하면 해당 역할을 가진 모든 멤버에게 적용됩니다.
             </p>
           </div>
         </div>
@@ -207,12 +178,10 @@ const RolesPage = () => {
             key={role.id}
             role={role}
             position={index + 1}
-            onEdit={(role) => {
-              setEditingRole(role);
-              setShowEditModal(true);
-            }}
+            onEdit={() => {}} // 빈 함수 (편집 기능 미사용)
             onDelete={handleDeleteRole}
             onPermissionChange={handlePermissionChange}
+            isChanging={isChanging}
           />
         ))}
       </div>
@@ -224,36 +193,9 @@ const RolesPage = () => {
               isMobile ? "text-sm" : "text-base"
             }`}
           >
-            아직 생성된 역할이 없습니다.
+            역할 정보를 불러올 수 없습니다.
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className={`bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ${
-              isMobile ? "px-4 py-2 text-sm" : "px-6 py-3"
-            }`}
-          >
-            첫 번째 역할 만들기
-          </button>
         </div>
-      )}
-
-      {/* 모달들 */}
-      {showCreateModal && (
-        <CreateRoleModal
-          onClose={() => setShowCreateModal(false)}
-          onSubmit={handleCreateRole}
-        />
-      )}
-
-      {showEditModal && editingRole && (
-        <EditRoleModal
-          role={editingRole}
-          onClose={() => {
-            setShowEditModal(false);
-            setEditingRole(null);
-          }}
-          onSubmit={handleEditRole}
-        />
       )}
     </div>
   );

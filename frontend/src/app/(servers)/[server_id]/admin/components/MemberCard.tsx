@@ -8,7 +8,8 @@ interface MemberCardProps {
   member: MemberInfo;
   isSelected: boolean;
   onSelect: (memberId: string, selected: boolean) => void;
-  onRoleChange: (memberId: string, newRole: string) => void;
+  onRoleChange: (userEmail: string, newRole: string) => void;
+  isChanging?: boolean; // 역할 변경 중 상태
 }
 
 const MemberCard: React.FC<MemberCardProps> = ({
@@ -16,9 +17,24 @@ const MemberCard: React.FC<MemberCardProps> = ({
   isSelected,
   onSelect,
   onRoleChange,
+  isChanging = false,
 }) => {
   const { isMobile } = useResponsive();
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // 한글 역할명을 API 형식으로 변환
+  const convertRoleToApi = (roleKorean: string): string => {
+    switch (roleKorean) {
+      case "멤버":
+        return "member";
+      case "관리자":
+        return "admin";
+      case "소유자":
+        return "owner";
+      default:
+        return roleKorean;
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -154,7 +170,7 @@ const MemberCard: React.FC<MemberCardProps> = ({
                   text-left w-full bg-gray-700 rounded text-white hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed
                   ${isMobile ? "px-2 py-1 text-xs" : "px-3 py-1 text-sm"}
                 `}
-                disabled={member.serverRole === "owner"}
+                disabled={member.serverRole === "owner" || isChanging}
               >
                 {member.serverRole === "owner"
                   ? "소유자"
@@ -180,23 +196,27 @@ const MemberCard: React.FC<MemberCardProps> = ({
                   </svg>
                 )}
               </button>
-              {showDropdown && member.serverRole !== "owner" && (
+              {showDropdown && member.serverRole !== "owner" && !isChanging && (
                 <div className="absolute top-full left-0 mt-1 w-full bg-gray-700 rounded shadow-lg z-50 border border-gray-600">
-                  {roles.map((role) => (
-                    <button
-                      key={role}
-                      onClick={() => {
-                        onRoleChange(member.userInfo.userName, role);
-                        setShowDropdown(false);
-                      }}
-                      className={`
-                        block w-full text-left text-white hover:bg-gray-600 transition-colors first:rounded-t last:rounded-b
-                        ${isMobile ? "px-2 py-2 text-xs" : "px-3 py-2 text-sm"}
-                      `}
-                    >
-                      {role}
-                    </button>
-                  ))}
+                  {roles
+                    .filter((role) => role !== "소유자") // 소유자 역할은 선택 불가
+                    .map((role) => (
+                      <button
+                        key={role}
+                        onClick={() => {
+                          const apiRole = convertRoleToApi(role);
+                          onRoleChange(member.userInfo.userEmail, apiRole);
+                          setShowDropdown(false);
+                        }}
+                        className={`
+                          block w-full text-left text-white hover:bg-gray-600 transition-colors first:rounded-t last:rounded-b
+                          ${isMobile ? "px-2 py-2 text-xs" : "px-3 py-2 text-sm"}
+                        `}
+                        disabled={isChanging}
+                      >
+                        {role}
+                      </button>
+                    ))}
                 </div>
               )}
             </div>

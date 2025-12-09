@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from "react-redux";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useEffect } from "react";
 import type { RootState, AppDispatch } from "../../lib/store";
 import {
   setLoading,
@@ -38,6 +38,35 @@ export const useChannels = (serverUrl?: string, projectPk?: number) => {
     serverUrl: string;
     projectPk: number;
   } | null>(null);
+
+  // 프로젝트 변경 감지 및 상태 클리어
+  useEffect(() => {
+    if (!hasValidParams) return;
+
+    const currentServerUrl = serverUrl!;
+    const currentProjectPk = projectPk!;
+
+    // 프로젝트가 변경되었는지 확인
+    const isProjectChanged =
+      channelState.currentProjectPk !== null &&
+      channelState.currentServerUrl !== null &&
+      (channelState.currentProjectPk !== currentProjectPk ||
+        channelState.currentServerUrl !== currentServerUrl);
+
+    if (isProjectChanged) {
+      console.log(
+        `🔄 [useChannels] 프로젝트 변경 감지: ${channelState.currentProjectPk} → ${currentProjectPk}`
+      );
+      dispatch(resetChannelState());
+    }
+  }, [
+    serverUrl,
+    projectPk,
+    channelState.currentProjectPk,
+    channelState.currentServerUrl,
+    hasValidParams,
+    dispatch,
+  ]);
 
   // 채널 목록 로드 - 빈 채널일 때 자동 생성
   const loadChannels = useCallback(

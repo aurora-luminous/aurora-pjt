@@ -22,7 +22,7 @@ export const usePending = () => {
 
   // 로컬 상태
   const [approvalStatus, setApprovalStatus] = useState<
-    "pending" | "approved" | "rejected" | "checking"
+    "pending" | "active" | "inactive" | "checking"
   >("checking");
 
   // 서버 접근 권한 조회 - Tanstack Query 자동 polling 사용
@@ -41,15 +41,16 @@ export const usePending = () => {
     const currentUserAccess = serverAccessList[0];
 
     if (currentUserAccess) {
-      switch (currentUserAccess.status) {
+      switch (currentUserAccess.sStatus) {
         case "Pending":
           setApprovalStatus("pending");
           break;
-        case "Approved":
-          setApprovalStatus("approved");
+        case "Active":
+          setApprovalStatus("active");
           break;
+        case "Inactive":
         case "Banned":
-          setApprovalStatus("rejected");
+          setApprovalStatus("inactive");
           break;
         default:
           setApprovalStatus("pending");
@@ -62,7 +63,7 @@ export const usePending = () => {
 
   // 승인 완료 시 자동 입장
   useEffect(() => {
-    if (approvalStatus === "approved" && serverUrl && serverName) {
+    if (approvalStatus === "active" && serverUrl && serverName) {
       console.log("✅ 승인 완료! 서버에 자동 입장합니다.");
 
       // 잠시 승인 완료 메시지를 보여준 후 입장
@@ -88,7 +89,7 @@ export const usePending = () => {
   // 승인 상태에 따른 UI 렌더링
   const getStatusConfig = () => {
     switch (approvalStatus) {
-      case "approved":
+      case "active":
         return {
           icon: "✅",
           title: "승인 완료!",
@@ -99,7 +100,7 @@ export const usePending = () => {
           statusText: "승인 완료",
           dotColor: "bg-green-400",
         };
-      case "rejected":
+      case "inactive":
         return {
           icon: "❌",
           title: "가입 거절됨",

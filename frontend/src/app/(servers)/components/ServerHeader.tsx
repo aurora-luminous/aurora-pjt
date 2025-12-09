@@ -37,7 +37,6 @@ export const ServerHeader: React.FC<ServerHeaderProps> = ({
 
   // 서버 정보 로딩 중일 때 기본값 사용
   const serverName = serverInfo?.serverName || "서버";
-
   // 관리자 권한 확인 (owner 또는 admin)
   const isAdmin =
     currentServerRole === "owner" || currentServerRole === "admin";

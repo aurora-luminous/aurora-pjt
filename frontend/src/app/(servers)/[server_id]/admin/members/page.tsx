@@ -24,6 +24,7 @@ const MembersPage = () => {
     searchQuery,
     isLoading,
     memberListError,
+    isChanging,
     handleSelectMember,
     handleSelectAll,
     handleFilterChange,
@@ -95,7 +96,7 @@ const MembersPage = () => {
           >
             현재 권한:{" "}
             <span className="text-yellow-400">
-              {currentServerRole || "member"}
+              {currentServerRole ? currentServerRole.serverRole : "Meber"}
             </span>
           </p>
         </div>
@@ -248,6 +249,7 @@ const MembersPage = () => {
               isSelected={selectedMembers.has(member.userInfo.userEmail)}
               onSelect={handleSelectMember}
               onRoleChange={handleRoleChange}
+              isChanging={isChanging}
             />
           ))}
         </div>

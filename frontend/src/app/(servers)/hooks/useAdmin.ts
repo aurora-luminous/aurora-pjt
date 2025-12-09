@@ -51,7 +51,7 @@ const mapServerAccessToJoinRequest = (
 
 export const useAdminPermission = () => {
   const serverInfo = useCurrentServerInfo();
-  const { data: serverList } = useServerListQuery(true);
+  const { data: serverList, isLoading } = useServerListQuery(true);
 
   const currentServerRole = serverList?.find(
     (s) => s.serverUrl === serverInfo?.serverUrl
@@ -65,7 +65,7 @@ export const useAdminPermission = () => {
   return {
     isAdmin,
     currentServerRole,
-    isLoading: serverList ? serverList.length > 0 : false,
+    isLoading, // 이제 react-query에서 제공하는 isLoading 사용
     error: null,
   };
 };

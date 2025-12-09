@@ -1,6 +1,8 @@
-import { ServerRequest, UserPermission } from "../types/Server";
+import { ServerRequest, ChangePermission } from "../types/Server";
+import { RoleUsers } from "../types/Server";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Channel } from "../types/Channel";
+import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
 import { ServerStatus } from "@/app/(servers)/types/ServerAccess";
 import {
   useAddServerApi,
@@ -24,7 +26,9 @@ import {
   useLeaveProjectApi,
   useBanProjectMemberApi,
   useUnbanProjectMemberApi,
-  useServerPermissionApi,
+  useServerRoleApi,
+  useServerPermessionApi,
+  usePatchServerPermessionApi,
 } from "./useServerApi";
 
 export const useAddServerMutation = () => {
@@ -65,12 +69,16 @@ export const useProjectListQuery = (serverUrl: string) => {
 
 // 🔄 Query: 서버 목록 조회 (GET)
 export const useServerListQuery = (enabled: boolean = false) => {
+  const { data: userInfo } = useGetUserInfoQuery();
   const { execute: getServerList } = useServerListApi();
 
   return useQuery({
-    queryKey: ["serverList"],
-    queryFn: () => getServerList(),
-    enabled: enabled, // 명시적으로 enabled가 true일 때만 실행
+    queryKey: ["serverList", userInfo?.userEmail],
+    queryFn: async () => {
+      const result = await getServerList();
+      return result;
+    },
+    enabled: userInfo?.userEmail ? enabled : false, // 명시적으로 enabled가 true일 때만 실행
     staleTime: 5 * 60 * 1000, // 5분간 fresh
     gcTime: 10 * 60 * 1000, // 10분간 캐시 유지
   });
@@ -160,14 +168,14 @@ export const useServerAccessQuery = (
 // 🔄 Query: 사용자 본인의 서버 가입 상태 조회 (POST) - 승인 대기 페이지용
 export const useServerJoinStatusQuery = (
   serverUrl: string,
-  approvalStatus?: "pending" | "approved" | "rejected" | "checking"
+  approvalStatus?: "pending" | "active" | "inactive" | "checking"
 ) => {
   const { execute: getServerJoinStatus } = useServerJoinStatusApi(serverUrl);
 
   return useQuery({
     queryKey: ["serverJoinStatus", serverUrl],
     queryFn: () => getServerJoinStatus(),
-    enabled: !!serverUrl && approvalStatus !== "approved", // serverUrl이 있고 승인되지 않았을 때만 실행
+    enabled: !!serverUrl && approvalStatus !== "active", // serverUrl이 있고 승인되지 않았을 때만 실행
     staleTime: 0, // 항상 최신 데이터 확인
     gcTime: 1 * 60 * 1000, // 1분간 캐시 유지
     refetchInterval: 5000, // 5초마다 자동 refetch
@@ -181,13 +189,13 @@ export const usePatchServerAccessMutation = (serverUrl: string) => {
 
   return useMutation({
     mutationFn: async ({
-      status,
+      sStatus,
       userEmail,
     }: {
-      status: ServerStatus;
+      sStatus: ServerStatus;
       userEmail: string;
     }) => {
-      const result = await patchServerAccess({ status, userEmail });
+      const result = await patchServerAccess({ sStatus, userEmail });
       return result;
     },
     onSuccess: (data) => {
@@ -412,15 +420,42 @@ export const useUnbanChannelMemberMutation = (
   });
 };
 
-export const useServerPermissionMutation = (serverUrl: string) => {
-  const { execute: patchServerPermission } = useServerPermissionApi(serverUrl);
+export const useServerRoleMutation = (serverUrl: string) => {
+  const { execute: patchServerRole } = useServerRoleApi(serverUrl);
 
   return useMutation({
-    mutationFn: async (changes: UserPermission[]) => {
-      const result = await patchServerPermission({
-        changes,
-      });
+    mutationFn: async (changes: RoleUsers) => {
+      const result = await patchServerRole(changes);
       return result;
+    },
+  });
+};
+
+export const useServerRolePermessionQuery = (serverUrl: string) => {
+  const { execute: getServerRolePermession } =
+    useServerPermessionApi(serverUrl);
+  return useQuery({
+    queryKey: ["serverRolePermession", serverUrl],
+    queryFn: () => getServerRolePermession(),
+    enabled: !!serverUrl,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+};
+
+export const usePatchServerRolePermessionMutation = (serverUrl: string) => {
+  const { execute: patchServerRolePermession } =
+    usePatchServerPermessionApi(serverUrl);
+  return useMutation({
+    mutationFn: async (changePermission: ChangePermission) => {
+      const result = await patchServerRolePermession(changePermission);
+      return result;
+    },
+    onSuccess: (data) => {
+      console.log("🎉 서버 권한 수정 성공:", data);
+    },
+    onError: (error) => {
+      console.error("❌ 서버 권한 수정 실패:", error);
     },
   });
 };

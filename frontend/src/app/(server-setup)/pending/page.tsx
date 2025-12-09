@@ -130,7 +130,7 @@ const PendingApprovalPage = () => {
 
                   {/* 버튼들 */}
                   <div className="space-y-2">
-                    {approvalStatus === "approved" && (
+                    {approvalStatus === "active" && (
                       <button
                         onClick={() =>
                           handleServerConnection(serverUrl, serverName)
@@ -171,9 +171,9 @@ const PendingApprovalPage = () => {
                   <p className="text-slate-500 text-xs">
                     {approvalStatus === "pending" &&
                       "현재 승인 상태를 확인 중입니다."}
-                    {approvalStatus === "approved" &&
+                    {approvalStatus === "active" &&
                       "승인이 완료되어 자동으로 입장합니다."}
-                    {approvalStatus === "rejected" && "가입이 거절되었습니다."}
+                    {approvalStatus === "inactive" && "가입이 거절되었습니다."}
                     {approvalStatus === "checking" &&
                       "5초마다 자동으로 상태를 확인합니다."}
                   </p>
@@ -330,7 +330,7 @@ const PendingApprovalPage = () => {
 
                 {/* 버튼들 */}
                 <div className="space-y-3">
-                  {approvalStatus === "approved" && (
+                  {approvalStatus === "active" && (
                     <button
                       onClick={() =>
                         handleServerConnection(serverUrl, serverName)
@@ -371,9 +371,9 @@ const PendingApprovalPage = () => {
                 <p className="text-slate-500 text-xs">
                   {approvalStatus === "pending" &&
                     "현재 승인 상태를 확인 중입니다."}
-                  {approvalStatus === "approved" &&
+                  {approvalStatus === "active" &&
                     "승인이 완료되어 자동으로 입장합니다."}
-                  {approvalStatus === "rejected" && "가입이 거절되었습니다."}
+                  {approvalStatus === "inactive" && "가입이 거절되었습니다."}
                   {approvalStatus === "checking" &&
                     "5초마다 자동으로 상태를 확인합니다."}
                 </p>

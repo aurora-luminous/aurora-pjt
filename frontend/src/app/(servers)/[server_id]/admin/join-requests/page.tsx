@@ -237,9 +237,10 @@ export default function JoinRequestsPage() {
                   handleFilterChange(
                     e.target.value as
                       | "all"
-                      | "pending"
-                      | "approved"
-                      | "rejected"
+                      | "Pending"
+                      | "Active"
+                      | "Inactive"
+                      | "Banned"
                   )
                 }
                 className={`
@@ -248,9 +249,10 @@ export default function JoinRequestsPage() {
                 `}
               >
                 <option value="all">전체</option>
-                <option value="pending">대기 중</option>
-                <option value="approved">승인됨</option>
-                <option value="rejected">거절됨</option>
+                <option value="Pending">대기 중</option>
+                <option value="Active">승인됨</option>
+                <option value="Inactive">거절됨</option>
+                <option value="Banned">차단됨</option>
               </select>
             </div>
           </div>

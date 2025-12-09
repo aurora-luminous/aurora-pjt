@@ -58,7 +58,7 @@ export default function JoinRequestsPage() {
     );
   }
 
-  // 권한이 없는 경우
+  // 권한 없을 시
   if (!isAdmin) {
     return (
       <div className="flex h-full items-center justify-center">

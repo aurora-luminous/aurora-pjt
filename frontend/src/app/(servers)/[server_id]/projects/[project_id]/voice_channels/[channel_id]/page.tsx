@@ -32,16 +32,22 @@ const VoiceChannelPage = () => {
     isFullScreen,
     isVideoOn,
     isScreenShareActive,
-    isScreenSharing,
     participants,
     participantCount,
     toggleFullScreen,
-    toggleScreenShare,
   } = useVoiceChannelPage();
 
   // 미디어 제어 (카메라 포함)
-  const { cameraStream, handleToggleVideo, mikeStream, handleToggleMic } =
-    useMediaControl();
+  const {
+    cameraStream,
+    handleToggleVideo,
+    mikeStream,
+    handleToggleMic,
+    screenStream,
+    handleToggleScreenShare,
+    isScreenSharing,
+    handdleChangeScreenShare,
+  } = useMediaControl();
 
   // 참여자 수에 따른 그리드 레이아웃 계산
   const { gridLayout, gridRows } = useVoiceGrid(
@@ -71,6 +77,8 @@ const VoiceChannelPage = () => {
             participants={participants}
             currentUserId={currentUserId}
             cameraStream={cameraStream}
+            mikeStream={mikeStream}
+            screenStream={screenStream}
           />
         ) : (
           /* 일반 화상회의 모드 */
@@ -92,7 +100,8 @@ const VoiceChannelPage = () => {
         isScreenSharing={isScreenSharing}
         onToggleMic={handleToggleMic}
         onToggleVideo={handleToggleVideo}
-        onToggleScreenShare={toggleScreenShare}
+        onToggleScreenShare={handleToggleScreenShare}
+        onToggleChangeScreenShare={handdleChangeScreenShare}
       />
 
       {/* 전체화면 버튼 - 데스크탑/태블릿에서만 렌더링 */}

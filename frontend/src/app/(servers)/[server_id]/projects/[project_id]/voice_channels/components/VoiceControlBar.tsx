@@ -1,4 +1,7 @@
 import { useResponsive } from "../../../../../../lib/useResponsive";
+import { ChangeIcon } from "./icons/ChangeIcon";
+import { ScreenIcon } from "./icons/ScreenShareIcon";
+import { StopIcon } from "./icons/StopIcon";
 
 interface VoiceControlBarProps {
   isMicOn: boolean;
@@ -142,12 +145,7 @@ export const VoiceControlBar = ({
     `}
           >
             {/* 화면 공유 시작 아이콘 */}
-            <svg
-              className={`${isMobile ? "w-5 h-5" : "w-6 h-6"}`}
-              viewBox="0 0 20 20"
-            >
-              <path d="M3 4a1..." />
-            </svg>
+            <ScreenIcon className={isMobile ? "w-5 h-5" : "w-6 h-6"} />
           </button>
         ) : (
           // 화면 공유 중일 때 → 두 개의 버튼
@@ -160,12 +158,7 @@ export const VoiceControlBar = ({
       `}
             >
               {/* STOP 아이콘 */}
-              <svg
-                viewBox="0 0 20 20"
-                className={`${isMobile ? "w-5 h-5" : "w-6 h-6"}`}
-              >
-                <rect x="4" y="4" width="12" height="12" rx="2" />
-              </svg>
+              <StopIcon className={isMobile ? "w-5 h-5" : "w-6 h-6"} />
             </button>
 
             {/* 화면 공유 변경 */}
@@ -176,12 +169,7 @@ export const VoiceControlBar = ({
       `}
             >
               {/* CHANGE 아이콘 */}
-              <svg
-                viewBox="0 0 20 20"
-                className={`${isMobile ? "w-5 h-5" : "w-6 h-6"}`}
-              >
-                <path d="M10 2v2..." /> {/* 새로고침/리프레시 아이콘 */}
-              </svg>
+              <ChangeIcon className={isMobile ? "w-5 h-5" : "w-6 h-6"} />
             </button>
           </div>
         )}

@@ -7,6 +7,7 @@ interface VoiceControlBarProps {
   onToggleMic: () => void;
   onToggleVideo: () => void;
   onToggleScreenShare: () => void;
+  onToggleChangeScreenShare: () => void;
   onEndCall?: () => void;
 }
 
@@ -17,6 +18,7 @@ export const VoiceControlBar = ({
   onToggleMic,
   onToggleVideo,
   onToggleScreenShare,
+  onToggleChangeScreenShare,
   onEndCall,
 }: VoiceControlBarProps) => {
   const { isMobile } = useResponsive();
@@ -130,33 +132,59 @@ export const VoiceControlBar = ({
         </button>
 
         {/* 화면 공유 */}
-        <button
-          onClick={onToggleScreenShare}
-          className={`
-            rounded-full flex items-center justify-center transition-colors
-            ${isMobile ? "w-10 h-10" : "w-12 h-12"}
-            ${
-              isScreenSharing
-                ? "bg-green-500 hover:bg-green-600"
-                : "bg-gray-600 hover:bg-gray-500"
-            }
-          `}
-          aria-label={isScreenSharing ? "화면 공유 중지" : "화면 공유 시작"}
-        >
-          <svg
-            className={`
-            fill-current
-            ${isMobile ? "w-5 h-5" : "w-6 h-6"}
-          `}
-            viewBox="0 0 20 20"
+        {!isScreenSharing ? (
+          // 화면 공유 시작 버튼
+          <button
+            onClick={onToggleScreenShare}
+            className={`rounded-full flex items-center justify-center transition-colors
+      ${isMobile ? "w-10 h-10" : "w-12 h-12"}
+      bg-gray-600 hover:bg-gray-500
+    `}
           >
-            <path
-              fillRule="evenodd"
-              d="M3 4a1 1 0 011-1h12a1 1 0 011 1v8a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 3v6h10V7H5z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
+            {/* 화면 공유 시작 아이콘 */}
+            <svg
+              className={`${isMobile ? "w-5 h-5" : "w-6 h-6"}`}
+              viewBox="0 0 20 20"
+            >
+              <path d="M3 4a1..." />
+            </svg>
+          </button>
+        ) : (
+          // 화면 공유 중일 때 → 두 개의 버튼
+          <div className="flex gap-2">
+            {/* 화면 공유 종료 */}
+            <button
+              onClick={onToggleScreenShare}
+              className={`rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-colors
+        ${isMobile ? "w-10 h-10" : "w-12 h-12"}
+      `}
+            >
+              {/* STOP 아이콘 */}
+              <svg
+                viewBox="0 0 20 20"
+                className={`${isMobile ? "w-5 h-5" : "w-6 h-6"}`}
+              >
+                <rect x="4" y="4" width="12" height="12" rx="2" />
+              </svg>
+            </button>
+
+            {/* 화면 공유 변경 */}
+            <button
+              onClick={onToggleChangeScreenShare}
+              className={`rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center transition-colors
+        ${isMobile ? "w-10 h-10" : "w-12 h-12"}
+      `}
+            >
+              {/* CHANGE 아이콘 */}
+              <svg
+                viewBox="0 0 20 20"
+                className={`${isMobile ? "w-5 h-5" : "w-6 h-6"}`}
+              >
+                <path d="M10 2v2..." /> {/* 새로고침/리프레시 아이콘 */}
+              </svg>
+            </button>
+          </div>
+        )}
 
         {/* 통화 종료 */}
         <button

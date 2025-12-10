@@ -1,17 +1,22 @@
 import { VoiceParticipantCard } from "./VoiceParticipantCard";
 import { VoiceParticipant } from "../../../../../types/voiceChannelTypes";
 import { useResponsive } from "../../../../../../lib/useResponsive";
+import { ScreenVideo } from "./ScreenVideo";
 
 interface ScreenShareViewProps {
   participants: { [userId: string]: VoiceParticipant };
   currentUserId?: string; // 현재 사용자 ID
   cameraStream?: MediaStream | null; // 카메라 스트림
+  mikeStream?: MediaStream | null;
+  screenStream?: MediaStream | null;
 }
 
 export const ScreenShareView = ({
   participants,
   currentUserId,
   cameraStream,
+  mikeStream,
+  screenStream,
 }: ScreenShareViewProps) => {
   const { isMobile } = useResponsive();
 
@@ -23,25 +28,29 @@ export const ScreenShareView = ({
     `}
     >
       {/* 메인 화면 공유 영역 */}
-      <div className="flex-1 bg-gray-800 rounded-lg flex items-center justify-center">
-        <div className="text-center">
-          <div
-            className={`
+      <div className="flex-1 bg-gray-800 rounded-lg overflow-hidden relative">
+        {screenStream ? (
+          <ScreenVideo stream={screenStream} />
+        ) : (
+          <div className="text-center">
+            <div
+              className={`
             bg-gradient-to-br from-green-400 to-blue-500 rounded-lg mx-auto mb-4 flex items-center justify-center
             ${isMobile ? "w-20 h-20" : "w-32 h-32"}
           `}
-          >
-            <span className={`${isMobile ? "text-2xl" : "text-4xl"}`}>🖥️</span>
-          </div>
-          <p
-            className={`
+            >
+              <span className={`${isMobile ? "text-2xl" : "text-4xl"}`}>
+                🖥️
+              </span>
+            </div>
+            <p
+              className={`
             text-gray-300
             ${isMobile ? "text-sm" : "text-base"}
           `}
-          >
-            화면 공유 중...
-          </p>
-        </div>
+            ></p>
+          </div>
+        )}
       </div>
 
       {/* 하단에 참여자들 */}
@@ -65,6 +74,11 @@ export const ScreenShareView = ({
               videoStream={
                 userId === currentUserId && participant.isVideoOn
                   ? cameraStream || undefined
+                  : undefined
+              }
+              mikeStream={
+                userId === currentUserId && participant.isMicOn
+                  ? mikeStream || undefined
                   : undefined
               }
             />

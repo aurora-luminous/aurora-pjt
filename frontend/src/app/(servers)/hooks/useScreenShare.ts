@@ -56,6 +56,8 @@ export const useScreenShare = () => {
 
   /** 화면 공유 변경 (창만 다시 선택) */
   const changeScreenShare = async () => {
+    const wasFullScreen = document.fullscreenElement !== null;
+
     if (!screenStream) return;
 
     try {
@@ -64,6 +66,10 @@ export const useScreenShare = () => {
         video: true,
         audio: false,
       });
+
+      if (wasFullScreen) {
+        document.documentElement.requestFullscreen();
+      }
 
       const newTrack = newStream.getVideoTracks()[0];
 
@@ -85,6 +91,9 @@ export const useScreenShare = () => {
       newTrack.onended = () => stopScreenShare();
     } catch (err) {
       // ❗ 취소 시 여기로 들어오지만 기존 공유 유지됨
+      if (wasFullScreen) {
+        document.documentElement.requestFullscreen();
+      }
       console.log("화면 공유 변경 취소됨:", err);
     }
   };

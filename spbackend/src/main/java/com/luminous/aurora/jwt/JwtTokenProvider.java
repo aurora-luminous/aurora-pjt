@@ -75,7 +75,7 @@ public class JwtTokenProvider {
                     .parseSignedClaims(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
-            log.error("토큰 검증 시작");
+            log.error("토큰 검증 실패");
             return false;
         }
     }

@@ -52,7 +52,7 @@ public class SecurityConfig {
                 "http://localhost:3000",      // Express 개발 서버
                 "http://localhost:8080",      // Spring Boot 개발 서버
                 "http://localhost:5173",      // React 개발 서버
-                "https://t1329.p.ssafy.io",    // 프로덕션 서버
+                "https://auro-ra.site",    // 프로덕션 서버
                 "http://127.0.0.1:5500"
 
         ));

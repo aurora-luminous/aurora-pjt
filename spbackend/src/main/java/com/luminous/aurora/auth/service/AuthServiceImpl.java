@@ -78,7 +78,7 @@ public class AuthServiceImpl implements AuthService {
             userRepository.save(users);
 
             log.info("회원가입 성공: userEmail = {}", users.getUserEmail());
-        } catch (NotFoundException | BadRequestException e) {
+        } catch (NotFoundException | BadRequestException | ConflictException e) {
             throw e;
         } catch (Exception e) {
             log.error("회원 가입 실패 : {}", e.getMessage());

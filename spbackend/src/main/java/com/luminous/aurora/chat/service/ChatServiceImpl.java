@@ -6,6 +6,7 @@ import com.luminous.aurora.chat.dto.MessageRequest;
 import com.luminous.aurora.chat.dto.MessageResponse;
 import com.luminous.aurora.chat.entity.Message;
 import com.luminous.aurora.chat.repository.MessageRepository;
+import com.luminous.aurora.common.error.exception.BadRequestException;
 import com.luminous.aurora.common.error.exception.ForbiddenException;
 import com.luminous.aurora.common.error.exception.InternalServerErrorException;
 import com.luminous.aurora.common.error.exception.NotFoundException;
@@ -112,7 +113,7 @@ public class ChatServiceImpl implements ChatService {
             return messages.stream()
                     .map(this::convertToMessageResponse)
                     .collect(Collectors.toList());
-        } catch (ForbiddenException e) {
+        } catch (ForbiddenException | NotFoundException e) {
             throw e;
         } catch (Exception e) {
             log.error("최신 DM 메시지 조회 실패 : {}", e.getMessage());
@@ -152,6 +153,8 @@ public class ChatServiceImpl implements ChatService {
                     .createdAt(message.getCreatedAt())
                     .messageType(message.getMessageType())
                     .build();
+        } catch (NotFoundException | BadRequestException e) {
+            throw e;
         } catch (Exception e) {
             log.error("ChatMessage 변환 실패: {}", e.getMessage());
             throw new InternalServerErrorException("ChatMessage 변환 중 서버 오류가 발생했습니다: " + e.getMessage());
@@ -172,6 +175,8 @@ public class ChatServiceImpl implements ChatService {
                     .createdAt(message.getCreatedAt())
                     .messageType(message.getMessageType())
                     .build();
+        } catch (NotFoundException | BadRequestException e) {
+            throw e;
         } catch (Exception e) {
             log.error("MessageResponse 변환 실패: {}", e.getMessage());
             throw new InternalServerErrorException("MessageResponse 변환 중 서버 오류가 발생했습니다: " + e.getMessage());
@@ -182,7 +187,7 @@ public class ChatServiceImpl implements ChatService {
     private Integer getUserPkFromToken(String jwtToken) {
         String userEmail = jwtTokenProvider.getUserEmailFromToken(jwtToken);
         return userRepository.findUserPkByUserEmail(userEmail)
-                .orElseThrow(()-> new NotFoundException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
     }
 
     private String getUserNameByUserPk(Integer userPk) {
@@ -197,7 +202,7 @@ public class ChatServiceImpl implements ChatService {
     }
 
     // 채널 접근 권한 검증
-    private void validateChannelAccess(Integer channelPk, Integer userPk){
+    private void validateChannelAccess(Integer channelPk, Integer userPk) {
         if (!memberService.hasChannelAccess(channelPk, userPk)) {
             throw new ForbiddenException("해당 채널에 접근할 권한이 없습니다.");
         }

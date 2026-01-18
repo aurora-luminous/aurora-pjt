@@ -1,6 +1,9 @@
 package com.luminous.aurora.userstate.service;
 
+import com.luminous.aurora.common.error.exception.BadRequestException;
+import com.luminous.aurora.common.error.exception.ForbiddenException;
 import com.luminous.aurora.common.error.exception.InternalServerErrorException;
+import com.luminous.aurora.common.error.exception.NotFoundException;
 import com.luminous.aurora.member.entity.DmMember;
 import com.luminous.aurora.member.repository.DmMemberRepository;
 import com.luminous.aurora.project.entity.ProjectMember;
@@ -11,7 +14,6 @@ import com.luminous.aurora.userstate.repository.UserStateRedisRepository;
 import com.luminous.aurora.userstate.repository.UserStateRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,6 +70,8 @@ public class UserStateServiceImpl implements UserStateService {
             userStateRepository.save(userState);
 
             log.info("사용자 상태 설정 : userPk = {}, status = {}", userPk, status);
+        } catch (NotFoundException | BadRequestException | ForbiddenException e) {
+            throw e;  // 나중에 추가될 비즈니스 예외 대비
         } catch (Exception e) {
             log.error("사용자 상태 설정 실패 : {}", e.getMessage());
             throw new InternalServerErrorException("사용자 상태 설정 중 서버 오류가 발생했습니다: " + e.getMessage());
@@ -140,6 +144,8 @@ public class UserStateServiceImpl implements UserStateService {
             result.addAll(offlineMembers);
 
             return result;
+        } catch (NotFoundException | BadRequestException | ForbiddenException e) {
+            throw e;
         } catch (Exception e) {
             log.error("프로젝트 멤버 조회 실패 : {}", e.getMessage());
             throw new InternalServerErrorException("프로젝트 멤버 조회 중 서버 오류가 발생했습니다: " + e.getMessage());
@@ -154,6 +160,8 @@ public class UserStateServiceImpl implements UserStateService {
         try {
             // DM 멤버 조회 (최신순)
             return dmMemberRepository.findByDmRoom_DmRoomPkOrderByLastMessageTimeDesc(dmRoomPk);
+        } catch (NotFoundException | BadRequestException | ForbiddenException e) {
+            throw e;
         } catch (Exception e) {
             log.error("DM 멤버 조회 실패 : {}", e.getMessage());
             throw new InternalServerErrorException("DM 멤버 조회 중 서버 오류가 발생했습니다.: " + e.getMessage());

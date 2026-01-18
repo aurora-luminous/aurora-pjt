@@ -69,14 +69,13 @@ public class JwtTokenProvider {
     // 토큰 유효성 검증
     public boolean validateToken(String token) {
         try {
-            log.info("Validating token: {}", token.substring(0, Math.min(50, token.length())) + "..."); // 토큰 일부 로그
             Jwts.parser()
                     .verifyWith(getSigningKey())
                     .build()
                     .parseSignedClaims(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
-            log.error("Invalid JWT token : {}", e.getMessage());
+            log.error("토큰 검증 시작");
             return false;
         }
     }

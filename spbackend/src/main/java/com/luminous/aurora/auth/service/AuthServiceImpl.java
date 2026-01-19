@@ -45,6 +45,8 @@ public class AuthServiceImpl implements AuthService {
             log.info("로그인 성공: userEmail ={}", users.getUserEmail());
 
             return tokens;
+        } catch (NotFoundException | BadRequestException e) {
+            throw e;
         } catch (Exception e) {
             log.error("로그인 실패 : {}", e.getMessage());
             throw new InternalServerErrorException("로그인 처리 중 서버 오류가 발생했습니다. : " + e.getMessage());
@@ -76,9 +78,11 @@ public class AuthServiceImpl implements AuthService {
             userRepository.save(users);
 
             log.info("회원가입 성공: userEmail = {}", users.getUserEmail());
+        } catch (NotFoundException | BadRequestException | ConflictException e) {
+            throw e;
         } catch (Exception e) {
             log.error("회원 가입 실패 : {}", e.getMessage());
-            throw new BadRequestException("회원가입 처리 중 서버 오류가 발생했습니다 : " + e.getMessage());
+            throw new InternalServerErrorException("회원가입 처리 중 서버 오류가 발생했습니다 : " + e.getMessage());
         }
     }
 
@@ -87,6 +91,8 @@ public class AuthServiceImpl implements AuthService {
         try {
             tokenService.logout(userEmail);
             log.info("로그아웃 완료: userEmail ={}", userEmail);
+        } catch (NotFoundException | BadRequestException e) {
+            throw e;
         } catch (Exception e) {
             log.error("로그아웃 실패 : {}", e.getMessage());
             throw new InternalServerErrorException("로그아웃 처리 중 서버 오류가 발생했습니다. : " + e.getMessage());
@@ -104,9 +110,11 @@ public class AuthServiceImpl implements AuthService {
                     .userEmail(user.getUserEmail())
                     .profileImagePath(user.getProfileImagePath())
                     .build();
+        } catch (NotFoundException | BadRequestException e) {
+            throw e;
         } catch (Exception e) {
             log.error("사용자 정보 조회 실패 : {}", e.getMessage());
-            throw new InternalServerErrorException("사용자를 찾는 시도 중 서버 오류가 발생했습니다 : " +e.getMessage());
+            throw new InternalServerErrorException("사용자를 찾는 시도 중 서버 오류가 발생했습니다 : " + e.getMessage());
         }
 
     }

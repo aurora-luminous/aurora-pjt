@@ -53,25 +53,27 @@ public class UserStateRedisRepository {
         log.debug("Redis에서 사용자 상태 삭제 : userPk = {}", userPk);
     }
 
-    // 특정 상태의 사용자 목록 조회 (자동 상태만)
-    public Set<Integer> getUserPksByStatus(UserStatus status) {
-        String pattern = USER_STATUS_KEY_PREFIX + "*";
-        Set<String> keys = redisTemplate.keys(pattern);
-
-        if (keys == null || keys.isEmpty()) {
-            log.debug("상태별 사용자 없음: status={}", status);
-            return Set.of();
-        }
-
-        Set<Integer> userPks = keys.stream()
-                .filter(key -> status.name().equals(redisTemplate.opsForValue().get(key)))
-                .map(key -> key.substring(USER_STATUS_KEY_PREFIX.length()))
-                .map(Integer::parseInt)
-                .collect(Collectors.toSet());
-
-        log.debug("상태별 사용자 목록 조회: status={}, count={}", status, userPks.size());
-        return userPks;
-    }
+    // 특정 상태의 사용자 목록 조회 (자동 상태만) 해당 메서드 사용처가 기억이 안나서 일단 주석처리
+    // 나중에 사용 용도 기억나서 사용해야하면 60번째줄에 keys() 메서드로 레디스 전체 키 스캔하지말고 다른 방식 적용
+    // 점진적으로 스캔하는 ScanOptions 사용하거나 상태별 Set 으로 관리하는게 나음 (Scan은 여전히 느리고, Set은 빠른데 저장 로직 수정필요함
+//    public Set<Integer> getUserPksByStatus(UserStatus status) {
+//        String pattern = USER_STATUS_KEY_PREFIX + "*";
+//        Set<String> keys = redisTemplate.keys(pattern);
+//
+//        if (keys == null || keys.isEmpty()) {
+//            log.debug("상태별 사용자 없음: status={}", status);
+//            return Set.of();
+//        }
+//
+//        Set<Integer> userPks = keys.stream()
+//                .filter(key -> status.name().equals(redisTemplate.opsForValue().get(key)))
+//                .map(key -> key.substring(USER_STATUS_KEY_PREFIX.length()))
+//                .map(Integer::parseInt)
+//                .collect(Collectors.toSet());
+//
+//        log.debug("상태별 사용자 목록 조회: status={}, count={}", status, userPks.size());
+//        return userPks;
+//    }
 
 
 

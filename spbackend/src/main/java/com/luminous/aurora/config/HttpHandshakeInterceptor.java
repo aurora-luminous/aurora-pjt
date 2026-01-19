@@ -27,16 +27,13 @@ public class HttpHandshakeInterceptor implements HandshakeInterceptor {
             Cookie[] cookies = servletRequest.getCookies();
             if (cookies != null) {
                 log.info("쿠키 개수: {}", cookies.length);
-                Arrays.stream(cookies).forEach(cookie ->
-                        log.info("쿠키: {} = {}", cookie.getName(), cookie.getValue()));
-
 
                 Arrays.stream(cookies)
                         .filter(cookie -> "access_token".equals(cookie.getName()))
                         .findFirst()
                         .ifPresent(cookie -> {
                             attributes.put("jwt_token", cookie.getValue());
-                            log.info("✅ JWT 토큰을 세션 속성에 저장: {}", cookie.getValue().substring(0, 20) + "...");
+                            log.info("✅ JWT 토큰을 세션 속성에 저장: 완료");
                         });
             } else {
                 log.warn("쿠키가 없습니다"); // ✅ 로그 추가

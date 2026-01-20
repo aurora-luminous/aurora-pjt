@@ -1,6 +1,9 @@
 package com.luminous.aurora.chat.entity;
 
 
+import com.luminous.aurora.auth.entity.Users;
+import com.luminous.aurora.channel.entity.Channel;
+import com.luminous.aurora.dmroom.entity.DmRoom;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -19,9 +22,17 @@ public class Message {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long messagePk;
 
-    private Integer channelPk;
-    private Integer dmRoomPk;
-    private Integer userPk;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "channel_pk")
+    private Channel channelPk;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "dm_room_pk")
+    private DmRoom dmRoomPk;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_pk", nullable = false)
+    private Users userPk;
 
     @Column(columnDefinition = "TEXT")
     private String content;

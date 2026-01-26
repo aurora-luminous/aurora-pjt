@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mediasoup SFU 테스트 클라이언트</title>
+  <script src="mediasoup-client.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    h1 { color: #333; }
+    h2 { color: #666; font-size: 1.2em; }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      background: #4CAF50;
+      color: white;
+    }
+    button:hover { background: #45a049; }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .disconnect { background: #f44336; }
+    .disconnect:hover { background: #da190b; }
+    #status {
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .connected { background: #c8e6c9; color: #2e7d32; }
+    .disconnected { background: #ffcdd2; color: #c62828; }
+    .log {
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin: 10px 0;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .log-entry {
+      margin: 2px 0;
+      padding: 2px 5px;
+    }
+    .log-info { color: #2196F3; }
+    .log-success { color: #4CAF50; }
+    .log-error { color: #f44336; }
+    .log-warn { color: #FF9800; }
+    video {
+      width: 300px;
+      height: 200px;
+      background: #000;
+      margin: 10px;
+      border-radius: 4px;
+      border: 3px solid transparent;
+      transition: border-color 0.1s ease;
+    }
+    video.speaking {
+      border-color: #4CAF50;
+      box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+    }
+    .audio-only {
+      width: 150px;
+      height: 150px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 10px;
+      border-radius: 8px;
+      border: 3px solid transparent;
+      transition: all 0.1s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .audio-only.speaking {
+      border-color: #4CAF50;
+      box-shadow: 0 0 20px rgba(76, 175, 80, 0.6);
+    }
+    .videos-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .video-wrapper {
+      position: relative;
+    }
+    .video-label {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    input {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎤 mediasoup SFU 테스트 클라이언트</h1>
+
+  <div class="container">
+    <h2>연결 설정</h2>
+    <input type="number" id="channelPk" placeholder="채널 PK" value="3">
+    <button id="connectBtn" onclick="connect()">연결</button>
+    <button id="disconnectBtn" onclick="disconnect()" disabled class="disconnect">연결 해제</button>
+    <div id="status" class="disconnected">연결되지 않음</div>
+  </div>
+
+  <div class="container">
+    <h2>미디어 제어</h2>
+    <button id="startAudioBtn" onclick="startAudio()" disabled>🎤 오디오 전송 시작</button>
+    <button id="startVideoBtn" onclick="startVideo()" disabled>📹 비디오 전송 시작</button>
+    <button id="stopAudioBtn" onclick="stopAudio()" disabled class="disconnect">🎤 오디오 중지</button>
+    <button id="stopVideoBtn" onclick="stopVideo()" disabled class="disconnect">📹 비디오 중지</button>
+  </div>
+
+  <div class="container">
+    <h2>내 미디어</h2>
+    <div class="videos-container">
+      <div class="video-wrapper">
+        <video id="localVideo" autoplay muted playsinline style="display: none;"></video>
+        <div class="audio-only" id="localAudioOnly" style="display: none;"></div>
+        <div class="video-label" id="localVideoLabel" style="display: none;">내 화면</div>
+        <div class="video-label" id="localAudioLabel" style="display: none;">내 오디오</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>다른 사용자 미디어</h2>
+    <div class="videos-container" id="remoteVideos"></div>
+  </div>
+
+  <div class="container">
+    <h2>로그</h2>
+    <div class="log" id="log"></div>
+  </div>
+
+  <script>
+    // mediasoup-client 라이브러리 로드 확인
+    if (typeof mediasoupClient === 'undefined') {
+      alert('mediasoup-client 라이브러리를 로드할 수 없습니다. 인터넷 연결을 확인하세요.');
+      console.error('mediasoup-client is not loaded');
+    }
+
+    const WS_URL = 'ws://localhost:3002/voice';
+
+    let ws = null;
+    let device = null;
+    let producerTransport = null;
+    let consumerTransport = null;
+    let audioProducer = null;
+    let videoProducer = null;
+    let consumers = new Map();
+    let localStream = null;
+    let channelPk = 1;
+    let audioContext = null;
+    let localAudioAnalyser = null;
+    let remoteAudioAnalysers = new Map(); // consumerId -> analyser
+
+    // 오디오 레벨 감지 설정
+    const AUDIO_THRESHOLD = 30; // 말하는 것으로 간주할 최소 볼륨 (0-255)
+    const SPEAKING_CHECK_INTERVAL = 100; // 100ms마다 체크
+
+    // 로그 함수
+    function log(message, type = 'info') {
+      const logDiv = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      logDiv.appendChild(entry);
+      logDiv.scrollTop = logDiv.scrollHeight;
+      console.log(message);
+    }
+
+    // AudioContext 초기화
+    function initAudioContext() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        log('AudioContext 초기화됨', 'success');
+      }
+    }
+
+    // 오디오 레벨 감지 시작 (로컬)
+    function startAudioLevelDetection(audioTrack, videoElement) {
+      try {
+        initAudioContext();
+
+        const stream = new MediaStream([audioTrack]);
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        const checkAudioLevel = () => {
+          analyser.getByteFrequencyData(dataArray);
+          const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+
+          if (average > AUDIO_THRESHOLD) {
+            videoElement.classList.add('speaking');
+          } else {
+            videoElement.classList.remove('speaking');
+          }
+        };
+
+        const intervalId = setInterval(checkAudioLevel, SPEAKING_CHECK_INTERVAL);
+
+        // 정리를 위해 analyser 정보 저장
+        return { analyser, intervalId, source };
+      } catch (error) {
+        log(`오디오 레벨 감지 시작 에러: ${error.message}`, 'error');
+        return null;
+      }
+    }
+
+    // 원격 오디오 레벨 감지 시작
+    function startRemoteAudioLevelDetection(consumerId, audioTrack, videoElement) {
+      try {
+        initAudioContext();
+
+        const stream = new MediaStream([audioTrack]);
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        const checkAudioLevel = () => {
+          analyser.getByteFrequencyData(dataArray);
+          const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+
+          if (average > AUDIO_THRESHOLD) {
+            videoElement.classList.add('speaking');
+          } else {
+            videoElement.classList.remove('speaking');
+          }
+        };
+
+        const intervalId = setInterval(checkAudioLevel, SPEAKING_CHECK_INTERVAL);
+
+        // consumerId와 연결하여 저장
+        remoteAudioAnalysers.set(consumerId, { analyser, intervalId, source });
+
+        log(`원격 오디오 레벨 감지 시작: ${consumerId}`, 'info');
+      } catch (error) {
+        log(`원격 오디오 레벨 감지 시작 에러: ${error.message}`, 'error');
+      }
+    }
+
+    // 오디오 레벨 감지 중지
+    function stopAudioLevelDetection(analyserInfo) {
+      if (analyserInfo) {
+        clearInterval(analyserInfo.intervalId);
+        analyserInfo.source.disconnect();
+      }
+    }
+
+    // WebSocket 연결
+    async function connect() {
+      channelPk = parseInt(document.getElementById('channelPk').value);
+
+      log('WebSocket 연결 중...', 'info');
+      ws = new WebSocket(WS_URL);
+
+      ws.onopen = async () => {
+        log('WebSocket 연결됨!', 'success');
+        document.getElementById('status').textContent = '연결됨';
+        document.getElementById('status').className = 'connected';
+        document.getElementById('connectBtn').disabled = true;
+        document.getElementById('disconnectBtn').disabled = false;
+        document.getElementById('startAudioBtn').disabled = false;
+        document.getElementById('startVideoBtn').disabled = false;
+
+        // 채널 입장
+        send('join-channel', { channelPk });
+
+        // mediasoup device 초기화
+        await initMediasoup();
+      };
+
+      ws.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        log(`수신: ${data.event}`, 'info');
+        await handleMessage(data);
+      };
+
+      ws.onerror = (error) => {
+        log(`WebSocket 에러: ${error}`, 'error');
+      };
+
+      ws.onclose = () => {
+        log('WebSocket 연결 해제됨', 'warn');
+        document.getElementById('status').textContent = '연결되지 않음';
+        document.getElementById('status').className = 'disconnected';
+        document.getElementById('connectBtn').disabled = false;
+        document.getElementById('disconnectBtn').disabled = true;
+        document.getElementById('startAudioBtn').disabled = true;
+        document.getElementById('startVideoBtn').disabled = true;
+      };
+    }
+
+    function disconnect() {
+      if (ws) {
+        send('leave-channel', { channelPk });
+        ws.close();
+        ws = null;
+      }
+
+      // 로컬 스트림 정리
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+      }
+
+      // 로컬 비디오/오디오 UI 정리
+      const localVideo = document.getElementById('localVideo');
+      const localVideoLabel = document.getElementById('localVideoLabel');
+      const localAudioOnly = document.getElementById('localAudioOnly');
+      const localAudioLabel = document.getElementById('localAudioLabel');
+
+      if (localVideo) {
+        localVideo.srcObject = null;
+        localVideo.style.display = 'none';
+        localVideo.classList.remove('speaking');
+      }
+      if (localVideoLabel) localVideoLabel.style.display = 'none';
+      if (localAudioOnly) {
+        localAudioOnly.style.display = 'none';
+        localAudioOnly.classList.remove('speaking');
+      }
+      if (localAudioLabel) localAudioLabel.style.display = 'none';
+
+      // 로컬 오디오 analyser 정리
+      if (localAudioAnalyser) {
+        stopAudioLevelDetection(localAudioAnalyser);
+        localAudioAnalyser = null;
+      }
+
+      // 모든 원격 오디오 analyser 정리
+      for (const [consumerId, analyserInfo] of remoteAudioAnalysers.entries()) {
+        stopAudioLevelDetection(analyserInfo);
+      }
+      remoteAudioAnalysers.clear();
+
+      // 모든 consumer 정리
+      for (const [consumerId, consumer] of consumers.entries()) {
+        consumer.close();
+      }
+      consumers.clear();
+
+      // 모든 원격 비디오 제거
+      const remoteVideos = document.getElementById('remoteVideos');
+      if (remoteVideos) {
+        remoteVideos.innerHTML = '';
+      }
+
+      // Producer 정리
+      if (audioProducer) {
+        audioProducer.close();
+        audioProducer = null;
+      }
+      if (videoProducer) {
+        videoProducer.close();
+        videoProducer = null;
+      }
+
+      // Transport 정리
+      if (producerTransport) {
+        producerTransport.close();
+        producerTransport = null;
+      }
+      if (consumerTransport) {
+        consumerTransport.close();
+        consumerTransport = null;
+      }
+
+      // Device 정리
+      device = null;
+
+      log('모든 리소스 정리 완료', 'success');
+    }
+
+    function send(event, data) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ event, ...data }));
+        log(`전송: ${event}`, 'info');
+      }
+    }
+
+    // mediasoup device 초기화
+    async function initMediasoup() {
+      try {
+        log('mediasoup device 초기화 중...', 'info');
+
+        // Router RTP Capabilities 요청
+        send('get-router-rtp-capabilities', { channelPk });
+      } catch (error) {
+        log(`mediasoup 초기화 에러: ${error.message}`, 'error');
+      }
+    }
+
+    // 메시지 핸들러
+    async function handleMessage(data) {
+      switch (data.event) {
+        case 'channel-joined':
+          log(`채널 ${data.channelPk} 입장 완료`, 'success');
+          log(`현재 참가자: ${data.users.length}명`, 'info');
+          break;
+
+        case 'router-rtp-capabilities':
+          device = new mediasoupClient.Device();
+          await device.load({ routerRtpCapabilities: data.rtpCapabilities });
+          log('mediasoup device 로드 완료', 'success');
+
+          // Transport 생성
+          await createTransports();
+
+          // 기존 Producer 목록 요청
+          send('get-producers', { channelPk });
+          break;
+
+        case 'webrtc-transport-created':
+          // Transport 정보 저장은 createTransports()에서 처리
+          break;
+
+        case 'transport-connected':
+          log(`Transport 연결됨: ${data.transportId}`, 'success');
+          break;
+
+        case 'produced':
+          log(`Producer 생성됨: ${data.producerId}`, 'success');
+          break;
+
+        case 'new-producer':
+          log(`새 Producer 감지: ${data.producerId} (${data.kind})`, 'info');
+          await consumeMedia(data.producerId);
+          break;
+
+        case 'producers-list':
+          log(`기존 Producer 목록: ${data.producers.length}개`, 'info');
+          for (const producer of data.producers) {
+            await consumeMedia(producer.producerId);
+          }
+          break;
+
+        case 'consumed':
+          log(`Consumer 생성됨: ${data.id}`, 'success');
+          await handleNewConsumer(data);
+          break;
+
+        case 'consumer-resumed':
+          log(`Consumer 재개됨: ${data.consumerId}`, 'success');
+          break;
+
+        case 'user-joined':
+          log(`사용자 ${data.userId} 입장`, 'info');
+          break;
+
+        case 'user-left':
+          log(`사용자 ${data.userId} 퇴장`, 'warn');
+          handleUserLeft(data.userId);
+          break;
+
+        case 'producer-closed':
+          log(`Producer 닫힘: ${data.producerId}`, 'warn');
+          handleProducerClosed(data.producerId);
+          break;
+
+        case 'error':
+          log(`에러: ${data.message}`, 'error');
+          break;
+      }
+    }
+
+    // Transport 생성
+    async function createTransports() {
+      try {
+        log('Producer Transport 생성 요청 중...', 'info');
+        // Producer Transport 생성
+        send('create-webrtc-transport', { channelPk });
+
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            ws.removeEventListener('message', checkTransport);
+            reject(new Error('Producer Transport 생성 타임아웃 (5초)'));
+          }, 5000);
+
+          const checkTransport = (event) => {
+            const data = JSON.parse(event.data);
+            log(`Transport 생성 중 수신: ${data.event}`, 'info');
+
+            if (data.event === 'webrtc-transport-created') {
+              clearTimeout(timeout);
+              log(`Producer Transport 정보 받음: ${data.id}`, 'success');
+
+              producerTransport = device.createSendTransport({
+                id: data.id,
+                iceParameters: data.iceParameters,
+                iceCandidates: data.iceCandidates,
+                dtlsParameters: data.dtlsParameters,
+              });
+
+              producerTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+                try {
+                  log('Producer Transport 연결 중...', 'info');
+                  send('connect-transport', {
+                    channelPk,
+                    transportId: producerTransport.id,
+                    dtlsParameters,
+                  });
+                  callback();
+                } catch (error) {
+                  log(`Producer Transport 연결 실패: ${error.message}`, 'error');
+                  errback(error);
+                }
+              });
+
+              producerTransport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
+                try {
+                  log(`Producer 생성 중 (${kind})...`, 'info');
+                  send('produce', {
+                    channelPk,
+                    transportId: producerTransport.id,
+                    kind,
+                    rtpParameters,
+                  });
+
+                  // producerId 응답 대기
+                  const waitForProduced = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.event === 'produced') {
+                      ws.removeEventListener('message', waitForProduced);
+                      callback({ id: data.producerId });
+                    }
+                  };
+                  ws.addEventListener('message', waitForProduced);
+                } catch (error) {
+                  log(`Producer 생성 실패: ${error.message}`, 'error');
+                  errback(error);
+                }
+              });
+
+              log('Producer Transport 생성 완료', 'success');
+              ws.removeEventListener('message', checkTransport);
+              resolve();
+            } else if (data.event === 'error') {
+              clearTimeout(timeout);
+              ws.removeEventListener('message', checkTransport);
+              reject(new Error(data.message));
+            }
+          };
+          ws.addEventListener('message', checkTransport);
+        });
+
+        log('Consumer Transport 생성 요청 중...', 'info');
+        // Consumer Transport 생성
+        send('create-webrtc-transport', { channelPk });
+
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            ws.removeEventListener('message', checkTransport);
+            reject(new Error('Consumer Transport 생성 타임아웃 (5초)'));
+          }, 5000);
+
+          const checkTransport = (event) => {
+            const data = JSON.parse(event.data);
+            log(`Transport 생성 중 수신: ${data.event}`, 'info');
+
+            if (data.event === 'webrtc-transport-created') {
+              clearTimeout(timeout);
+              log(`Consumer Transport 정보 받음: ${data.id}`, 'success');
+
+              consumerTransport = device.createRecvTransport({
+                id: data.id,
+                iceParameters: data.iceParameters,
+                iceCandidates: data.iceCandidates,
+                dtlsParameters: data.dtlsParameters,
+              });
+
+              consumerTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+                try {
+                  log('Consumer Transport 연결 중...', 'info');
+                  send('connect-transport', {
+                    channelPk,
+                    transportId: consumerTransport.id,
+                    dtlsParameters,
+                  });
+                  callback();
+                } catch (error) {
+                  log(`Consumer Transport 연결 실패: ${error.message}`, 'error');
+                  errback(error);
+                }
+              });
+
+              log('Consumer Transport 생성 완료', 'success');
+              ws.removeEventListener('message', checkTransport);
+              resolve();
+            } else if (data.event === 'error') {
+              clearTimeout(timeout);
+              ws.removeEventListener('message', checkTransport);
+              reject(new Error(data.message));
+            }
+          };
+          ws.addEventListener('message', checkTransport);
+        });
+
+        log('모든 Transport 생성 완료!', 'success');
+      } catch (error) {
+        log(`Transport 생성 에러: ${error.message}`, 'error');
+        throw error;
+      }
+    }
+
+    // 오디오 전송 시작
+    async function startAudio() {
+      try {
+        // 기존 오디오 트랙이 없거나 종료된 경우 새로 가져오기
+        const existingAudioTrack = localStream?.getAudioTracks()[0];
+        if (!existingAudioTrack || existingAudioTrack.readyState === 'ended') {
+          log('새 오디오 스트림 요청 중...', 'info');
+          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+          if (!localStream) {
+            localStream = audioStream;
+          } else {
+            // 종료된 트랙 제거 후 새 트랙 추가
+            if (existingAudioTrack) {
+              localStream.removeTrack(existingAudioTrack);
+            }
+            localStream.addTrack(audioStream.getAudioTracks()[0]);
+          }
+        }
+
+        const audioTrack = localStream.getAudioTracks()[0];
+        audioProducer = await producerTransport.produce({ track: audioTrack });
+
+        // 로컬 오디오 시각화 및 레벨 감지
+        const localVideo = document.getElementById('localVideo');
+        const localAudioOnly = document.getElementById('localAudioOnly');
+
+        // 비디오가 켜져있으면 비디오에, 아니면 오디오 전용 박스에 효과 적용
+        const localAudioLabel = document.getElementById('localAudioLabel');
+        let targetElement = null;
+        if (localVideo.style.display !== 'none' && localVideo.srcObject) {
+          targetElement = localVideo;
+        } else {
+          localAudioOnly.style.display = 'flex';
+          localAudioLabel.style.display = 'block';
+          targetElement = localAudioOnly;
+        }
+
+        if (targetElement) {
+          localAudioAnalyser = startAudioLevelDetection(audioTrack, targetElement);
+        }
+
+        log('오디오 전송 시작 (음성 감지 활성화)', 'success');
+        document.getElementById('startAudioBtn').disabled = true;
+        document.getElementById('stopAudioBtn').disabled = false;
+      } catch (error) {
+        log(`오디오 시작 에러: ${error.message}`, 'error');
+      }
+    }
+
+    // 비디오 전송 시작
+    async function startVideo() {
+      try {
+        // 기존 비디오 트랙이 없거나 종료된 경우 새로 가져오기
+        const existingVideoTrack = localStream?.getVideoTracks()[0];
+        if (!existingVideoTrack || existingVideoTrack.readyState === 'ended') {
+          log('새 비디오 스트림 요청 중...', 'info');
+          const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+
+          if (!localStream) {
+            localStream = videoStream;
+          } else {
+            // 종료된 트랙 제거 후 새 트랙 추가
+            if (existingVideoTrack) {
+              localStream.removeTrack(existingVideoTrack);
+            }
+            localStream.addTrack(videoStream.getVideoTracks()[0]);
+          }
+        }
+
+        const videoTrack = localStream.getVideoTracks()[0];
+        videoProducer = await producerTransport.produce({ track: videoTrack });
+
+        const localVideo = document.getElementById('localVideo');
+        const localVideoLabel = document.getElementById('localVideoLabel');
+        const localAudioOnly = document.getElementById('localAudioOnly');
+        const localAudioLabel = document.getElementById('localAudioLabel');
+
+        localVideo.srcObject = localStream;
+        localVideo.style.display = 'block';
+        localVideoLabel.style.display = 'block';
+
+        // 오디오가 이미 켜져있으면 speaking 감지를 비디오로 이동
+        if (audioProducer && localAudioAnalyser) {
+          stopAudioLevelDetection(localAudioAnalyser);
+          localAudioOnly.style.display = 'none';
+          localAudioOnly.classList.remove('speaking');
+          localAudioLabel.style.display = 'none';
+
+          const audioTrack = localStream.getAudioTracks()[0];
+          if (audioTrack) {
+            localAudioAnalyser = startAudioLevelDetection(audioTrack, localVideo);
+          }
+        }
+
+        log('비디오 전송 시작', 'success');
+        document.getElementById('startVideoBtn').disabled = true;
+        document.getElementById('stopVideoBtn').disabled = false;
+      } catch (error) {
+        log(`비디오 시작 에러: ${error.message}`, 'error');
+      }
+    }
+
+    // 오디오 중지
+    function stopAudio() {
+      if (audioProducer) {
+        audioProducer.close();
+        send('close-producer', { channelPk, producerId: audioProducer.id });
+        audioProducer = null;
+
+        // 로컬 오디오 레벨 감지 중지
+        if (localAudioAnalyser) {
+          stopAudioLevelDetection(localAudioAnalyser);
+          localAudioAnalyser = null;
+
+          const localVideo = document.getElementById('localVideo');
+          const localAudioOnly = document.getElementById('localAudioOnly');
+          const localAudioLabel = document.getElementById('localAudioLabel');
+
+          localVideo.classList.remove('speaking');
+          localAudioOnly.classList.remove('speaking');
+          localAudioOnly.style.display = 'none';
+          localAudioLabel.style.display = 'none';
+        }
+
+        log('오디오 전송 중지', 'warn');
+        document.getElementById('startAudioBtn').disabled = false;
+        document.getElementById('stopAudioBtn').disabled = true;
+      }
+    }
+
+    // 비디오 중지
+    function stopVideo() {
+      if (videoProducer) {
+        videoProducer.close();
+        send('close-producer', { channelPk, producerId: videoProducer.id });
+        videoProducer = null;
+
+        const localVideo = document.getElementById('localVideo');
+        const localVideoLabel = document.getElementById('localVideoLabel');
+        const localAudioOnly = document.getElementById('localAudioOnly');
+        const localAudioLabel = document.getElementById('localAudioLabel');
+
+        localVideo.srcObject = null;
+        localVideo.style.display = 'none';
+        localVideoLabel.style.display = 'none';
+        localVideo.classList.remove('speaking');
+
+        // 오디오가 켜져있으면 speaking 감지를 오디오 박스로 이동
+        if (audioProducer && localAudioAnalyser) {
+          stopAudioLevelDetection(localAudioAnalyser);
+          localAudioOnly.style.display = 'flex';
+          localAudioLabel.style.display = 'block';
+
+          const audioTrack = localStream?.getAudioTracks()[0];
+          if (audioTrack) {
+            localAudioAnalyser = startAudioLevelDetection(audioTrack, localAudioOnly);
+          }
+        }
+
+        log('비디오 전송 중지', 'warn');
+        document.getElementById('startVideoBtn').disabled = false;
+        document.getElementById('stopVideoBtn').disabled = true;
+      }
+    }
+
+    // 미디어 수신
+    async function consumeMedia(producerId) {
+      try {
+        if (!consumerTransport) {
+          log(`Consumer Transport가 준비되지 않음. Producer ${producerId} 건너뜀`, 'warn');
+          return;
+        }
+
+        if (!device) {
+          log(`Device가 준비되지 않음. Producer ${producerId} 건너뜀`, 'warn');
+          return;
+        }
+
+        send('consume', {
+          channelPk,
+          transportId: consumerTransport.id,
+          producerId,
+          rtpCapabilities: device.rtpCapabilities,
+        });
+      } catch (error) {
+        log(`Consume 에러: ${error.message}`, 'error');
+      }
+    }
+
+    // 새 Consumer 처리
+    async function handleNewConsumer(data) {
+      try {
+        const consumer = await consumerTransport.consume({
+          id: data.id,
+          producerId: data.producerId,
+          kind: data.kind,
+          rtpParameters: data.rtpParameters,
+        });
+
+        consumers.set(consumer.id, consumer);
+
+        // Consumer resume
+        send('resume-consumer', { channelPk, consumerId: consumer.id });
+
+        // 비디오 엘리먼트 생성
+        if (consumer.kind === 'video') {
+          const remoteVideos = document.getElementById('remoteVideos');
+
+          // 같은 사용자의 오디오 전용 박스가 있는지 확인 (DOM 기반으로 검색)
+          let existingAudioBox = null;
+          let existingAudioConsumerId = null;
+
+          // DOM에서 모든 오디오 박스 검색
+          const allWrappers = remoteVideos.querySelectorAll('.video-wrapper');
+          log(`원격 비디오 생성 시 검색: 총 ${allWrappers.length}개 wrapper 발견, producerId=${data.producerId.substring(0, 8)}`, 'info');
+
+          for (const wrapper of allWrappers) {
+            const audioBox = wrapper.querySelector('.audio-only');
+            if (audioBox) {
+              const label = wrapper.querySelector('.video-label');
+              log(`오디오 박스 발견: label="${label?.textContent}"`, 'info');
+
+              if (label && label.textContent.includes(data.producerId.substring(0, 8))) {
+                existingAudioBox = wrapper;
+                // wrapper ID에서 consumerId 추출: consumer-{id}
+                const wrapperId = wrapper.id;
+                if (wrapperId && wrapperId.startsWith('consumer-')) {
+                  existingAudioConsumerId = wrapperId.replace('consumer-', '');
+                }
+                log(`매칭되는 오디오 박스 발견! wrapperId=${wrapperId}, consumerId=${existingAudioConsumerId}`, 'success');
+                break;
+              }
+            }
+          }
+
+          const wrapper = document.createElement('div');
+          wrapper.className = 'video-wrapper';
+          wrapper.id = `consumer-${consumer.id}`;
+
+          const video = document.createElement('video');
+          video.id = `video-${consumer.id}`;
+          video.autoplay = true;
+          video.playsinline = true;
+          video.srcObject = new MediaStream([consumer.track]);
+
+          const label = document.createElement('div');
+          label.className = 'video-label';
+          label.textContent = `User ${data.producerId.substring(0, 8)}`;
+
+          wrapper.appendChild(video);
+          wrapper.appendChild(label);
+          remoteVideos.appendChild(wrapper);
+
+          // 기존 오디오 박스가 있으면 제거하고 speaking 감지를 비디오로 이동
+          if (existingAudioBox && existingAudioConsumerId) {
+            log(`기존 오디오 박스 발견: ${existingAudioConsumerId}`, 'info');
+
+            // 오디오 analyser 중지 및 제거
+            if (remoteAudioAnalysers.has(existingAudioConsumerId)) {
+              const analyserInfo = remoteAudioAnalysers.get(existingAudioConsumerId);
+              stopAudioLevelDetection(analyserInfo);
+              remoteAudioAnalysers.delete(existingAudioConsumerId);
+              log(`오디오 analyser 중지: ${existingAudioConsumerId}`, 'info');
+            }
+
+            // 오디오 consumer의 track으로 비디오에 speaking 감지 시작
+            const audioConsumer = consumers.get(existingAudioConsumerId);
+            if (audioConsumer && audioConsumer.track) {
+              startRemoteAudioLevelDetection(existingAudioConsumerId, audioConsumer.track, video);
+              log(`오디오 speaking 감지를 비디오로 이동: ${existingAudioConsumerId}`, 'info');
+            }
+
+            // 오디오 박스 DOM 제거
+            existingAudioBox.remove();
+            log(`오디오 박스 DOM 제거 완료: ${existingAudioConsumerId}`, 'success');
+          }
+
+          log(`원격 비디오 표시: ${consumer.id}`, 'success');
+        } else if (consumer.kind === 'audio') {
+          // 오디오 consumer인 경우 해당 사용자의 비디오 엘리먼트를 찾아 오디오 레벨 감지 시작
+          let targetVideoElement = null;
+          let videoConsumerId = null;
+
+          // 같은 producerId를 가진 다른 consumer 찾기 (동일 사용자의 비디오)
+          for (const [otherId, otherConsumer] of consumers.entries()) {
+            if (otherConsumer.kind === 'video' && otherConsumer.appData?.userId === consumer.appData?.userId) {
+              targetVideoElement = document.getElementById(`video-${otherId}`);
+              videoConsumerId = otherId;
+              break;
+            }
+          }
+
+          // 비디오 엘리먼트를 찾지 못한 경우, producerId 기반으로 찾기
+          if (!targetVideoElement) {
+            for (const [otherId, otherConsumer] of consumers.entries()) {
+              if (otherConsumer.kind === 'video') {
+                const videoWrapper = document.getElementById(`consumer-${otherId}`);
+                if (videoWrapper) {
+                  const label = videoWrapper.querySelector('.video-label');
+                  if (label && label.textContent.includes(data.producerId.substring(0, 8))) {
+                    targetVideoElement = document.getElementById(`video-${otherId}`);
+                    videoConsumerId = otherId;
+                    break;
+                  }
+                }
+              }
+            }
+          }
+
+          // 비디오 엘리먼트를 찾았으면 오디오 레벨 감지 시작
+          if (targetVideoElement) {
+            startRemoteAudioLevelDetection(consumer.id, consumer.track, targetVideoElement);
+            log(`원격 오디오 수신됨 (비디오에 연결): ${consumer.id}`, 'info');
+          } else {
+            // 비디오가 없으면 오디오 전용 아이콘 생성
+            const remoteVideos = document.getElementById('remoteVideos');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'video-wrapper';
+            wrapper.id = `consumer-${consumer.id}`;
+
+            const audioBox = document.createElement('div');
+            audioBox.className = 'audio-only';
+            audioBox.id = `audio-${consumer.id}`;
+
+            const label = document.createElement('div');
+            label.className = 'video-label';
+            label.textContent = `User ${data.producerId.substring(0, 8)}`;
+
+            wrapper.appendChild(audioBox);
+            wrapper.appendChild(label);
+            remoteVideos.appendChild(wrapper);
+
+            startRemoteAudioLevelDetection(consumer.id, consumer.track, audioBox);
+            log(`원격 오디오 전용 표시: ${consumer.id}`, 'info');
+          }
+        }
+      } catch (error) {
+        log(`Consumer 처리 에러: ${error.message}`, 'error');
+      }
+    }
+
+    // 사용자 퇴장 처리
+    function handleUserLeft(userId) {
+      log(`사용자 퇴장 처리 시작: userId=${userId}`, 'info');
+
+      // 해당 사용자의 모든 consumer wrapper 찾아서 제거
+      const remoteVideos = document.getElementById('remoteVideos');
+      const allWrappers = remoteVideos.querySelectorAll('.video-wrapper');
+
+      let removedCount = 0;
+      for (const wrapper of allWrappers) {
+        const label = wrapper.querySelector('.video-label');
+        // User {userId}를 포함하는 wrapper 찾기
+        if (label && label.textContent.includes(`User`)) {
+          const wrapperId = wrapper.id;
+          if (wrapperId && wrapperId.startsWith('consumer-')) {
+            const consumerId = wrapperId.replace('consumer-', '');
+
+            // Consumer 찾기 및 정리
+            const consumer = consumers.get(consumerId);
+            if (consumer) {
+              // 오디오 analyser 정리
+              if (remoteAudioAnalysers.has(consumerId)) {
+                const analyserInfo = remoteAudioAnalysers.get(consumerId);
+                stopAudioLevelDetection(analyserInfo);
+                remoteAudioAnalysers.delete(consumerId);
+                log(`오디오 analyser 정리: ${consumerId}`, 'info');
+              }
+
+              // Consumer 닫기
+              consumer.close();
+              consumers.delete(consumerId);
+            }
+
+            // DOM 제거
+            wrapper.remove();
+            removedCount++;
+            log(`Wrapper 제거: ${wrapperId}`, 'info');
+          }
+        }
+      }
+
+      log(`사용자 퇴장 처리 완료: ${removedCount}개 wrapper 제거됨`, 'success');
+    }
+
+    // Producer 닫힘 처리
+    function handleProducerClosed(producerId) {
+      // producerId로 Consumer 찾기
+      let consumersToRemove = [];
+      for (const [consumerId, consumer] of consumers.entries()) {
+        if (consumer.producerId === producerId) {
+          consumersToRemove.push({ id: consumerId, consumer });
+        }
+      }
+
+      for (const { id, consumer } of consumersToRemove) {
+        // 오디오 analyser 정리
+        if (consumer.kind === 'audio' && remoteAudioAnalysers.has(id)) {
+          const analyserInfo = remoteAudioAnalysers.get(id);
+          stopAudioLevelDetection(analyserInfo);
+          remoteAudioAnalysers.delete(id);
+          log(`원격 오디오 레벨 감지 중지: ${id}`, 'info');
+        }
+
+        // Consumer 닫기
+        consumer.close();
+        consumers.delete(id);
+
+        // DOM 엘리먼트 제거 (비디오와 오디오 박스 모두)
+        const wrapper = document.getElementById(`consumer-${id}`);
+        if (wrapper) {
+          wrapper.remove();
+          if (consumer.kind === 'video') {
+            log(`원격 비디오 제거: ${id}`, 'info');
+          } else if (consumer.kind === 'audio') {
+            log(`원격 오디오 박스 제거: ${id}`, 'info');
+          }
+        }
+      }
+    }
+  </script>
+</body>
+</html>

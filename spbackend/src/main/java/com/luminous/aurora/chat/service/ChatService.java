@@ -11,7 +11,7 @@ import java.util.List;
 public interface ChatService {
 
     // 메시지 저장
-    void saveMessage(MessageRequest request, String jwtToken);
+    Message saveMessage(MessageRequest request, String jwtToken);
 
     // 채널별 최신 메시지 조회 (최초 로드 시)
     List<MessageResponse> getLatestMessage(Integer channelPk, String jwtToken);

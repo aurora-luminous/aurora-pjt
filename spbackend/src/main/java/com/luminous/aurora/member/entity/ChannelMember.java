@@ -12,7 +12,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "channelmember")
+@Table(name = "channel_member")
 public class ChannelMember {
 
     @Id

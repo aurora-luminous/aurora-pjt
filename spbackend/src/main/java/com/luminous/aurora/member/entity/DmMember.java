@@ -12,7 +12,7 @@ import lombok.*;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "dmmember")
+@Table(name = "dm_member")
 public class DmMember {
 
     @Id

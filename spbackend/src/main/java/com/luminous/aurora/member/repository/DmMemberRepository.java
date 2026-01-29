@@ -20,7 +20,7 @@ public interface DmMemberRepository extends JpaRepository<DmMember, Integer> {
 
     // DM 멤버 조회 (해당 DM룸의 가장 최근 메시지 시간으로 정렬)
     @Query("SELECT dm FROM DmMember dm " +
-           "LEFT JOIN Message m ON dm.dmRoom.dmRoomPk = m.dmRoomPk " +
+           "LEFT JOIN Message m ON dm.dmRoom = m.dmRoomPk " +
            "WHERE dm.dmRoom.dmRoomPk = :dmRoomPk " +
            "ORDER BY m.createdAt DESC")
     List<DmMember> findByDmRoom_DmRoomPkOrderByLastMessageTimeDesc(@Param("dmRoomPk") Integer dmRoomPk);

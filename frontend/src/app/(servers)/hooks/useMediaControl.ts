@@ -3,6 +3,7 @@ import { useCamera } from "./useCamera";
 import { useLoadRedux } from "./useLoadRedux";
 import { useMike } from "./useMike";
 import { useScreenShare } from "./useScreenShare";
+import { useAudio } from "./useVoice";
 
 export const useMediaControl = () => {
   // 카메라 제어
@@ -23,15 +24,19 @@ export const useMediaControl = () => {
     setSpeaking(currentUserId, isSpeking);
   });
 
+  const { audioStream, startAudio, muteAudio, toggleAudio, isAudioEnabled } = useAudio();
+
   // 화면 공유 제어
   const { screenStream, startScreenShare, stopScreenShare, changeScreenShare } =
     useScreenShare();
   // 음성 채널 입장 시 바로 마이크 on
   useEffect(() => {
     startMike();
+    startAudio();
     // 클린 업 함수로 마이크 중지
     return () => {
       stopMike();
+      muteAudio();
     };
   }, []);
 
@@ -81,6 +86,10 @@ export const useMediaControl = () => {
     changeScreenShare();
   }, [isScreenSharing, changeScreenShare]);
 
+  const handleToggleAudio = useCallback(() => {
+    toggleAudio()
+  },[toggleAudio])
+
   return {
     cameraStream,
     startCamera,
@@ -98,5 +107,12 @@ export const useMediaControl = () => {
     handleToggleScreenShare,
     isScreenSharing,
     handdleChangeScreenShare,
+
+    audioStream,
+    startAudio,
+    muteAudio,
+    toggleAudio,
+    handleToggleAudio,
+    isAudioEnabled,
   };
 };

@@ -66,7 +66,10 @@ export const useConnectSfu = ({channelId, accessToken}: ConnectSfuProps) => {
         if (!channelId || !accessToken) return;
 
         // WebSocket URL 설정 (환경 변수 또는 하드코딩)
-        const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3002/voice"; 
+        const wsUrl = process.env.NEXT_PUBLIC_WS_VOICE_URL; 
+        if (!wsUrl) {
+            throw new Error("WebSocket URL이 설정되지 않았습니다.");
+        }
         const ws = new WebSocket(wsUrl);
         socketRef.current = ws;
         setConnectionStatus("connecting");

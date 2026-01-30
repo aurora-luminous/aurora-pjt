@@ -12,6 +12,7 @@ import { HttpModule } from '@nestjs/axios';
 import { RouterModule } from '@nestjs/core';
 import { getDatabaseConfig } from './database/database.config';
 import { AppController } from './app.controller';
+import { SfuValidationModule } from './sfu-validation/sfu-validation.module'; // Added SfuValidationModule
 
 // 도메인 모듈들 import
 import { ServerModule } from './domain/server/server.module';
@@ -47,6 +48,7 @@ import { UserModule } from './domain/user/user.module';
     TextChannelModule,
     AuthModule,
     UserModule,
+    SfuValidationModule, // Added SfuValidationModule
 
     // Workspace 도메인 라우터 설정
     RouterModule.register([

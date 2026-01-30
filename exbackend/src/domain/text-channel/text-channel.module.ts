@@ -8,6 +8,7 @@ import { User } from '../user/entities/user.entity';
 import { UserModule } from '../user/user.module';
 import { ChannelCreationService } from './services/channel-creation.service';
 import { ChannelInvitationService } from './services/channel-invitation.service';
+import { ChannelValidationService } from './services/channel-validation.service'; // Added import for ChannelValidationService
 import { ChannelController } from './controllers/channel.controller';
 
 @Module({
@@ -27,10 +28,12 @@ import { ChannelController } from './controllers/channel.controller';
   providers: [
     ChannelCreationService,
     ChannelInvitationService,
+    ChannelValidationService, // Added ChannelValidationService
   ],
   exports: [
     ChannelCreationService,
     ChannelInvitationService,
+    ChannelValidationService, // Added ChannelValidationService
   ],
 })
 export class TextChannelModule {}

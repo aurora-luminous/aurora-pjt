@@ -76,7 +76,7 @@ export class MediasoupService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     await this.createWorkers();
-    this.logger.log('MediasoupService initialized');
+    this.logger.log('Mediasoup 서비스 이니셜라이징');
   }
 
   async onModuleDestroy() {
@@ -86,7 +86,7 @@ export class MediasoupService implements OnModuleInit, OnModuleDestroy {
     }
     this.workers = [];
     this.routers.clear();
-    this.logger.log('MediasoupService destroyed');
+    this.logger.log('Mediasoup 서비스 제거');
   }
 
   /**
@@ -104,12 +104,12 @@ export class MediasoupService implements OnModuleInit, OnModuleDestroy {
       });
 
       worker.on('died', () => {
-        this.logger.error(`mediasoup Worker died, exiting in 2 seconds... [pid:${worker.pid}]`);
+        this.logger.error(`mediasoup Worker가 죽었습니다, 2초 뒤 퇴장합니다... [pid:${worker.pid}]`);
         setTimeout(() => process.exit(1), 2000);
       });
 
       this.workers.push(worker);
-      this.logger.log(`Worker created [pid:${worker.pid}]`);
+      this.logger.log(`Worker 가 생성되었습니다. [pid:${worker.pid}]`);
     }
   }
 
@@ -138,7 +138,7 @@ export class MediasoupService implements OnModuleInit, OnModuleDestroy {
     });
 
     this.routers.set(channelPk, router);
-    this.logger.log(`Router created for channel ${channelPk}`);
+    this.logger.log(`채널 라우터 생성됨: ${channelPk}`);
 
     return router;
   }
@@ -166,7 +166,7 @@ export class MediasoupService implements OnModuleInit, OnModuleDestroy {
     if (router) {
       router.close();
       this.routers.delete(channelPk);
-      this.logger.log(`Router closed for channel ${channelPk}`);
+      this.logger.log(`채널 라우터 닫힘: ${channelPk}`);
     }
   }
 

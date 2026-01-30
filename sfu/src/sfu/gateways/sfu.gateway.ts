@@ -4,19 +4,25 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
-import { Server, WebSocket } from 'ws';
+import { Server, WebSocket } from 'ws'; // ws 라이브러리에서 WebSocket을 명시적으로 임포트합니다.
 import { Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import axios from 'axios';
 import { MediasoupService } from '../services/mediasoup.service';
 import { RoomService } from '../services/room.service';
-
+import {
+  verifyAndDecodeaccessToken,
+  validatePayload,
+} from './sfu.helperMethods'; // 헬퍼 함수
 
 // WebSocket 연결에 사용자 정보 추가
 interface AuthenticatedSocket extends WebSocket {
-  userId?: number;
+  userId?: number; // JWT에서 추출된 사용자 ID (number로 변환)
   channelPk?: number;
+  accessToken?: string;
+  clientId?: string; // 클라이언트 WebSocket 연결의 고유 ID (client.id 대체)
 }
 
 @WebSocketGateway(3002, { path: '/voice' }) // ws://localhost:3002/voice
@@ -25,6 +31,7 @@ export class SfuGateway implements OnGatewayConnection, OnGatewayDisconnect {
   server: Server;
 
   private logger = new Logger('SfuGateway');
+  private nextClientId = 0; // 클라이언트 ID 생성을 위한 카운터
 
   constructor(
     private readonly mediasoupService: MediasoupService,
@@ -33,32 +40,45 @@ export class SfuGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly configService: ConfigService,
   ) {}
 
-  // 채널별 사용자 관리 (메모리)
-  private channelUsers: Map<number, Set<number>> = new Map();
-  // 사용자별 WebSocket 연결 관리
-  private userSockets: Map<number, AuthenticatedSocket> = new Map();
-
   // 클라이언트 연결 시
   handleConnection(client: AuthenticatedSocket) {
-    this.logger.log(`Client connected: ${client.url}`);
-
-    // TODO: 실제로는 JWT 토큰으로 사용자 인증
-    // 테스트용으로 임시 userId 할당
-    const tempUserId = Math.floor(Math.random() * 1000);
-    client.userId = tempUserId;
-
-    this.userSockets.set(tempUserId, client);
-    this.logger.log(`User ${tempUserId} authenticated`);
+    client.clientId = (this.nextClientId++).toString(); // 고유한 clientId 할당
+    this.logger.log(`클라이언트 ID ${client.clientId}로 클라이언트 연결됨`);
 
     // 원시 메시지 핸들러 (NestJS @SubscribeMessage가 ws 라이브러리와 호환되지 않아 직접 구현)
     client.on('message', async (rawMessage: string) => {
       try {
         const message = JSON.parse(rawMessage.toString());
-        this.logger.debug(`Raw message received: ${JSON.stringify(message)}`);
+        this.logger.debug(
+          `클라이언트 ${client.clientId}로부터 원시 메시지 수신됨: ${JSON.stringify(message)}`,
+        );
         await this.handleRawMessage(client, message);
       } catch (error) {
-        this.logger.error(`Failed to parse message: ${error.message}`);
+        this.logger.error(
+          `클라이언트 ${client.clientId}로부터의 메시지 파싱 또는 처리 실패: ${error.message}`,
+        );
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(
+            JSON.stringify({
+              event: 'error',
+              message: '유효하지 않은 메시지 형식입니다.',
+            }),
+          );
+        }
       }
+    });
+
+    // disconnect 대신 close 사용
+    client.on('close', () => {
+      this.handleDisconnect(client);
+    });
+
+    // 오류 처리
+    client.on('error', (error) => {
+      this.logger.error(
+        `클라이언트 ${client.clientId}에 대한 WebSocket 오류: ${error.message}`,
+      );
+      client.close(); // 오류 발생 시 연결 닫기
     });
   }
 
@@ -66,241 +86,381 @@ export class SfuGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleDisconnect(client: AuthenticatedSocket) {
     const userId = client.userId;
     const channelPk = client.channelPk;
+    const clientId = client.clientId; // 이제 clientId를 사용
 
-
-    if (userId) {
-      this.userSockets.delete(userId);
-
-      // 채널에서 사용자 제거
-      if (channelPk && this.channelUsers.has(channelPk)) {
-        const channelUserSet = this.channelUsers.get(channelPk);
-        if (channelUserSet) {
-          channelUserSet.delete(userId);
-
-          // mediasoup 리소스 정리 (Transport, Producer, Consumer)
-          await this.roomService.cleanupPeer(channelPk, userId);
-
-          // 다른 사용자들에게 알림
-          this.broadcastToChannel(channelPk, {
-            event: 'user-left',
-            userId,
-            channelPk,
-          }, userId);
-        } else {
-          this.logger.error(`Channel ${channelPk} user set not found during disconnect`);
-        }
+    if (userId && channelPk && clientId) {
+      try {
+        await this.roomService.cleanupPeer(channelPk, userId, clientId); // client.id 대신 clientId 사용
+        this.logger.log(
+          `사용자 ${userId} (클라이언트 ID: ${clientId})가 채널 ${channelPk}에서 연결 해제 및 정리됨`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `사용자 ${userId} (클라이언트 ID: ${clientId})를 채널 ${channelPk}에서 정리하는 중 오류 발생: ${error.message}`,
+        );
       }
-
-      this.logger.log(`User ${userId} disconnected from channel ${channelPk}`);
-    }
-  }
-
-  // 음성 채널 입장
-  async handleJoinChannel(
-    data: any,
-    client: AuthenticatedSocket,
-  ) {
-    const channelPk = data?.channelPk;
-
-    if (!channelPk) {
-      this.logger.error(`Invalid data for join-channel`);
-      return { event: 'error', message: 'Invalid data: missing channelPk' };
-    }
-
-    const userId = client.userId;
-
-    if (!userId) {
-      return { event: 'error', message: 'User not authenticated' };
-    }
-
-    // 채널 검증: VOICE 또는 VIDEO 채널만 허용
-    const isVoiceChannel = await this.validateVoiceChannel(channelPk);
-    if (!isVoiceChannel) {
-      this.logger.warn(`User ${userId} tried to join non-voice channel ${channelPk}`);
-      return { event: 'error', message: 'This is not a voice/video channel' };
-    }
-
-    // 채널에 사용자 추가
-    if (!this.channelUsers.has(channelPk)) {
-      this.channelUsers.set(channelPk, new Set());
-    }
-    const channelUserSet = this.channelUsers.get(channelPk);
-    if (channelUserSet) {
-      channelUserSet.add(userId);
-      client.channelPk = channelPk;
     } else {
-      this.logger.error(`Failed to add user ${userId} to channel ${channelPk}`);
-      return { event: 'error', message: 'Failed to join channel' };
+      this.logger.log(
+        `클라이언트 연결 해제됨, 사용자 ID: ${userId}, 채널 PK: ${channelPk}, 클라이언트 ID: ${clientId}`,
+      );
     }
-
-    this.logger.log(`User ${userId} joined channel ${channelPk}`);
-
-    // 현재 채널에 있는 다른 사용자 목록 반환
-    const channelUserSetForList = this.channelUsers.get(channelPk);
-    const currentUsers = channelUserSetForList ? Array.from(channelUserSetForList) : [];
-
-    // 새 사용자에게 현재 참가자 목록 전송
-    client.send(JSON.stringify({
-      event: 'channel-joined',
-      channelPk,
-      users: currentUsers.filter(id => id !== userId),
-    }));
-
-    // 다른 사용자들에게 새 참가자 알림
-    this.broadcastToChannel(channelPk, {
-      event: 'user-joined',
-      userId,
-      channelPk,
-    }, userId);
-
-    return { event: 'joined', channelPk, userId };
   }
 
-  // 음성 채널 퇴장
-  handleLeaveChannel(
-    data: any,
-    client: AuthenticatedSocket,
-  ) {
-    if (!data || !data.channelPk) {
-      this.logger.error('Invalid data for leave-channel');
-      return { event: 'error', message: 'Invalid data' };
+  // 음성/화상 채널 입장 (joinRoom)
+  async handleJoinRoom(data: any, client: AuthenticatedSocket) {
+    // 1. 페이로드 유효성 검증
+    const payloadError = validatePayload(data, [
+      'channelPk',
+      'accessToken',
+      'rtpCapabilities',
+    ]);
+    if (payloadError) {
+      this.logger.error(
+        `클라이언트 ${client.clientId}에 대한 JoinRoom 페이로드 유효성 검사 오류: ${payloadError}`,
+      );
+      client.send(
+        JSON.stringify({ event: 'joinRoomError', message: payloadError }),
+      );
+      return;
     }
 
-    const { channelPk } = data;
-    const userId = client.userId;
+    const { channelPk, accessToken, rtpCapabilities } = data;
 
-    if (!userId) {
-      return { event: 'error', message: 'User not authenticated' };
+    this.logger.debug(
+      `handleJoinRoom received accessToken: ${accessToken.substring(0, 30)}...`,
+    );
+
+    // Retrieve JWT_SECRET using ConfigService (ensures it's loaded)
+    const jwtSecret = this.configService.get<string>('JWT_SECRET');
+
+    if (!jwtSecret) {
+      this.logger.error('JWT_SECRET is not configured. Cannot verify token.');
+      client.send(
+        JSON.stringify({
+          event: 'joinRoomError',
+          message: '서버 구성 오류: JWT_SECRET이 설정되지 않았습니다.',
+        }),
+      );
+      client.close();
+      return;
     }
 
-    if (this.channelUsers.has(channelPk)) {
-      const channelUserSet = this.channelUsers.get(channelPk);
-      if (channelUserSet) {
-        channelUserSet.delete(userId);
-      } else {
-        this.logger.error(`Channel ${channelPk} user set not found during leave`);
+    // 2. JWT 토큰 검증 및 userId 추출
+    const decodedToken = verifyAndDecodeaccessToken(accessToken, jwtSecret);
+    if (!decodedToken || !decodedToken.userId) {
+      this.logger.error(
+        `클라이언트 ${client.clientId}에서 제공한 인증 토큰이 유효하지 않거나 만료되었습니다. Decoded token result: ${JSON.stringify(decodedToken)}`,
+      );
+      client.send(
+        JSON.stringify({
+          event: 'joinRoomError',
+          message: '인증 토큰이 유효하지 않거나 만료되었습니다.',
+        }),
+      );
+      client.close(); // disconnect 대신 close 사용
+      return;
+    }
+    const userId = Number(decodedToken.userId); // userId를 number로 변환
+
+    // 클라이언트 소켓에 userId와 accessToken 저장
+    client.userId = userId;
+    client.accessToken = accessToken; // 추후 필요할 경우 재사용 (예: 권한 갱신)
+
+    try {
+      // 3. 메인 서버로 채널 유효성 검증 요청
+      const mainServerUrl = this.configService.get<string>('MAIN_SERVER_URL');
+      if (mainServerUrl === undefined) {
+        this.logger.error('MAIN_SERVER_URL이(가) 구성되지 않았습니다.');
+        client.send(
+          JSON.stringify({
+            event: 'joinRoomError',
+            message: '서버 구성 오류.',
+          }),
+        );
+        client.close(); // disconnect 대신 close 사용
+        return;
       }
+      const validationUrl = `${mainServerUrl}/api/ex/sfu-validate/channel/${channelPk}`; // 메인 서버 API 경로 확인 필요
+      this.logger.debug(
+        `사용자 ${userId} (클라이언트 ID: ${client.clientId})를 위해 ${validationUrl}에서 채널 ${channelPk} 유효성 검사 중`,
+      );
+      const response = await firstValueFrom(
+        this.httpService.get<{
+          isValid: boolean;
+          channelKind?: 'TEXT' | 'VOICE';
+        }>(validationUrl as string),
+      );
+
+      const { isValid, channelKind } = response.data;
+
+      if (!isValid) {
+        this.logger.warn(
+          `채널 ${channelPk}을(를) 찾을 수 없거나 사용자 ${userId} (클라이언트 ID: ${client.clientId})에게 유효하지 않습니다.`,
+        );
+        client.send(
+          JSON.stringify({
+            event: 'joinRoomError',
+            message: '채널을 찾을 수 없거나 유효하지 않습니다.',
+          }),
+        );
+        client.close(); // disconnect 대신 close 사용
+        return;
+      }
+
+      if (channelKind !== 'VOICE') {
+        this.logger.warn(
+          `채널 ${channelPk}은 음성채널이 아닙니다 (종류: ${channelKind}).`,
+        );
+        client.send(
+          JSON.stringify({
+            event: 'joinRoomError',
+            message: '이 채널은 음성 채널이 아닙니다.',
+          }),
+        );
+        client.close(); // disconnect 대신 close 사용
+        return;
+      }
+
+      // 4. 유효성 검증 성공 시 RoomService를 통해 룸 참여 로직 수행
+      // 클라이언트 소켓에 channelPk 저장 (cleanupPeer 등에서 사용)
+      client.channelPk = channelPk;
+
+      // RoomService는 이제 'peers' 목록을 관리하고, 새로운 peer가 들어왔을 때 다른 peer들에게 알림을 보냅니다.
+      const joinResult = await this.roomService.joinRoom(
+        channelPk,
+        userId,
+        client.clientId!,
+        rtpCapabilities,
+        client,
+      ); // client.id 대신 client.clientId 사용
+
+      this.logger.log(
+        `사용자 ${userId} (클라이언트 ID: ${client.clientId})가 채널 ${channelPk}에 참여했습니다.`,
+      );
+
+      // 5. 클라이언트에게 성공 응답 전송
+      client.send(
+        JSON.stringify({
+          event: 'joinRoomSuccess',
+          channelPk: channelPk,
+          userId: userId,
+          routerRtpCapabilities: joinResult.routerRtpCapabilities,
+          existingProducers: joinResult.existingProducers,
+          existingPeers: joinResult.existingPeers,
+        }),
+      );
+    } catch (error) {
+      this.logger.error(
+        `사용자 ${userId} (클라이언트 ID: ${client.clientId})가 채널 ${channelPk}에 참여하는 중 오류 발생: ${error.message}`,
+        error.stack,
+      );
+      let errorMessage = '채널에 참여하는 중 예상치 못한 오류가 발생했습니다.';
+      if (
+        axios.isAxiosError(error) &&
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        errorMessage = `메인 서버 오류: ${error.response.data.message}`;
+      } else if (error.message.includes('Network Error')) {
+        errorMessage = '유효성 검사를 위해 메인 서버에 연결할 수 없습니다.';
+      }
+      client.send(
+        JSON.stringify({ event: 'joinRoomError', message: errorMessage }),
+      );
+      client.close(); // disconnect 대신 close 사용
     }
-    client.channelPk = undefined;
-
-    // 다른 사용자들에게 알림
-    this.broadcastToChannel(channelPk, {
-      event: 'user-left',
-      userId,
-      channelPk,
-    }, userId);
-
-    this.logger.log(`User ${userId} left channel ${channelPk}`);
-
-    return { event: 'left', channelPk, userId };
   }
 
   // ========== mediasoup SFU 시그널링 핸들러들 ==========
 
   // Router RTP Capabilities 요청
-  async handleGetRouterRtpCapabilities(
-    data: any,
-    client: AuthenticatedSocket,
-  ) {
+  async handleGetRouterRtpCapabilities(data: any, client: AuthenticatedSocket) {
     if (!data || !data.channelPk) {
-      this.logger.error(`Invalid data for get-router-rtp-capabilities`);
-      return { event: 'error', message: 'Invalid data: missing channelPk' };
+      this.logger.error(
+        `클라이언트 ${client.clientId}에 대한 get-router-rtp-capabilities의 데이터가 유효하지 않습니다.`,
+      );
+      client.send(
+        JSON.stringify({
+          event: 'error',
+          message: '유효하지 않은 데이터: channelPk 누락',
+        }),
+      );
+      return;
     }
 
     const { channelPk } = data;
     const userId = client.userId;
 
+    // userId 검증 추가 (모든 핸들러에서 필요)
+    if (!userId) {
+      this.logger.error(
+        `get-router-rtp-capabilities에 대한 사용자 인증이 되지 않았습니다 (클라이언트 ID: ${client.clientId})`,
+      );
+      client.send(
+        JSON.stringify({
+          event: 'error',
+          message: '사용자 인증이 되지 않았습니다.',
+        }),
+      );
+      return;
+    }
+
     try {
-      const rtpCapabilities = await this.mediasoupService.getRouterRtpCapabilities(channelPk);
+      const rtpCapabilities =
+        await this.mediasoupService.getRouterRtpCapabilities(channelPk);
 
-      this.logger.log(`Router RTP capabilities sent to user ${userId} for channel ${channelPk}`);
+      this.logger.log(
+        `채널 ${channelPk}에 대한 라우터 RTP 기능이 사용자 ${userId} (클라이언트 ID: ${client.clientId})에게 전송되었습니다.`,
+      );
 
-      return {
-        event: 'router-rtp-capabilities',
-        rtpCapabilities,
-      };
+      client.send(
+        JSON.stringify({
+          event: 'router-rtp-capabilities',
+          rtpCapabilities,
+        }),
+      );
     } catch (error) {
-      this.logger.error(`Failed to get router RTP capabilities: ${error.message}`);
-      return { event: 'error', message: error.message };
+      this.logger.error(
+        `사용자 ${userId} (클라이언트 ID: ${client.clientId})의 라우터 RTP 기능을 가져오는 데 실패: ${error.message}`,
+      );
+      client.send(JSON.stringify({ event: 'error', message: error.message }));
     }
   }
 
   // WebRTC Transport 생성
-  async handleCreateWebRtcTransport(
-    data: any,
-    client: AuthenticatedSocket,
-  ) {
+  async handleCreateWebRtcTransport(data: any, client: AuthenticatedSocket) {
     if (!data || !data.channelPk) {
-      this.logger.error('Invalid data for create-webrtc-transport');
-      return { event: 'error', message: 'Invalid data' };
+      this.logger.error(
+        `클라이언트 ${client.clientId}에 대한 create-webrtc-transport의 데이터가 유효하지 않습니다.`,
+      );
+      client.send(
+        JSON.stringify({ event: 'error', message: '유효하지 않은 데이터' }),
+      );
+      return;
     }
 
     const { channelPk } = data;
     const userId = client.userId;
 
     if (!userId) {
-      return { event: 'error', message: 'User not authenticated' };
+      this.logger.error(
+        `create-webrtc-transport에 대한 사용자 인증이 되지 않았습니다 (클라이언트 ID: ${client.clientId})`,
+      );
+      client.send(
+        JSON.stringify({
+          event: 'error',
+          message: '사용자 인증이 되지 않았습니다.',
+        }),
+      );
+      return;
     }
 
     try {
-      const transportInfo = await this.roomService.createWebRtcTransport(channelPk, userId);
+      const transportInfo = await this.roomService.createWebRtcTransport(
+        channelPk,
+        userId,
+      );
 
-      this.logger.log(`Transport created for user ${userId} in channel ${channelPk}: ${transportInfo.id}`);
+      this.logger.log(
+        `사용자 ${userId} (클라이언트 ID: ${client.clientId})를 위해 채널 ${channelPk}에 전송 ${transportInfo.id} 생성됨`,
+      );
 
-      return {
-        event: 'webrtc-transport-created',
-        ...transportInfo,
-      };
+      client.send(
+        JSON.stringify({
+          event: 'webrtc-transport-created',
+          ...transportInfo,
+        }),
+      );
     } catch (error) {
-      this.logger.error(`Failed to create transport: ${error.message}`);
-      return { event: 'error', message: error.message };
+      this.logger.error(
+        `사용자 ${userId} (클라이언트 ID: ${client.clientId})를 위한 전송 생성 실패: ${error.message}`,
+      );
+      client.send(JSON.stringify({ event: 'error', message: error.message }));
     }
   }
 
   // Transport 연결
-  async handleConnectTransport(
-    data: any,
-    client: AuthenticatedSocket,
-  ) {
+  async handleConnectTransport(data: any, client: AuthenticatedSocket) {
     if (!data || !data.channelPk || !data.transportId || !data.dtlsParameters) {
-      this.logger.error('Invalid data for connect-transport');
-      return { event: 'error', message: 'Invalid data' };
+      this.logger.error(
+        `클라이언트 ${client.clientId}에 대한 connect-transport의 데이터가 유효하지 않습니다.`,
+      );
+      client.send(
+        JSON.stringify({ event: 'error', message: '유효하지 않은 데이터' }),
+      );
+      return;
     }
 
     const { channelPk, transportId, dtlsParameters } = data;
     const userId = client.userId;
 
     if (!userId) {
-      return { event: 'error', message: 'User not authenticated' };
+      this.logger.error(
+        `connect-transport에 대한 사용자 인증이 되지 않았습니다 (클라이언트 ID: ${client.clientId})`,
+      );
+      client.send(
+        JSON.stringify({
+          event: 'error',
+          message: '사용자 인증이 되지 않았습니다.',
+        }),
+      );
+      return;
     }
 
     try {
-      await this.roomService.connectTransport(channelPk, userId, transportId, dtlsParameters);
+      await this.roomService.connectTransport(
+        channelPk,
+        userId,
+        transportId,
+        dtlsParameters,
+      );
 
-      this.logger.log(`Transport connected for user ${userId}: ${transportId}`);
+      this.logger.log(
+        `사용자 ${userId} (클라이언트 ID: ${client.clientId})를 위한 전송 ${transportId} 연결됨`,
+      );
 
-      return { event: 'transport-connected', transportId };
+      client.send(
+        JSON.stringify({ event: 'transport-connected', transportId }),
+      );
     } catch (error) {
-      this.logger.error(`Failed to connect transport: ${error.message}`);
-      return { event: 'error', message: error.message };
+      this.logger.error(
+        `사용자 ${userId} (클라이언트 ID: ${client.clientId})를 위한 전송 연결 실패: ${error.message}`,
+      );
+      client.send(JSON.stringify({ event: 'error', message: error.message }));
     }
   }
 
   // Producer 생성 (미디어 전송 시작)
-  async handleProduce(
-    data: any,
-    client: AuthenticatedSocket,
-  ) {
-    if (!data || !data.channelPk || !data.transportId || !data.kind || !data.rtpParameters) {
-      this.logger.error('Invalid data for produce');
-      return { event: 'error', message: 'Invalid data' };
+  async handleProduce(data: any, client: AuthenticatedSocket) {
+    if (
+      !data ||
+      !data.channelPk ||
+      !data.transportId ||
+      !data.kind ||
+      !data.rtpParameters
+    ) {
+      this.logger.error(
+        `클라이언트 ${client.clientId}에 대한 produce의 데이터가 유효하지 않습니다.`,
+      );
+      client.send(
+        JSON.stringify({ event: 'error', message: '유효하지 않은 데이터' }),
+      );
+      return;
     }
 
     const { channelPk, transportId, kind, rtpParameters } = data;
     const userId = client.userId;
 
     if (!userId) {
-      return { event: 'error', message: 'User not authenticated' };
+      this.logger.error(`사용자 인증 실패 (클라이언트 ID: ${client.clientId})`);
+      client.send(
+        JSON.stringify({
+          event: 'error',
+          message: '사용자 인증이 되지 않았습니다.',
+        }),
+      );
+      return;
     }
 
     try {
@@ -312,38 +472,49 @@ export class SfuGateway implements OnGatewayConnection, OnGatewayDisconnect {
         rtpParameters,
       );
 
-      this.logger.log(`Producer created for user ${userId} in channel ${channelPk}: ${producerId} (${kind})`);
+      this.logger.log(
+        `Producer ${producerId} 생성됨: 사용자 ${userId} (clientId: ${client.clientId})`,
+      );
 
-      // 같은 채널의 다른 사용자들에게 새 Producer 알림
-      this.broadcastToChannel(channelPk, {
-        event: 'new-producer',
-        userId,
-        producerId,
-        kind,
-      }, userId);
-
-      return { event: 'produced', producerId };
+      client.send(JSON.stringify({ event: 'produced', producerId }));
     } catch (error) {
-      this.logger.error(`Failed to create producer: ${error.message}`);
-      return { event: 'error', message: error.message };
+      this.logger.error(`Producer 생성 실패: ${error.message}`);
+      client.send(JSON.stringify({ event: 'error', message: error.message }));
     }
   }
 
   // Consumer 생성 (다른 사용자의 미디어 수신)
-  async handleConsume(
-    data: any,
-    client: AuthenticatedSocket,
-  ) {
-    if (!data || !data.channelPk || !data.transportId || !data.producerId || !data.rtpCapabilities) {
-      this.logger.error('Invalid data for consume');
-      return { event: 'error', message: 'Invalid data' };
+  async handleConsume(data: any, client: AuthenticatedSocket) {
+    if (
+      !data ||
+      !data.channelPk ||
+      !data.transportId ||
+      !data.producerId ||
+      !data.rtpCapabilities
+    ) {
+      this.logger.error(
+        `Invalid data for consume for client ${client.clientId}`,
+      );
+      client.send(
+        JSON.stringify({ event: 'error', message: '유효하지 않은 데이터' }),
+      );
+      return;
     }
 
     const { channelPk, transportId, producerId, rtpCapabilities } = data;
     const userId = client.userId;
 
     if (!userId) {
-      return { event: 'error', message: 'User not authenticated' };
+      this.logger.error(
+        `User not authenticated for consume (clientId: ${client.clientId})`,
+      );
+      client.send(
+        JSON.stringify({
+          event: 'error',
+          message: '사용자 인증이 되지 않았습니다.',
+        }),
+      );
+      return;
     }
 
     try {
@@ -356,115 +527,157 @@ export class SfuGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
 
       if (!consumerInfo) {
-        return { event: 'error', message: 'Cannot consume this producer' };
+        client.send(
+          JSON.stringify({
+            event: 'error',
+            message: '이 producer를 소비할 수 없습니다.',
+          }),
+        );
+        return;
       }
 
-      this.logger.log(`Consumer created for user ${userId} in channel ${channelPk}: ${consumerInfo.id}`);
+      this.logger.log(
+        `Consumer 생성됨: 사용자 ${userId} (clientId: ${client.clientId})`,
+      );
 
-      return {
-        event: 'consumed',
-        ...consumerInfo,
-      };
+      client.send(
+        JSON.stringify({
+          event: 'consumed',
+          ...consumerInfo,
+        }),
+      );
     } catch (error) {
-      this.logger.error(`Failed to create consumer: ${error.message}`);
-      return { event: 'error', message: error.message };
+      this.logger.error(`Consumer 생성 실패: ${error.message}`);
+      client.send(JSON.stringify({ event: 'error', message: error.message }));
     }
   }
 
   // Consumer Resume (미디어 수신 재개)
-  async handleResumeConsumer(
-    data: any,
-    client: AuthenticatedSocket,
-  ) {
+  async handleResumeConsumer(data: any, client: AuthenticatedSocket) {
     if (!data || !data.channelPk || !data.consumerId) {
-      this.logger.error('Invalid data for resume-consumer');
-      return { event: 'error', message: 'Invalid data' };
+      this.logger.error(
+        `유효하지 않은 resume-consumer 데이터: ${client.clientId}`,
+      );
+      client.send(
+        JSON.stringify({ event: 'error', message: '유효하지 않은 데이터' }),
+      );
+      return;
     }
 
     const { channelPk, consumerId } = data;
     const userId = client.userId;
 
     if (!userId) {
-      return { event: 'error', message: 'User not authenticated' };
+      this.logger.error(`인가되지 않은 사용자 (clientId: ${client.clientId})`);
+      client.send(
+        JSON.stringify({
+          event: 'error',
+          message: '사용자 인증이 되지 않았습니다.',
+        }),
+      );
+      return;
     }
 
     try {
       await this.roomService.resumeConsumer(channelPk, userId, consumerId);
 
-      this.logger.log(`Consumer resumed for user ${userId}: ${consumerId}`);
+      this.logger.log(
+        `Consumer가 재개됨: 사용자 ${userId} (clientId: ${client.clientId})`,
+      );
 
-      return { event: 'consumer-resumed', consumerId };
+      client.send(JSON.stringify({ event: 'consumer-resumed', consumerId }));
     } catch (error) {
-      this.logger.error(`Failed to resume consumer: ${error.message}`);
-      return { event: 'error', message: error.message };
+      this.logger.error(`Consumer 재개 실패: ${error.message}`);
+      client.send(JSON.stringify({ event: 'error', message: error.message }));
     }
   }
 
   // Producer 닫기
-  async handleCloseProducer(
-    data: any,
-    client: AuthenticatedSocket,
-  ) {
+  async handleCloseProducer(data: any, client: AuthenticatedSocket) {
     if (!data || !data.channelPk || !data.producerId) {
-      this.logger.error('Invalid data for close-producer');
-      return { event: 'error', message: 'Invalid data' };
+      this.logger.error(
+        `유효하지 않은 close-producer 데이터: ${client.clientId}`,
+      );
+      client.send(
+        JSON.stringify({ event: 'error', message: '유효하지 않은 데이터' }),
+      );
+      return;
     }
 
     const { channelPk, producerId } = data;
     const userId = client.userId;
 
     if (!userId) {
-      return { event: 'error', message: 'User not authenticated' };
+      this.logger.error(
+        `producer 닫기 실패 - 인가되지 않은 사용자: (clientId: ${client.clientId})`,
+      );
+      client.send(
+        JSON.stringify({
+          event: 'error',
+          message: '사용자 인증이 되지 않았습니다.',
+        }),
+      );
+      return;
     }
 
     try {
       await this.roomService.closeProducer(channelPk, userId, producerId);
 
-      // 다른 사용자들에게 Producer 닫힘 알림
-      this.broadcastToChannel(channelPk, {
-        event: 'producer-closed',
-        userId,
-        producerId,
-      }, userId);
+      this.logger.log(
+        `유저 ${userId} (clientId: ${client.clientId})의 Producer ${producerId} 닫힘`,
+      );
 
-      this.logger.log(`Producer closed for user ${userId}: ${producerId}`);
-
-      return { event: 'producer-closed', producerId };
+      client.send(JSON.stringify({ event: 'producer-closed', producerId }));
     } catch (error) {
-      this.logger.error(`Failed to close producer: ${error.message}`);
-      return { event: 'error', message: error.message };
+      this.logger.error(
+        `유저 ${userId} (clientId: ${client.clientId})의 Producer ${producerId} 닫기 실패: ${error.message}`,
+      );
+      client.send(JSON.stringify({ event: 'error', message: error.message }));
     }
   }
 
   // 기존 Producer 목록 요청
-  async handleGetProducers(
-    data: any,
-    client: AuthenticatedSocket,
-  ) {
+  async handleGetProducers(data: any, client: AuthenticatedSocket) {
     if (!data || !data.channelPk) {
-      this.logger.error('Invalid data for get-producers');
-      return { event: 'error', message: 'Invalid data' };
+      this.logger.error(
+        `유효하지 않은 get-producers 데이터: ${client.clientId}`,
+      );
+      client.send(
+        JSON.stringify({ event: 'error', message: '유효하지 않은 데이터' }),
+      );
+      return;
     }
 
     const { channelPk } = data;
     const userId = client.userId;
 
     if (!userId) {
-      return { event: 'error', message: 'User not authenticated' };
+      this.logger.error(`인가되지 않은 사용자 (clientId: ${client.clientId})`);
+      client.send(
+        JSON.stringify({
+          event: 'error',
+          message: '사용자 인증이 되지 않았습니다.',
+        }),
+      );
+      return;
     }
 
     try {
       const producers = this.roomService.getProducersInRoom(channelPk, userId);
 
-      this.logger.log(`Sent ${producers.length} producers to user ${userId} in channel ${channelPk}`);
+      this.logger.log(
+        `채널${channelPk}에서 유저 ${userId} (clientId: ${client.clientId})의 Producer 목록 요청`,
+      );
 
-      return {
-        event: 'producers-list',
-        producers,
-      };
+      client.send(
+        JSON.stringify({
+          event: 'producers-list',
+          producers,
+        }),
+      );
     } catch (error) {
-      this.logger.error(`Failed to get producers: ${error.message}`);
-      return { event: 'error', message: error.message };
+      this.logger.error(`Producer 목록 요청 실패: ${error.message}`);
+      client.send(JSON.stringify({ event: 'error', message: error.message }));
     }
   }
 
@@ -479,117 +692,53 @@ export class SfuGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const { event, ...data } = message;
 
     try {
-      let response: any;
-
+      // 모든 핸들러는 이제 직접 client.send()를 호출하므로 response 변수는 제거합니다.
       switch (event) {
-        case 'join-channel':
-          response = await this.handleJoinChannel(data, client);
-          break;
-        case 'leave-channel':
-          response = await this.handleLeaveChannel(data, client);
-          break;
+        case 'join-room':
+          await this.handleJoinRoom(data, client);
+          return;
+        // case 'leave-channel': // handleLeaveChannel 제거로 인해 주석 처리. roomService에서 처리될 예정
+        //   // response = await this.handleLeaveChannel(data, client);
+        //   // break;
         case 'get-router-rtp-capabilities':
-          response = await this.handleGetRouterRtpCapabilities(data, client);
-          break;
+          await this.handleGetRouterRtpCapabilities(data, client);
+          return;
         case 'create-webrtc-transport':
-          response = await this.handleCreateWebRtcTransport(data, client);
-          break;
+          await this.handleCreateWebRtcTransport(data, client);
+          return;
         case 'connect-transport':
-          response = await this.handleConnectTransport(data, client);
-          break;
+          await this.handleConnectTransport(data, client);
+          return;
         case 'produce':
-          response = await this.handleProduce(data, client);
-          break;
+          await this.handleProduce(data, client);
+          return;
         case 'consume':
-          response = await this.handleConsume(data, client);
-          break;
+          await this.handleConsume(data, client);
+          return;
         case 'resume-consumer':
-          response = await this.handleResumeConsumer(data, client);
-          break;
+          await this.handleResumeConsumer(data, client);
+          return;
         case 'close-producer':
-          response = await this.handleCloseProducer(data, client);
-          break;
+          await this.handleCloseProducer(data, client);
+          return;
         case 'get-producers':
-          response = await this.handleGetProducers(data, client);
-          break;
+          await this.handleGetProducers(data, client);
+          return;
         default:
-          this.logger.warn(`Unknown event: ${event}`);
-          response = { event: 'error', message: `Unknown event: ${event}` };
-      }
-
-      // 응답 전송
-      if (response && client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(response));
+          this.logger.warn(`알 수 없는 이벤트: ${event}`);
+          client.send(
+            JSON.stringify({
+              event: 'error',
+              message: `Unknown event: ${event}`,
+            }),
+          );
+          return;
       }
     } catch (error) {
-      this.logger.error(`Error handling message: ${error.message}`);
+      this.logger.error(`Raw 메시지 처리 실패: ${error.message}`, error.stack);
       if (client.readyState === WebSocket.OPEN) {
         client.send(JSON.stringify({ event: 'error', message: error.message }));
       }
-    }
-  }
-
-  /**
-   * 채널이 VOICE 또는 VIDEO 채널인지 검증
-   */
-  private async validateVoiceChannel(channelPk: number): Promise<boolean> {
-
-    // 메인 서버 url
-    const mainServerUrl = this.configService.get<string>('MAIN_SERVER_URL');
-
-    // 메인 서버에 만들어야 할 채널 검증 API 엔드포인트
-    const validationUrl = `${mainServerUrl}/channels/validate/${channelPk}`;
-
-    try {
-      this.logger.debug(`"${channelPk}" 채널이 "${validationUrl}"서버에서 유효한지 확인`);
-
-      // 메인 서버에 API 호출
-      const response = await firstValueFrom(
-        this.httpService.get<{ isValid: boolean; channelKind?: 'TEXT' | 'VOICE'}>(validationUrl)
-        /*
-        this.httpService: @nestjs/axios 패키지에서 제공하는 HttpService 클래스의 인스턴스
-        get<...> :  HTTP GET 요청 메서드. 제네릭<> 문을 통해 HTTP 요청의 응답 본문(response body)이 어떤 형식인지 알려줌
-        () : GET 요청을 보낼 대상 URL
-        */
-      );
-
-      const { isValid, channelKind } = response.data;
-
-      if (!isValid) {
-        this.logger.warn(`"${channelPk}" 채널을 찾을 수 없습니다.`);
-        return false;
-      }
-
-      const isVoiceChannel = channelKind === 'VOICE';
-      if (!isVoiceChannel) {
-        this.logger.warn(`"${channelPk}" 채널은 VOICE 채널이 아닙니다.`);
-      }
-
-      return isVoiceChannel;
-          
-    } catch (error) {
-      this.logger.error(`"${channelPk}"번 채널 검증 오류: ${error.message}`);
-      return false;
-    }
-  }
-
-  // 특정 채널의 모든 사용자에게 브로드캐스트 (발신자 제외)
-  private broadcastToChannel(channelPk: number, message: any, excludeUserId?: number) {
-    const users = this.channelUsers.get(channelPk);
-    if (!users) return;
-
-    users.forEach(userId => {
-      if (userId !== excludeUserId) {
-        this.sendToUser(userId, message);
-      }
-    });
-  }
-
-  // 특정 사용자에게 메시지 전송
-  private sendToUser(userId: number, message: any) {
-    const socket = this.userSockets.get(userId);
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify(message));
     }
   }
 }

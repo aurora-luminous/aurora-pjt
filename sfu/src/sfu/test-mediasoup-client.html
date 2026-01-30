@@ -153,7 +153,7 @@
       <input type="number" id="channelPk" placeholder="채널 PK" value="1" />
       <input
         type="text"
-        id="authToken"
+        id="accessToken"
         placeholder="Auth Token (JWT)"
         size="50"
       />
@@ -307,10 +307,10 @@
       async function connect() {
         // 사용자로부터 채널 PK와 Auth Token을 가져오기.
         channelPk = parseInt(document.getElementById('channelPk').value, 10);
-        const authToken = document.getElementById('authToken').value;
+        const accessToken = document.getElementById('accessToken').value;
 
         // 필수 입력 값 확인
-        if (!channelPk || !authToken) {
+        if (!channelPk || !accessToken) {
           alert('채널 PK와 Auth Token을 모두 입력해주세요.');
           return;
         }
@@ -458,14 +458,14 @@
       async function initMediasoup() {
         try {
           log('mediasoup 장치 시작중...');
-          const authToken = document.getElementById('authToken').value;
+          const accessToken = document.getElementById('accessToken').value;
           // 서버에 룸 참여(join-room) 이벤트를 전송
           // 인증 토큰과 현재 채널 PK를 포함하며, RTP Capabilities는 나중에 얻음
           // RTP Capability란? 단말기가 어떤 형태의 미디어(코덱, 해상도 등)를 처리할 수 있는지에 대한 능력과 설정이 담긴 정보
           // 즉, "나는 이 코덱으로 이런 미디어 스트림을 이 포트로 보낼 수 있다" 라고 상대방에게 알리는 통신 환경 설정 및 지원 능력임
           send('join-room', {
             channelPk,
-            authToken,
+            accessToken,
             rtpCapabilities: {},
           });
           // rtpCapabilities를 빈 채로 보내는 이유는 초기화 시점에서는 아직 mediasoupClient.Device가 로드되지 않았기 때문.

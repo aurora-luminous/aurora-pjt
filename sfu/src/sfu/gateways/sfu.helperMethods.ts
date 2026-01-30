@@ -9,7 +9,7 @@ const logger = new Logger('JwtHelper');
  * @param actualJwtSecret 검증에 사용할 JWT 비밀 키
  * @returns 디코딩된 userId (string) 또는 유효하지 않을 경우 null
  */
-export function verifyAndDecodeAuthToken(
+export function verifyAndDecodeaccessToken(
   token: string,
   actualJwtSecret: string,
 ): { userId: string } | null {

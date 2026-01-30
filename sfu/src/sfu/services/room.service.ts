@@ -8,13 +8,13 @@ import {
   Consumer,
 } from 'mediasoup/types';
 import { ConfigService } from '@nestjs/config';
-import { WebSocket } from 'ws'; 
+import { WebSocket } from 'ws';
 
 // SfuGateway에서 정의한 AuthenticatedSocket 인터페이스와 일치하도록 정의
 interface AuthenticatedSocket extends WebSocket {
   userId?: number;
   channelPk?: number;
-  authToken?: string;
+  accessToken?: string;
   clientId?: string;
 }
 

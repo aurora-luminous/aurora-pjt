@@ -6,9 +6,11 @@ import { StopIcon } from "./icons/StopIcon";
 interface VoiceControlBarProps {
   isMicOn: boolean;
   isVideoOn: boolean;
+  isAudioOn: boolean;
   isScreenSharing: boolean;
   onToggleMic: () => void;
   onToggleVideo: () => void;
+  onToggleAudio: () => void;
   onToggleScreenShare: () => void;
   onToggleChangeScreenShare: () => void;
   onEndCall?: () => void;
@@ -17,9 +19,11 @@ interface VoiceControlBarProps {
 export const VoiceControlBar = ({
   isMicOn,
   isVideoOn,
+  isAudioOn,
   isScreenSharing,
   onToggleMic,
   onToggleVideo,
+  onToggleAudio,
   onToggleScreenShare,
   onToggleChangeScreenShare,
   onEndCall,
@@ -87,6 +91,50 @@ export const VoiceControlBar = ({
               <path
                 fillRule="evenodd"
                 d="M2.293 2.293a1 1 0 011.414 0L7 5.586V4a3 3 0 116 0v4c0 .57-.16 1.104-.44 1.563l1.828 1.828A6.966 6.966 0 0015 8a1 1 0 012 0 8.94 8.94 0 01-1.22 4.522l1.927 1.927a1 1 0 01-1.414 1.414L3.707 3.707a1 1 0 010-1.414zM10 11.414L7.586 9A3.001 3.001 0 007 8v3a3 3 0 003 .414z"
+                clipRule="evenodd"
+              />
+            </svg>
+          )}
+        </button>
+
+        <button
+          onClick={onToggleAudio}
+          className={`
+            rounded-full flex items-center justify-center transition-colors
+            ${isMobile ? "w-10 h-10" : "w-12 h-12"}
+            ${
+              isAudioOn
+                ? "bg-gray-600 hover:bg-gray-500"
+                : "bg-red-500 hover:bg-red-600"
+            }
+          `}
+          aria-label={isAudioOn ? "오디오 끄기" : "오디오 켜기"}
+        >
+          {isAudioOn ? (
+            <svg
+              className={`
+              fill-current
+              ${isMobile ? "w-5 h-5" : "w-6 h-6"}
+            `}
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.983 5.983 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.984 3.984 0 00-1.172-2.828 1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+          ) : (
+            <svg
+              className={`
+              fill-current
+              ${isMobile ? "w-5 h-5" : "w-6 h-6"}
+            `}
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM12.293 7.293a1 1 0 011.414 1.414L10.414 12l3.293 3.293a1 1 0 01-1.414 1.414L9 13.414 5.707 16.707a1 1 0 01-1.414-1.414L7.586 12 4.293 8.707a1 1 0 011.414-1.414L9 10.586l3.293-3.293z"
                 clipRule="evenodd"
               />
             </svg>

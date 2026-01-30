@@ -43,10 +43,12 @@ const VoiceChannelPage = () => {
     handleToggleVideo,
     mikeStream,
     handleToggleMic,
+    handleToggleAudio,
     screenStream,
     handleToggleScreenShare,
     isScreenSharing,
     handdleChangeScreenShare,
+    isAudioEnabled,
   } = useMediaControl();
 
   // 참여자 수에 따른 그리드 레이아웃 계산
@@ -97,9 +99,11 @@ const VoiceChannelPage = () => {
       <VoiceControlBar
         isMicOn={isMicOn}
         isVideoOn={isVideoOn}
+        isAudioOn={isAudioEnabled}
         isScreenSharing={isScreenSharing}
         onToggleMic={handleToggleMic}
         onToggleVideo={handleToggleVideo}
+        onToggleAudio={handleToggleAudio}
         onToggleScreenShare={handleToggleScreenShare}
         onToggleChangeScreenShare={handdleChangeScreenShare}
       />

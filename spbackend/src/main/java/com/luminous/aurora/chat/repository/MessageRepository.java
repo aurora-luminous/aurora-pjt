@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface MessageRepository extends JpaRepository<Message, Long> {
 
@@ -30,4 +31,21 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
     // 사용자가 쓴 메시지 조회
     List<Message> findByUserPk_UserPkOrderByCreatedAtDesc(Integer userPk);
+
+    // DM방의 가장 최신 메시지 1개 조회(마지막 메시지 미리보기용)
+    @Query("SELECT m FROM Message m " +
+            "WHERE m.dmRoomPk.dmRoomPk = :dmRoomPk " +
+            "ORDER BY m.createdAt DESC LIMIT 1")
+    Optional<Message> findLatestMessageInDmRoom(@Param("dmRoomPk") Integer dmRoomPk);
+
+    // 읽지 않은 메시지 개수 (내가 보낸것 제외)
+    @Query("SELECT COUNT(m) FROM Message m " +
+            "WHERE m.dmRoomPk.dmRoomPk = :dmRoomPk " +
+            "AND m.messagePk > :lastReadMessagePk " +
+            "AND m.userPk.userPk != :myUserPk")
+    Long countUnreadMessages(
+            @Param("dmRoomPk") Integer DmRoomPk,
+            @Param("lastReadMessagePk") Long lastReadMessagePk,
+            @Param("myUserPk") Integer myUserPk
+    );
 }

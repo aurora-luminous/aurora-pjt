@@ -100,6 +100,7 @@ public class ChatWebSocketController {
     private String extractJwtFromSession(SimpMessageHeaderAccessor headerAccessor) {
         return (String) headerAccessor.getSessionAttributes().get("jwt_token");
     }
+
     // JWT 토큰에서 userPk 추출
     private Integer extractUserPkFromToken(String jwtToken) {
         // JWT에서 userEmail 추출 후 userPk 조회
@@ -155,5 +156,43 @@ public class ChatWebSocketController {
         }
     }
 
+    /**
+     * 비활동 감지 (프론트에서 x분 비활동시 호출)
+     */
+    @MessageMapping("/userstate/away")
+    public void setAutoAway(SimpMessageHeaderAccessor headerAccessor) {
+        try {
+            String jwtToken = extractJwtFromSession(headerAccessor);
+            if (jwtToken == null) {
+                throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
+            }
+            Integer userPk = extractUserPkFromToken(jwtToken);
+            userStateService.setUserAway(userPk);
+
+            log.info("자동 자리 비움 설정");
+        } catch (Exception e) {
+            log.error("자동 자리비움 설정 실패 : {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 활동 감지 (프론트에서 마우스/키보드 움직임 감지 시 호출)
+     */
+    @MessageMapping("/userstate/active")
+    public void setActive(SimpMessageHeaderAccessor headerAccessor) {
+        try {
+            String jwtToken = extractJwtFromSession(headerAccessor);
+            if (jwtToken == null) {
+                throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
+            }
+
+            Integer userPk = extractUserPkFromToken(jwtToken);
+            userStateService.setUserOnline(userPk);
+
+            log.info("활동 재개");
+        } catch (Exception e) {
+            log.error("활동 재개 설정 실패 : {}", e.getMessage());
+        }
+    }
 
 }

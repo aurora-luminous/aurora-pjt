@@ -2,7 +2,7 @@ package com.luminous.aurora.userstate.controller;
 
 import com.luminous.aurora.auth.repository.UserRepository;
 import com.luminous.aurora.jwt.JwtTokenProvider;
-import com.luminous.aurora.member.entity.DmMember;
+import com.luminous.aurora.member.dto.DmRoomResponse;
 import com.luminous.aurora.project.entity.ProjectMember;
 import com.luminous.aurora.userstate.dto.*;
 import com.luminous.aurora.userstate.entity.UserStatus;
@@ -20,7 +20,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("jv/api/userstate")
+@RequestMapping("/api/jv/userstate")
 @RequiredArgsConstructor
 public class UserStateController {
 
@@ -88,11 +88,11 @@ public class UserStateController {
 
     // DM 멤버 조회 (최신순)
 
-    @GetMapping("/dm/{dmRoomPk}/members")
-    public ResponseEntity<List<DmMember>> getDmMembers(
-            @PathVariable Integer dmRoomPk) {
-        List<DmMember> members = userStateService.getDmMembers(dmRoomPk);
-        return ResponseEntity.ok(members);
+    @GetMapping("/dm/rooms")
+    public ResponseEntity<List<DmRoomResponse>> getMyDmRooms(HttpServletRequest request) {
+        Integer userPk = extractUserPkFromRequest(request);
+        List<DmRoomResponse> dmRooms = userStateService.getDmRoomsWithStatus(userPk);
+        return ResponseEntity.ok(dmRooms);
     }
 
 

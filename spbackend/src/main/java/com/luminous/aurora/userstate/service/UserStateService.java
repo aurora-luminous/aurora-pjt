@@ -1,12 +1,11 @@
 package com.luminous.aurora.userstate.service;
 
-import com.luminous.aurora.member.entity.DmMember;
+import com.luminous.aurora.member.dto.DmRoomResponse;
 import com.luminous.aurora.project.entity.ProjectMember;
-import com.luminous.aurora.userstate.entity.UserState;
 import com.luminous.aurora.userstate.entity.UserStatus;
 
 import java.util.List;
-import java.util.Optional;
+
 
 public interface UserStateService {
 
@@ -18,6 +17,9 @@ public interface UserStateService {
 
     // 사용자 온라인 상태 설정(자동)
     void setUserOnline(Integer userPk);
+
+    // 사용자 자리비움 상태 설정 (자동, 비활동 감지시)
+    void setUserAway(Integer userPk);
 
     // 사용자 오프라인 상태 설정(자동)
     void setUserOffline(Integer userPk);
@@ -31,7 +33,7 @@ public interface UserStateService {
     List<ProjectMember> getProjectMembersWithStatus(Integer projectPk);
 
     // ===== DM 멤버 조회 ========
-    // DM멤버 조회
-    List<DmMember> getDmMembers(Integer dmRoomPk);
+    // DM멤버 조회 (최신 메시지순 + 상태 + unreadCount)
+    List<DmRoomResponse> getDmRoomsWithStatus(Integer userPk);
 
 }

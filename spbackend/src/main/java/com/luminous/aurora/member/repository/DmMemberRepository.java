@@ -18,10 +18,13 @@ public interface DmMemberRepository extends JpaRepository<DmMember, Integer> {
     // DM방 멤버 존재 여부 확인
     boolean existsByDmRoom_DmRoomPkAndUser_UserPk(Integer dmRoomPk, Integer userPk);
 
-    // DM 멤버 조회 (해당 DM룸의 가장 최근 메시지 시간으로 정렬)
+    // 내가 참여한 DM 방 목록 조회 (최신 메시지순 )
     @Query("SELECT dm FROM DmMember dm " +
-           "LEFT JOIN Message m ON dm.dmRoom = m.dmRoomPk " +
-           "WHERE dm.dmRoom.dmRoomPk = :dmRoomPk " +
-           "ORDER BY m.createdAt DESC")
-    List<DmMember> findByDmRoom_DmRoomPkOrderByLastMessageTimeDesc(@Param("dmRoomPk") Integer dmRoomPk);
+            "WHERE dm.user.userPk = :userPk " +
+            "ORDER BY (SELECT MAX(m.createdAt) FROM Message m " +
+            "WHERE m.dmRoomPk = dm.dmRoom) DESC NULLS LAST")
+    List<DmMember> findMyDmRoomsOrderByLastMessage(@Param("userPk") Integer userPk);
+
+    // DM 방의 모든 멤버 조회
+    List<DmMember> findByDmRoom_DmRoomPk(Integer dmRoomPk);
 }

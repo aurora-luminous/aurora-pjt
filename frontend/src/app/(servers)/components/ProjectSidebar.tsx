@@ -55,8 +55,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     openChannelManageModal,
   } = useModal();
 
-  // 프로젝트 추가 드롭다운 상태
-  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
+
   // 채널 드롭다운 상태
   const [showChannelDropdown, setShowChannelDropdown] = useState(false);
   // 프로젝트 옵션 드롭다운 상태
@@ -67,6 +66,8 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   const [showChannelOptionMenu, setShowChannelOptionMenu] = useState<
     string | null
   >(null);
+
+  const [showInviteDropdown, setShowInviteDropdown] = useState<string | null>(null);
 
   const memberInfo = useProjectMemberListQuery(serverUrl || "", projectId);
 
@@ -79,22 +80,20 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
-      if (!target.closest(".project-dropdown")) {
-        setShowProjectDropdown(false);
-      }
-      if (!target.closest(".channel-dropdown")) {
+      if (!target.closest(".channel-dropdown") || !target.closest(".invite-channel-dropdown")) {
         setShowChannelDropdown(false);
+        setShowInviteDropdown(null);
       }
     };
 
-    if (showProjectDropdown || showChannelDropdown) {
+    if (showChannelDropdown) {
       document.addEventListener("click", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("click", handleClickOutside);
     };
-  }, [showProjectDropdown, showChannelDropdown]);
+  }, [showChannelDropdown]);
 
   // Admin 페이지인지 확인
   const isAdminPage = pathname.includes("/admin");
@@ -145,6 +144,15 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     console.log("openProjectDropdown", showProjectOptionMenu, projectId);
     setShowProjectOptionMenu(
       showProjectOptionMenu === projectId ? null : projectId
+    );
+  };
+
+  const openChannelInviteDropdown = (e: React.MouseEvent, targetId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("openChannelInviteDropdown", showInviteDropdown, targetId);
+    setShowInviteDropdown(
+      showInviteDropdown === targetId ? null : targetId
     );
   };
 
@@ -265,7 +273,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   const handleAddProject = () => {
     if (!serverInfo?.serverUrl) return;
 
-    setShowProjectDropdown(false);
+    setShowChannelDropdown(false);
     openProjectAddModal({
       serverUrl: serverInfo.serverUrl,
       projectName: "",
@@ -277,7 +285,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   const handleInviteProject = () => {
     if (!serverInfo?.serverUrl || !currentProject) return;
 
-    setShowProjectDropdown(false);
+    setShowChannelDropdown(false);
     openProjectInviteModal({
       serverUrl: serverInfo.serverUrl,
       projectPk: currentProject.projectPk,
@@ -287,6 +295,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
 
   const handleProjectManage = () => {
     if (currentProjectRole !== "admin") return;
+    setShowChannelDropdown(false);
     openProjectManageModal({
       serverUrl: serverUrl || "",
       projectPk: projectId,
@@ -311,6 +320,8 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
       channelPk: currentChannel.channelPk,
     });
   };
+
+  
 
   // 채널 링크 생성 함수 (채널 타입별 경로 구분) - 유틸 함수 사용
   const createChannelLink = (channel: Channel) => {
@@ -378,73 +389,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                 ))
               )}
 
-              {/* 프로젝트 추가 드롭다운 */}
-              <div className="relative mb-2 project-dropdown">
-                <div
-                  onClick={() => setShowProjectDropdown(!showProjectDropdown)}
-                  className="rounded cursor-pointer hover:bg-gray-700 transition-colors border-2 border-dashed border-gray-600 hover:border-gray-500"
-                >
-                  <div className="flex items-center justify-center p-2">
-                    <div className="w-10 h-10 bg-gray-600 rounded flex items-center justify-center">
-                      <span className="text-white text-lg">+</span>
-                    </div>
-                  </div>
-                </div>
 
-                {/* 드롭다운 메뉴 */}
-                {showProjectDropdown && (
-                  <div className="absolute top-full left-0 mt-1 w-48 bg-gray-700 rounded shadow-lg z-[9999] border border-gray-600">
-                    <button
-                      onClick={handleInviteProject}
-                      className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
-                    >
-                      <div className="flex items-center">
-                        <span className="mr-3">🔗</span>
-                        <div>
-                          <div className="font-medium">프로젝트 초대</div>
-                          <div className="text-xs text-gray-400">
-                            서버 멤버 초대하기
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                    <button
-                      onClick={handleAddProject}
-                      className={`block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors ${
-                        currentProjectRole === "admin"
-                          ? "border-b border-gray-600"
-                          : "rounded-b"
-                      }`}
-                    >
-                      <div className="flex items-center">
-                        <span className="mr-3">📁</span>
-                        <div>
-                          <div className="font-medium">프로젝트 생성</div>
-                          <div className="text-xs text-gray-400">
-                            새 프로젝트 만들기
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                    {currentProjectRole === "admin" && (
-                      <button
-                        onClick={handleProjectManage}
-                        className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors rounded-b"
-                      >
-                        <div className="flex items-center">
-                          <span className="mr-3">⚙️</span>
-                          <div>
-                            <div className="font-medium">프로젝트 관리</div>
-                            <div className="text-xs text-gray-400">
-                              프로젝트 설정하기
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
             </div>
           </div>
 
@@ -475,12 +420,58 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                       {/* 채널 드롭다운 메뉴 */}
                       {showChannelDropdown && (
                         <div className="absolute top-full right-0 mt-1 w-48 bg-gray-700 rounded shadow-lg z-[9999] border border-gray-600">
+                          {currentProjectRole === "admin" && (
+                            <>
+                              <button
+                                onClick={handleInviteProject}
+                                className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                              >
+                                <div className="flex items-center">
+                                  <span className="mr-3">🔗</span>
+                                  <div>
+                                    <div className="font-medium">프로젝트 초대</div>
+                                    <div className="text-xs text-gray-400">
+                                      서버 멤버 초대하기
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+                              <button
+                                onClick={handleAddProject}
+                                className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                              >
+                                <div className="flex items-center">
+                                  <span className="mr-3">📁</span>
+                                  <div>
+                                    <div className="font-medium">프로젝트 생성</div>
+                                    <div className="text-xs text-gray-400">
+                                      새 프로젝트 만들기
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+                              <button
+                                onClick={handleProjectManage}
+                                className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                              >
+                                <div className="flex items-center">
+                                  <span className="mr-3">⚙️</span>
+                                  <div>
+                                    <div className="font-medium">프로젝트 관리</div>
+                                    <div className="text-xs text-gray-400">
+                                      프로젝트 설정하기
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+                            </>
+                          )}
                           <button
                             onClick={handleAddChannel}
-                            className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors border-b border-gray-600"
+                            className="block w-full text-left px-4 py-3 text-white text-sm hover:bg-gray-600 transition-colors rounded-b"
                           >
                             <div className="flex items-center">
-                              <span className="mr-3">📁</span>
+                              <span className="mr-3">➕</span>
                               <div>
                                 <div className="font-medium">채널 생성</div>
                                 <div className="text-xs text-gray-400">
@@ -536,14 +527,17 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                       <ChannelSection
                         title="공지사항"
                         channels={noticeChannels}
+                        serverUrl={serverInfo?.serverUrl || ""}
                         isCurrentChannel={isCurrentChannel}
                         createChannelLink={createChannelLink}
                         onChannelContextMenu={openChannelDropdown}
                         showChannelOptionMenu={showChannelOptionMenu}
+                        showInviteDropdown={showInviteDropdown}
                         currentProjectRole={currentProjectRole}
                         onChannelDropdownClose={() =>
                           setShowChannelOptionMenu(null)
                         }
+                        onChannelInviteDropdown={openChannelInviteDropdown}
                         onChannelManage={handleChannelManage}
                       />
                     )}
@@ -552,11 +546,14 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                     <ChannelSection
                       title="채팅 채널"
                       channels={textChannels}
+                      serverUrl={serverInfo?.serverUrl || ""}
                       isCurrentChannel={isCurrentChannel}
                       createChannelLink={createChannelLink}
                       onChannelContextMenu={openChannelDropdown}
                       showChannelOptionMenu={showChannelOptionMenu}
+                      showInviteDropdown={showInviteDropdown}
                       currentProjectRole={currentProjectRole}
+                      onChannelInviteDropdown={openChannelInviteDropdown}
                       onChannelDropdownClose={() =>
                         setShowChannelOptionMenu(null)
                       }
@@ -571,7 +568,10 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                       createChannelLink={createChannelLink}
                       onChannelContextMenu={openChannelDropdown}
                       showChannelOptionMenu={showChannelOptionMenu}
+                      showInviteDropdown={showInviteDropdown}
+                      serverUrl={serverInfo?.serverUrl || ""}
                       currentProjectRole={currentProjectRole}
+                      onChannelInviteDropdown={openChannelInviteDropdown}
                       onChannelDropdownClose={() =>
                         setShowChannelOptionMenu(null)
                       }

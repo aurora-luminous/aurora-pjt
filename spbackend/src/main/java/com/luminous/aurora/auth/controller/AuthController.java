@@ -10,6 +10,7 @@ import com.luminous.aurora.auth.service.TokenService;
 import com.luminous.aurora.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +27,12 @@ public class AuthController {
     private final AuthService authService;
     private final TokenService tokenService;
     private final JwtTokenProvider jwtTokenProvider;
+
+    @Value("${cookie.secure}")
+    private boolean cookieSecure;
+
+    @Value("${cookie.same-site}")
+    private String cookieSameSite;
 
     @PostMapping("/signup")
     public ResponseEntity<String> signup(@RequestBody SignUpRequest request) {
@@ -45,16 +52,16 @@ public class AuthController {
         // HttpOnly 쿠키 설정 (XSS 방지)
         ResponseCookie accessCookie = ResponseCookie.from("access_token", tokens.getAccessToken())
                 .httpOnly(true)
-                .secure(false) // 개발 환경에서는 false (HTTP 허용), 프로덕션에서는 true(HTTPS만 허용)
-                .sameSite("Lax") // 개발 환경에서는 Lax , 프로덕션에서는 Strict, nginx 프록시로 같은 도메인 통일 시 변경
+                .secure(cookieSecure) // 개발 환경에서는 false (HTTP 허용), 프로덕션에서는 true(HTTPS만 허용) -> https에서만 쿠키를 전송한다는뜻. localhost는 http라 false
+                .sameSite(cookieSameSite) // 개발 환경에서는 Lax , 프로덕션에서는 Strict, nginx 프록시로 같은 도메인 통일 시 변경 -> 다른사이트에서 요청 시 쿠키를 보낼까? strict - no, lax - get은 허용 post는 x
                 .maxAge(Duration.ofHours(1))
                 .path("/")
                 .build();
 
         ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", tokens.getRefreshToken())
                 .httpOnly(true)
-                .secure(false)
-                .sameSite("Lax")
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
                 .maxAge(Duration.ofDays(7))
                 .path("/")
                 .build();
@@ -82,16 +89,16 @@ public class AuthController {
         // 쿠키 삭제
         ResponseCookie accessCookie = ResponseCookie.from("access_token","")
                 .httpOnly(true)
-                .secure(false)
-                .sameSite("Lax")
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
                 .maxAge(0) // 즉시 삭제
                 .path("/")
                 .build();
 
         ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", "")
                 .httpOnly(true)
-                .secure(false)
-                .sameSite("Lax")
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
                 .maxAge(0)
                 .path("/")
                 .build();
@@ -122,8 +129,8 @@ public class AuthController {
         // 새로운 accesstoken 쿠키 설정
         ResponseCookie accessCookie = ResponseCookie.from("access_token", tokens.getAccessToken())
                 .httpOnly(true)
-                .secure(false)
-                .sameSite("Lax")
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
                 .maxAge(Duration.ofHours(1))
                 .path("/")
                 .build();

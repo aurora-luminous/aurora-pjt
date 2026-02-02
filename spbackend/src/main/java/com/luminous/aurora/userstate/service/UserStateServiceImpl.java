@@ -1,9 +1,12 @@
 package com.luminous.aurora.userstate.service;
 
+import com.luminous.aurora.chat.entity.Message;
+import com.luminous.aurora.chat.repository.MessageRepository;
 import com.luminous.aurora.common.error.exception.BadRequestException;
 import com.luminous.aurora.common.error.exception.ForbiddenException;
 import com.luminous.aurora.common.error.exception.InternalServerErrorException;
 import com.luminous.aurora.common.error.exception.NotFoundException;
+import com.luminous.aurora.member.dto.DmRoomResponse;
 import com.luminous.aurora.member.entity.DmMember;
 import com.luminous.aurora.member.repository.DmMemberRepository;
 import com.luminous.aurora.project.entity.ProjectMember;
@@ -31,6 +34,7 @@ public class UserStateServiceImpl implements UserStateService {
     private final UserStateRedisRepository redisRepository;
     private final ProjectMemberRepository projectMemberRepository;
     private final DmMemberRepository dmMemberRepository;
+    private final MessageRepository messageRepository;
 
     // ====기본 상태 관리 ====
     @Override
@@ -38,18 +42,27 @@ public class UserStateServiceImpl implements UserStateService {
         try {
             // 1. 의도적 설정 상태 조회 (DB)
             Optional<UserState> userState = userStateRepository.findByUserPk(userPk);
-            if (userState.isPresent() && userState.get().getStatus() != UserStatus.OFFLINE) {
-                return userState.get().getStatus();
+            if (userState.isPresent()) {
+                UserStatus dbStatus = userState.get().getStatus();
+
+                // ONLINE 설정 시만 redis 확인
+                if (dbStatus == UserStatus.ONLINE) {
+                    Optional<UserStatus> redisStatus = redisRepository.getUserStatus(userPk);
+
+                    if (redisStatus.isPresent()) {
+                        return redisStatus.get(); // ONLINE 또는 AWAY
+                    } else {
+                        return UserStatus.OFFLINE; // 연결 끊김
+                    }
+                }
+                // AWAY, DND, OFFLINE 바로 반환 (명시적 설정 우선)
+                return dbStatus;
             }
 
-            // 2. 자동상태 조회 (Redis)
+            // 2. DB 없으면 Redis 자동 상태 확인자동상태 조회
             Optional<UserStatus> redisStatus = redisRepository.getUserStatus(userPk);
-            if (redisStatus.isPresent()) {
-                return redisStatus.get();
-            }
+            return redisStatus.orElse(UserStatus.OFFLINE);
 
-            // 3. 기본값
-            return UserStatus.OFFLINE;
         } catch (Exception e) {
             log.error("사용자 상태 조회 실패 : {}", e.getMessage());
             // 상태 조회 실패 시 안전하게 OFFLINE 반환
@@ -87,6 +100,17 @@ public class UserStateServiceImpl implements UserStateService {
         } catch (Exception e) {
             log.error("사용자 온라인 설정 실패 : {}", e.getMessage());
             // Redis는 캐시이므로 오류가 발생해도 치명적이지 않기 때문에 로그만 기록하고 진행
+        }
+    }
+
+    // 자동 자리비움 설정
+    @Override
+    public void setUserAway(Integer userPk) {
+        try {
+            redisRepository.saveUserStatus(userPk, UserStatus.AWAY, 30);
+            log.debug("사용자 자동 자리 비움 설정(Redis) : userPk = {}", userPk);
+        } catch (Exception e) {
+            log.error("사용자 자동 자리비움 설정 실패 : {}", e.getMessage());
         }
     }
 
@@ -153,18 +177,68 @@ public class UserStateServiceImpl implements UserStateService {
     }
 
 
-    // ========== DM 멤버 조회 ==========
+    // ========== DM 방 조회 ==========
 
     @Override
-    public List<DmMember> getDmMembers(Integer dmRoomPk) {
+    public List<DmRoomResponse> getDmRoomsWithStatus(Integer userPk) {
         try {
-            // DM 멤버 조회 (최신순)
-            return dmMemberRepository.findByDmRoom_DmRoomPkOrderByLastMessageTimeDesc(dmRoomPk);
-        } catch (NotFoundException | BadRequestException | ForbiddenException e) {
-            throw e;
+            // 1. 내 DM 멤버 조회 (최신 메시지순)
+            List<DmMember> myDmMembers = dmMemberRepository.findMyDmRoomsOrderByLastMessage(userPk);
+
+            // 2. 각 DM 방 정보 조합
+            return myDmMembers.stream()
+                    .map(myDmMember -> {
+                        Integer dmRoomPk = myDmMember.getDmRoom().getDmRoomPk();
+
+                        // 2-1. 상대방 찾기
+                        List<DmMember> allMembers = dmMemberRepository.findByDmRoom_DmRoomPk(dmRoomPk);
+                        DmMember otherMember = allMembers.stream()
+                                .filter(member -> !member.getUser().getUserPk().equals(userPk))
+                                .findFirst()
+                                .orElse(null);
+
+                        if (otherMember == null) {
+                            return null;
+                        }
+
+                        // 2-2 상대방 상태 조회
+                        Integer otherUserPk = otherMember.getUser().getUserPk();
+                        UserStatus otherUserStatus = getUserStatus(otherUserPk);
+
+                        // 2-3 마지막 메시지 조회
+                        Message lastMessage = messageRepository
+                                .findLatestMessageInDmRoom(dmRoomPk)
+                                .orElse(null);
+
+                        // 2-4 읽지 않은 메시지 개수
+                        Integer unreadCount = 0;
+                        if (myDmMember.getLastReadMessage() != null) {
+                            Long count = messageRepository.countUnreadMessages(
+                                    dmRoomPk,
+                                    myDmMember.getLastReadMessage().getMessagePk(),
+                                    userPk
+                            );
+                            unreadCount = count.intValue();
+                        }
+
+                        // 2-5 DTO 생성
+                        return DmRoomResponse.builder()
+                                .dmRoomPk(dmRoomPk)
+                                .otherUserEmail(otherMember.getUser().getUserEmail())
+                                .otherUserName(otherMember.getUser().getUserName())
+                                .otherProfileImage(otherMember.getUser().getProfileImagePath())
+                                .isMute(myDmMember.getIsMute())
+                                .userStatus(otherUserStatus)
+                                .lastMessageContent(lastMessage != null ? lastMessage.getContent() : null)
+                                .lastMessageTime(lastMessage != null ? lastMessage.getCreatedAt() : null)
+                                .unreadCount(unreadCount)
+                                .build();
+                    })
+                    .filter(response -> response!= null)
+                    .collect(Collectors.toList());
         } catch (Exception e) {
-            log.error("DM 멤버 조회 실패 : {}", e.getMessage());
-            throw new InternalServerErrorException("DM 멤버 조회 중 서버 오류가 발생했습니다.: " + e.getMessage());
+            log.error("DM 목록 조회 실패 : {}", e.getMessage());
+            throw new InternalServerErrorException("DM 목록 조회 중 오류 발생 : " +e.getMessage());
         }
     }
 }

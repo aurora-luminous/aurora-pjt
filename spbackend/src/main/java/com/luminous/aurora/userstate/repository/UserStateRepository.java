@@ -1,12 +1,9 @@
 package com.luminous.aurora.userstate.repository;
 
-import com.luminous.aurora.member.entity.DmMember;
-import com.luminous.aurora.project.entity.ProjectMember;
 import com.luminous.aurora.userstate.entity.UserState;
 import com.luminous.aurora.userstate.entity.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+
 
 import java.util.List;
 import java.util.Optional;

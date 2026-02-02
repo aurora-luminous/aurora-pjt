@@ -4,11 +4,14 @@ import { ChannelItem } from "./ChannelItem";
 
 interface ChannelSectionProps {
   title: string;
+  serverUrl: string;
   channels: Channel[];
   isCurrentChannel: (channelName: string) => boolean;
   createChannelLink: (channel: Channel) => string;
   onChannelContextMenu: (e: React.MouseEvent, channelName: string) => void;
+  onChannelInviteDropdown: (e: React.MouseEvent, serverUrl: string) => void;
   showChannelOptionMenu: string | null;
+  showInviteDropdown: string | null;
   currentProjectRole: string | undefined;
   onChannelDropdownClose: () => void;
   onChannelManage: () => void;
@@ -17,11 +20,14 @@ interface ChannelSectionProps {
 
 export const ChannelSection: React.FC<ChannelSectionProps> = ({
   title,
+  serverUrl,
   channels,
   isCurrentChannel,
   createChannelLink,
   onChannelContextMenu,
+  onChannelInviteDropdown,
   showChannelOptionMenu,
+  showInviteDropdown,
   currentProjectRole,
   onChannelDropdownClose,
   onChannelManage,
@@ -51,13 +57,16 @@ export const ChannelSection: React.FC<ChannelSectionProps> = ({
           <ChannelItem
             key={channel.channelName}
             channel={channel}
+            serverUrl={serverUrl}
             isCurrentChannel={isCurrentChannel(channel.channelName)}
             createChannelLink={createChannelLink}
             onContextMenu={onChannelContextMenu}
             showDropdown={showChannelOptionMenu === channel.channelName}
+            showInviteDropdown={showInviteDropdown === channel.channelName}
             currentProjectRole={currentProjectRole}
             onDropdownClose={onChannelDropdownClose}
             onChannelManage={onChannelManage}
+            onChannelInviteDropdown={onChannelInviteDropdown}
           />
         ))
       )}

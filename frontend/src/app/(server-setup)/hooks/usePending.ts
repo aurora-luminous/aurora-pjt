@@ -22,61 +22,65 @@ export const usePending = () => {
 
   // 로컬 상태
   const [approvalStatus, setApprovalStatus] = useState<
-    "pending" | "active" | "inactive" | "checking"
-  >("checking");
+    "Pending" | "Active" | "Inactive" | "Checking"
+  >("Checking");
 
   // 서버 접근 권한 조회 - Tanstack Query 자동 polling 사용
   const {
-    data: serverAccessList = [],
+    data: serverAccessList,
     isLoading,
     error,
     refetch,
   } = useServerJoinStatusQuery(serverUrl || "dummy", approvalStatus);
+ 
+
 
   // 사용자의 승인 상태 확인 (이메일 필터링 불필요)
   useEffect(() => {
-    if (!serverAccessList?.length || !serverUrl) return;
+    if (!serverAccessList || !serverUrl) return;
 
     // /join API는 현재 사용자의 상태만 반환하므로 첫 번째 항목 사용
-    const currentUserAccess = serverAccessList[0];
+    const currentUserAccess = serverAccessList;
 
     if (currentUserAccess) {
       switch (currentUserAccess.sStatus) {
         case "Pending":
-          setApprovalStatus("pending");
+          setApprovalStatus("Pending");
           break;
         case "Active":
-          setApprovalStatus("active");
+          setApprovalStatus("Active");
           break;
         case "Inactive":
         case "Banned":
-          setApprovalStatus("inactive");
+          setApprovalStatus("Inactive");
           break;
         default:
-          setApprovalStatus("pending");
+          setApprovalStatus("Pending");
       }
     } else {
       // 목록이 비어있으면 아직 요청이 처리되지 않았음
-      setApprovalStatus("pending");
+      setApprovalStatus("Pending");
     }
   }, [serverAccessList, serverUrl]);
 
   // 승인 완료 시 자동 입장
   useEffect(() => {
-    if (approvalStatus === "active" && serverUrl && serverName) {
+    console.log("approvalStatus", approvalStatus);
+    if (approvalStatus === "Active") {
       console.log("✅ 승인 완료! 서버에 자동 입장합니다.");
 
       // 잠시 승인 완료 메시지를 보여준 후 입장
       setTimeout(async () => {
         try {
           await handleServerConnection(serverUrl, serverName);
+          router.push(`/${serverUrl}/projects/1/channels/일반`);
         } catch (error) {
           console.error("자동 입장 실패:", error);
           // 실패 시 수동으로 다시 시도할 수 있도록 UI 제공
         }
-      }, 2000);
+      }, 0);
     }
-  }, [approvalStatus, serverUrl, serverName, handleServerConnection]);
+  }, [approvalStatus]);
 
   const handleGoToRecentServer = () => {
     router.push("/server-connect");
@@ -89,7 +93,7 @@ export const usePending = () => {
   // 승인 상태에 따른 UI 렌더링
   const getStatusConfig = () => {
     switch (approvalStatus) {
-      case "active":
+      case "Active":
         return {
           icon: "✅",
           title: "승인 완료!",
@@ -100,7 +104,7 @@ export const usePending = () => {
           statusText: "승인 완료",
           dotColor: "bg-green-400",
         };
-      case "inactive":
+      case "Inactive":
         return {
           icon: "❌",
           title: "가입 거절됨",
@@ -111,7 +115,7 @@ export const usePending = () => {
           statusText: "가입 거절",
           dotColor: "bg-red-400",
         };
-      case "checking":
+      case "Checking":
         return {
           icon: "🔍",
           title: "상태 확인 중",

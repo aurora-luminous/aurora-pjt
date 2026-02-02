@@ -168,14 +168,14 @@ export const useServerAccessQuery = (
 // 🔄 Query: 사용자 본인의 서버 가입 상태 조회 (POST) - 승인 대기 페이지용
 export const useServerJoinStatusQuery = (
   serverUrl: string,
-  approvalStatus?: "pending" | "active" | "inactive" | "checking"
+  approvalStatus?: "Pending" | "Active" | "Inactive" | "Checking"
 ) => {
   const { execute: getServerJoinStatus } = useServerJoinStatusApi(serverUrl);
 
   return useQuery({
     queryKey: ["serverJoinStatus", serverUrl],
     queryFn: () => getServerJoinStatus(),
-    enabled: !!serverUrl && approvalStatus !== "active", // serverUrl이 있고 승인되지 않았을 때만 실행
+    enabled: !!serverUrl && approvalStatus !== "Active", // serverUrl이 있고 승인되지 않았을 때만 실행
     staleTime: 0, // 항상 최신 데이터 확인
     gcTime: 1 * 60 * 1000, // 1분간 캐시 유지
     refetchInterval: 5000, // 5초마다 자동 refetch

@@ -87,7 +87,7 @@ export const useServerAccessApi = (serverUrl: string) => {
 
 // 서버 가입 상태 조회 (사용자용)
 export const useServerJoinStatusApi = (serverUrl: string) => {
-  return useApi<ServerAccess[], void>({
+  return useApi<ServerAccess, void>({
     endpoint: `/ex/servers/${serverUrl}/join`,
     method: "POST",
     axiosInstance: expressClient,

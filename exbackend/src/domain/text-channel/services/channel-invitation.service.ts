@@ -73,9 +73,9 @@ export class ChannelInvitationService {
       throw new NotFoundException(`채널 ID ${inviteDto.channelPk}를 찾을 수 없습니다`);
     }
 
-    // 2. Private 채널은 초대만 가능
-    if (!channel.isPrivate) {
-      throw new ForbiddenException('공개 채널은 직접 참가가 가능합니다. 채널 참가 기능을 사용하세요.');
+    // 2. Private 채널만 초대 가능 (accessType이 PRIVATE인 경우만)
+    if (channel.accessType !== 'PRIVATE') {
+      throw new ForbiddenException('공개 채널은 모든 사용자가 이미 초대되어 있습니다.');
     }
 
     // 3. 초대하려는 사용자 존재 확인 (이메일로)
@@ -172,8 +172,8 @@ export class ChannelInvitationService {
       throw new NotFoundException(`채널 ID ${channelPk}를 찾을 수 없습니다`);
     }
 
-    // 2. Public 채널인지 확인
-    if (channel.isPrivate) {
+    // 2. Public 채널인지 확인 (accessType이 PRIVATE인 경우 초대가 필요)
+    if (channel.accessType === 'PRIVATE') {
       throw new ForbiddenException('비공개 채널은 초대가 필요합니다');
     }
 
@@ -263,8 +263,8 @@ export class ChannelInvitationService {
       throw new NotFoundException(`채널 ID ${channelPk}를 찾을 수 없습니다`);
     }
 
-    // 2. Private 채널은 멤버만 조회 가능
-    if (channel.isPrivate) {
+    // 2. Private 채널은 멤버만 조회 가능 (accessType이 PRIVATE인 경우)
+    if (channel.accessType === 'PRIVATE') {
       const requestMember = await this.channelMemberRepository.findOne({
         where: { 
           channelPk, 

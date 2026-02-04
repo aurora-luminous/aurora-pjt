@@ -413,7 +413,7 @@ export class ProjectInvitationService {
       where: {
         projectPk,
         isDeletedChannel: false,
-        isPrivate: false
+        accessType: 'PUBLIC' // isPrivate 대신 accessType 사용
       }
     });
 

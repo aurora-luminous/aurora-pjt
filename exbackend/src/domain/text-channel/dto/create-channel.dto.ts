@@ -8,22 +8,13 @@ export class CreateChannelDto {
   @IsNotEmpty()
   channelName: string;
 
-  @ApiProperty({ description: '프로젝트 PK' })
-  @IsInt()
-  @IsPositive()
-  projectPk: number;
+  @ApiProperty({ description: '채널 종류', enum: ['text', 'voice', 'notification'] })
+  @IsEnum(['text', 'voice', 'notification'])
+  channelKind: 'text' | 'voice' | 'notification';
 
-  @ApiProperty({ description: '채널 종류', enum: ['TEXT', 'VOICE', 'VIDEO'] })
-  @IsEnum(['TEXT', 'VOICE', 'VIDEO'])
-  channelKind: 'TEXT' | 'VOICE' | 'VIDEO';
+  @ApiProperty({ description: '채널 접근 유형', enum: ['public', 'private'] })
+  @IsEnum(['public', 'private'])
+  accessType: 'public' | 'private';
 
-  @ApiProperty({ description: '비공개 채널 여부', default: false })
-  @IsBoolean()
-  @IsOptional()
-  isPrivate?: boolean;
 
-  @ApiProperty({ description: '채널 생성자 사용자 PK' })
-  @IsInt()
-  @IsPositive()
-  creatorUserPk: number;
 }

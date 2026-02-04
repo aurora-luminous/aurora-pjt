@@ -10,14 +10,14 @@ export class ChannelResponseDto {
   @ApiProperty({ description: '채널명' })
   channelName: string;
 
-  @ApiProperty({ description: '채널 종류', enum: ['TEXT', 'VOICE', 'VIDEO'] })
-  channelKind: 'TEXT' | 'VOICE' | 'VIDEO';
+  @ApiProperty({ description: '채널 종류', enum: ['text', 'voice', 'notification'] })
+  channelKind: 'text' | 'voice' | 'notification';
 
   @ApiProperty({ description: '채널 삭제 여부' })
   isDeletedChannel: boolean;
 
-  @ApiProperty({ description: '비공개 채널 여부' })
-  isPrivate: boolean;
+  @ApiProperty({ description: '채널 접근 유형', enum: ['public', 'private'] })
+  accessType: 'public' | 'private';
 
   @ApiProperty({ description: '프로젝트 정보', required: false })
   projectInfo?: {
@@ -39,11 +39,11 @@ export class ChannelListDto {
   @ApiProperty({ description: '채널명' })
   channelName: string;
 
-  @ApiProperty({ description: '채널 종류', enum: ['text', 'voice'] })
-  channelKind: 'text' | 'voice';
+  @ApiProperty({ description: '채널 종류', enum: ['text', 'voice', 'notification'] })
+  channelKind: 'text' | 'voice' | 'notification';
 
-  @ApiProperty({ description: '비공개 채널 여부' })
-  isPrivate: boolean;
+  @ApiProperty({ description: '채널 접근 유형', enum: ['public', 'private'] })
+  accessType: 'public' | 'private';
 
   @ApiProperty({ description: '채널에서의 사용자 역할', enum: ['admin', 'member'] })
   channelRole: 'admin' | 'member';
@@ -57,9 +57,12 @@ export class ChannelCreateDto {
   @ApiProperty({ description: '채널명' })
   channelName: string;
 
-  @ApiProperty({ description: '채널 종류', enum: ['text', 'voice'] })
-  channelKind: 'text' | 'voice';
+  @ApiProperty({ description: '채널 종류', enum: ['text', 'voice', 'notification'] })
+  channelKind: 'text' | 'voice' | 'notification';
 
-  @ApiProperty({ description: '비공개 채널 여부' })
-  isPrivate: boolean;
+  @ApiProperty({ description: '채널 접근 유형', enum: ['public', 'private'] })
+  accessType: 'public' | 'private';
+
+  @ApiProperty({ description: '채널에서의 사용자 역할', enum: ['admin', 'member'] })
+  channelRole: 'admin' | 'member';
 }

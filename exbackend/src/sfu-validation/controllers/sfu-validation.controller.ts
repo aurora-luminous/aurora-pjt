@@ -12,7 +12,7 @@ export class SfuValidationController { // Renamed class
   @ApiResponse({ status: 200, description: '채널 유효성 및 종류 반환 성공' })
   async validateChannelForSfu(
     @Param('channelPk', ParseIntPipe) channelPk: number,
-  ): Promise<{ isValid: boolean; channelKind?: 'TEXT' | 'VOICE' | 'VIDEO' }> {
+  ): Promise<{ isValid: boolean; channelKind?: 'TEXT' | 'VOICE' | 'NOTIFICATION' }> {
     return this.channelValidationService.validateChannelKind(channelPk);
   }
 }

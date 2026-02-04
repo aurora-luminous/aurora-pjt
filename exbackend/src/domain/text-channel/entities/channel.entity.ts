@@ -27,18 +27,18 @@ export class Channel {
   @ApiProperty({
     description: '채널 종류',
     maxLength: 20,
-    enum: ['TEXT', 'VOICE', 'VIDEO'],
+    enum: ['TEXT', 'VOICE', 'NOTIFICATION'],
   })
   @Column({ type: 'varchar', length: 20 })
-  channelKind: 'TEXT' | 'VOICE' | 'VIDEO';
+  channelKind: 'TEXT' | 'VOICE' | 'NOTIFICATION';
 
   @ApiProperty({ description: '채널 삭제 여부', default: false })
   @Column({ type: 'boolean', default: false })
   isDeletedChannel: boolean;
 
-  @ApiProperty({ description: '비공개 채널 여부', default: false })
-  @Column({ type: 'boolean', default: false })
-  isPrivate: boolean;
+  @ApiProperty({ description: '채널 접근 유형', enum: ['PUBLIC', 'PRIVATE'] })
+  @Column({ type: 'varchar', length: 10 })
+  accessType: 'PUBLIC' | 'PRIVATE';
 
   // 관계 설정
   @ManyToOne(() => Project, (project) => project.channels)

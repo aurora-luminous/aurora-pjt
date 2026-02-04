@@ -176,6 +176,15 @@ export class ProjectInvitationService {
 
   // 여러 사용자를 프로젝트에 일괄 초대
   async bulkInviteUsersToProject(bulkInviteDto: BulkInviteToProjectDto): Promise<void> {
+    // 1. 프로젝트 존재 확인 (일괄 초대 시작 전 한 번만)
+    const project = await this.projectRepository.findOne({
+      where: { projectPk: bulkInviteDto.projectPk, isDeletedProject: false },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`프로젝트 ID ${bulkInviteDto.projectPk}를 찾을 수 없습니다`);
+    }
+
     for (const userEmail of bulkInviteDto.users) {
       try {
         const inviteDto: InviteToProjectDto = {
@@ -188,7 +197,7 @@ export class ProjectInvitationService {
         await this.inviteUserToProject(inviteDto);
       } catch (error) {
         // 개별 초대 실패 시 로그만 남기고 계속 진행
-        console.error(`Failed to invite ${userEmail.userEmail}:`, error.message);
+        console.error(`초대 실패: ${userEmail.userEmail}:`, error.message);
       }
     }
   }

@@ -44,17 +44,13 @@ export class ChannelController {
     @Param('serverUrl') serverUrl: string, // RouterModule에서 자동 제공
     @Param('projectPk', ParseIntPipe) projectPk: number,
     @Body()
-    createChannelDto: Omit<CreateChannelDto, 'projectPk' | 'creatorUserPk'>,
+    // "프론트엔드에서 전송한 데이터"와 "인증 컨텍스트의 데이터"를 명시적으로 분리
+    createChannelDto: CreateChannelDto, // creatorUserPk를 Body에서 제외
     @CurrentUser() user: User
   ): Promise<ChannelCreateDto> {
     const creatorUserPk = user.userPk;
 
-    const channelDto: CreateChannelDto = {
-      ...createChannelDto,
-      projectPk: projectPk,
-      creatorUserPk: creatorUserPk,
-    };
-    return await this.channelCreationService.createChannel(channelDto);
+    return await this.channelCreationService.createChannel(createChannelDto, projectPk, creatorUserPk);
   }
 
   @Get()

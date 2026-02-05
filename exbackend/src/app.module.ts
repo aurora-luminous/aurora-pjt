@@ -20,6 +20,7 @@ import { ProjectModule } from './domain/project/project.module';
 import { TextChannelModule } from './domain/text-channel/text-channel.module';
 import { AuthModule } from './domain/auth/auth.module';
 import { UserModule } from './domain/user/user.module';
+import { MemberStatusModule } from './member-status/member-status.module';
 
 @Module({
   imports: [
@@ -48,7 +49,8 @@ import { UserModule } from './domain/user/user.module';
     TextChannelModule,
     AuthModule,
     UserModule,
-    SfuValidationModule, // Added SfuValidationModule
+    SfuValidationModule,
+    MemberStatusModule, // Added
 
     // Workspace 도메인 라우터 설정
     RouterModule.register([

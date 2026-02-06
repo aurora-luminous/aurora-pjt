@@ -15,6 +15,7 @@ import {
   ChannelResponseDto,
   ChannelListDto,
   ChannelCreateDto,
+  ChannelUserListDto,
 } from '../dto';
 
 @Injectable()
@@ -31,6 +32,8 @@ export class ChannelCreationService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
   ) {}
+
+
 
   async createChannel(
     createChannelDto: CreateChannelDto,
@@ -207,12 +210,12 @@ export class ChannelCreationService {
         .andWhere('channel.isDeletedChannel = false')
         .andWhere(
           // Public 채널이거나 Private 채널 중 사용자가 멤버인 경우
-          '(channel.accessType = \'PUBLIC\' OR (channel.accessType = \'PRIVATE\' AND channelMember.userPk = :userPk))',
-          { userPk: requestUserPk },
+          '(channel.accessType = \'PUBLIC\' OR (channel.accessType = \'PRIVATE\' AND channelMember.userPk = :userPk AND channelMember.cStatus = :activeStatus))',
+          { userPk: requestUserPk, activeStatus: 'Active' },
         )
         .getMany();
     } else {
-      // 요청 사용자 정보가 없으면 Public 채널만 조회
+      // 요청 사용자 정보가 없으면 Public 채널만 조회 (활성 멤버 필터링은 필요 없음)
       channels = await this.channelRepository.find({
         where: { projectPk, isDeletedChannel: false, accessType: 'PUBLIC' },
         relations: ['channelMembers'],
@@ -223,7 +226,7 @@ export class ChannelCreationService {
       // 사용자의 채널 역할 찾기
       const userChannelMember = requestUserPk
         ? channel.channelMembers.find(
-            (member) => member.userPk === requestUserPk,
+            (member) => member.userPk === requestUserPk && member.cStatus === 'Active', // Filter for active member
           )
         : null;
 
@@ -273,5 +276,22 @@ export class ChannelCreationService {
           }
         : undefined,
     };
+  }  
+  
+  async getAllChannelsForUser(userPk: number): Promise<ChannelUserListDto[]> {
+    const channels = await this.channelMemberRepository
+      .createQueryBuilder('channelMember')
+      .leftJoinAndSelect('channelMember.channel', 'channel')
+      .where('channelMember.userPk = :userPk', { userPk })
+      .andWhere('channelMember.cStatus = :status', { status: 'Active' }) // Added filter for active members
+      .andWhere('channel.isDeletedChannel = false')
+      .getMany();
+
+    console.log(`[DEBUG] Raw channels from getAllChannelsForUser for userPk ${userPk}:`, channels);
+
+    return channels.map(channelMember => ({
+      channelPk: channelMember.channel.channelPk,
+      channelName: channelMember.channel.channelName,
+    }));
   }
 }

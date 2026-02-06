@@ -1,8 +1,11 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
 import { Channel } from "@/app/(server-setup)/types/Channel";
-// import { ChannelDropdownMenu } from "./ChannelDropdownMenu";
+import { ChannelDropdownMenu } from "./ChannelDropdownMenu";
 import { InviteChannelDropDown } from "./InviteChannelDropdown";
+import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
 
 interface ChannelItemProps {
   channel: Channel;
@@ -10,12 +13,13 @@ interface ChannelItemProps {
   serverUrl: string;
   createChannelLink: (channel: Channel) => string;
   onContextMenu: (e: React.MouseEvent, channelName: string) => void;
+  projectPk: number;
   showDropdown: boolean;
   showInviteDropdown: boolean;
   currentProjectRole: string | undefined;
   onDropdownClose: () => void;
-  onChannelManage: () => void;
-  onChannelInviteDropdown: (e: React.MouseEvent, serverUrl: string) => void;
+  onChannelManage: (channel: Channel) => void;
+  onChannelInviteDropdown: (e: React.MouseEvent, targetId: string) => void;
 }
 
 export const ChannelItem: React.FC<ChannelItemProps> = ({
@@ -25,6 +29,7 @@ export const ChannelItem: React.FC<ChannelItemProps> = ({
   createChannelLink,
   onContextMenu,
   showDropdown,
+  projectPk,
   showInviteDropdown,
   currentProjectRole,
   onDropdownClose,
@@ -33,7 +38,7 @@ export const ChannelItem: React.FC<ChannelItemProps> = ({
 }) => {
   const getChannelIcon = () => {
     switch (channel.channelKind) {
-      case "notice":
+      case "notification":
         return "📢";
       case "voice":
         return "🔊";
@@ -41,7 +46,6 @@ export const ChannelItem: React.FC<ChannelItemProps> = ({
         return "#";
     }
   };
-
   const buttonRef = React.useRef<HTMLButtonElement>(null);
 
   return (
@@ -60,25 +64,31 @@ export const ChannelItem: React.FC<ChannelItemProps> = ({
         >
           <span className="mr-2 text-gray-400">{getChannelIcon()}</span>
           <span className="truncate text-sm">{channel.channelName}</span>
-          {channel.isPrivate && <span className="ml-auto text-xs">🔒</span>}
+          {channel.accessType === "private" && <span className="ml-auto text-xs">🔒</span>}
         </Link>
         <button 
           ref={buttonRef}
-          className="ml-2 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-white transition-all text-lg leading-none"
-          onClick={(e) => onChannelInviteDropdown(e, channel.channelName)}
+          className="invite-button ml-2 text-gray-400 opacity-0 group-hover:opacity-100 hover:text-white transition-all text-lg leading-none"
+          onClick={(e) => {
+            e.stopPropagation();
+            onChannelInviteDropdown(e, channel.channelName);
+          }}
         >
           +
         </button>
       </div>
       
 
-      {/* <ChannelDropdownMenu
+       <ChannelDropdownMenu
         channel={channel}
         isVisible={showDropdown}
         currentProjectRole={currentProjectRole}
+        serverUrl={serverUrl}
+        projectPk={projectPk}
         onClose={onDropdownClose}
-        onChannelManage={onChannelManage}
-      /> */}
+        onChannelManage={() => onChannelManage(channel)}
+        
+      />
       {showInviteDropdown && (
         <InviteChannelDropDown
           serverUrl={serverUrl}

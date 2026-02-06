@@ -1,9 +1,10 @@
 import { ServerRequest, ChangePermission } from "../types/Server";
 import { RoleUsers } from "../types/Server";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Channel } from "../types/Channel";
+import { Channel, ChannelRequest } from "../types/Channel";
 import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
 import { ServerStatus } from "@/app/(servers)/types/ServerAccess";
+import { expressClient } from "@/app/lib/axiosClient";
 import {
   useAddServerApi,
   useServerListApi,
@@ -29,6 +30,7 @@ import {
   useServerRoleApi,
   useServerPermessionApi,
   usePatchServerPermessionApi,
+  useLeaveChannelApi,
 } from "./useServerApi";
 
 export const useAddServerMutation = () => {
@@ -106,7 +108,7 @@ export const useCreateChannelMutation = (
 
   return useMutation({
     mutationFn: async (
-      channelData: Omit<Channel, "channelName"> & { channelName?: string }
+      channelData: ChannelRequest
     ) => {
       const result = await createChannel(channelData);
       return result;
@@ -363,6 +365,54 @@ export const useChannelMemberListQuery = (
   });
 };
 
+export const useLeaveChannelMutation = (
+  serverUrl: string,
+  projectPk: number,
+  channelPk: number
+) => {
+  const { execute: leaveChannel } = useLeaveChannelApi(
+    serverUrl,
+    projectPk,
+    channelPk
+  );
+
+  return useMutation({
+    mutationFn: async (userEmail: string) => {
+      const result = await leaveChannel({ userEmail });
+      return result;
+    },
+  });
+};
+
+// // 사이드바 등 목록에서 여러 채널을 나갈 때 사용하는 유동적 뮤테이션
+// export const useLeaveChannelDynamicMutation = (
+//   serverUrl: string,
+//   projectPk: number
+// ) => {
+//   const queryClient = useQueryClient();
+
+//   return useMutation({
+//     mutationFn: async ({
+//       channelPk,
+//       userEmail,
+//     }: {
+//       channelPk: number;
+//       userEmail: string;
+//     }) => {
+//       const response = await expressClient.patch(
+//         `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/members/remove`,
+//         { userEmail }
+//       );
+//       return response.data;
+//     },
+//     onSuccess: () => {
+//       queryClient.invalidateQueries({
+//         queryKey: ["channelList", serverUrl, projectPk],
+//       });
+//     },
+//   });
+// };
+
 export const useKickChannelMemberMutation = (
   serverUrl: string,
   projectPk: number,
@@ -419,6 +469,8 @@ export const useUnbanChannelMemberMutation = (
     },
   });
 };
+
+
 
 export const useServerRoleMutation = (serverUrl: string) => {
   const { execute: patchServerRole } = useServerRoleApi(serverUrl);

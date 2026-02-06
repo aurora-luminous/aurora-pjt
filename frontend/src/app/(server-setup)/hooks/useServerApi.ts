@@ -16,7 +16,7 @@ import {
 } from "../types/Server";
 import { expressClient } from "@/app/lib/axiosClient";
 import { Project } from "../types/Projcets";
-import { Channel } from "../types/Channel";
+import { Channel, ChannelRequest } from "../types/Channel";
 import { ServerAccess, ServerStatus } from "@/app/(servers)/types/ServerAccess";
 
 // 서버 생성
@@ -68,7 +68,7 @@ export const useChannelListApi = (serverUrl: string, projectPk: number) => {
 export const useCreateChannelApi = (serverUrl: string, projectPk: number) => {
   return useApi<
     Channel,
-    Omit<Channel, "channelName"> & { channelName?: string }
+    ChannelRequest
   >({
     endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels`,
     method: "POST",
@@ -178,6 +178,18 @@ export const useInvitePrivateChannelApi = (
   return useApi<{ message: string }, MemberEmail[]>({
     endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/invite`,
     method: "POST",
+    axiosInstance: expressClient,
+  });
+};
+
+export const useLeaveChannelApi = (
+  serverUrl: string,
+  projectPk: number,
+  channelPk: number
+) => {
+  return useApi<{ message: string }, MemberEmail>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/members/remove`,
+    method: "PATCH",
     axiosInstance: expressClient,
   });
 };

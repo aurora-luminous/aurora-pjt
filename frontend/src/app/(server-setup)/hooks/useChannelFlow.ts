@@ -3,6 +3,7 @@ import {
   useKickChannelMemberMutation,
   useBanChannelMemberMutation,
   useUnbanChannelMemberMutation,
+  useLeaveChannelMutation,
 } from "./useServerMutation";
 
 export const useChannelFlow = (
@@ -22,6 +23,12 @@ export const useChannelFlow = (
     channelPk
   );
   const unbanChannelMemberMutation = useUnbanChannelMemberMutation(
+    serverUrl,
+    projectPk,
+    channelPk
+  );
+
+  const leaveChannelMutation = useLeaveChannelMutation(
     serverUrl,
     projectPk,
     channelPk
@@ -66,9 +73,23 @@ export const useChannelFlow = (
     }
   };
 
+  const handleLeaveChannel = async (userEmail: string) => {
+    try {
+      const response = await leaveChannelMutation.mutateAsync(userEmail);
+      queryClient.invalidateQueries({
+        queryKey: ["channelList", serverUrl, projectPk],
+      });
+      return response;
+    } catch (error) {
+      console.error("❌ 채널 퇴장 실패:", error);
+      throw error;
+    }
+  };
+
   return {
     handleKickMember,
     handleBanMember,
     handleUnbanMember,
+    handleLeaveChannel,
   };
 };

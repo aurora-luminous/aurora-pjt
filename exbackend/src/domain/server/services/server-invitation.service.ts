@@ -308,15 +308,24 @@ export class ServerInvitationService {
     }
 
     // 5. 상태 업데이트
-    serverMember.sStatus = updateDto.sStatus;
-    const updatedMember = await this.serverMemberRepository.save(serverMember);
+    await this._updateServerMemberStatus(serverMember.serverMemberPk, updateDto.sStatus);
+
+    // 업데이트된 멤버 정보를 다시 가져오기
+    const updatedMember = await this.serverMemberRepository.findOne({
+      where: { serverMemberPk },
+      relations: ['user'],
+    });
+
+    if (!updatedMember) {
+      throw new NotFoundException(`유저 ${serverMemberPk}의 상태 변경에 실패했습니다.`);
+    }
 
     return {
       sStatus: updatedMember.sStatus,
       userInfo: {
-        user_name: serverMember.user.userName,
-        user_email: serverMember.user.userEmail,
-        profile_image_path: serverMember.user.profileImagePath,
+        user_name: updatedMember.user.userName,
+        user_email: updatedMember.user.userEmail,
+        profile_image_path: updatedMember.user.profileImagePath,
       },
     };
   }
@@ -359,12 +368,21 @@ export class ServerInvitationService {
     }
 
     // 5. 상태 업데이트
-    serverMember.sStatus = sStatus;
-    const updatedMember = await this.serverMemberRepository.save(serverMember);
+    await this._updateServerMemberStatus(serverMember.serverMemberPk, sStatus);
 
     // 6. Active로 승인된 경우, 기본 "일반" 프로젝트와 채널에 자동 가입
     if (sStatus === 'Active') {
       await this.addMemberToDefaultProjectAndChannel(serverPk, user.userPk);
+    }
+
+    // 업데이트된 멤버 정보를 다시 가져오기
+    const updatedMember = await this.serverMemberRepository.findOne({
+      where: { serverMemberPk: serverMember.serverMemberPk },
+      relations: ['user'],
+    });
+
+    if (!updatedMember) {
+      throw new NotFoundException(`유저 ${serverMember.serverMemberPk}의 상태 변경에 실패했습니다.`);
     }
 
     return {
@@ -567,15 +585,24 @@ export class ServerInvitationService {
     }
 
     // 3. 상태를 Active로 복구
-    bannedMember.sStatus = 'Active';
-    const unbannedMember = await this.serverMemberRepository.save(bannedMember);
+    await this._updateServerMemberStatus(bannedMember.serverMemberPk, 'Active');
+
+    // 업데이트된 멤버 정보를 다시 가져옵니다.
+    const unbannedMember = await this.serverMemberRepository.findOne({
+      where: { serverMemberPk: bannedMember.serverMemberPk },
+      relations: ['user'],
+    });
+
+    if (!unbannedMember) {
+      throw new NotFoundException(`유저 ${bannedMember.serverMemberPk} 차단 해제 실패.`);
+    }
 
     return {
       sStatus: unbannedMember.sStatus,
       userInfo: {
-        user_name: bannedMember.user.userName,
-        user_email: bannedMember.user.userEmail,
-        profile_image_path: bannedMember.user.profileImagePath,
+        user_name: unbannedMember.user.userName,
+        user_email: unbannedMember.user.userEmail,
+        profile_image_path: unbannedMember.user.profileImagePath,
       },
     };
   }
@@ -630,8 +657,7 @@ export class ServerInvitationService {
     }
 
     // 6. 논리적 삭제 (상태를 'Banned'로 변경)
-    targetMember.sStatus = 'Banned';
-    await this.serverMemberRepository.save(targetMember);
+    await this._updateServerMemberStatus(targetMember.serverMemberPk, 'Banned');
   }
 
   // serverUrl로 서버 멤버 목록 조회 (권한에 따라 다른 정보 반환)
@@ -692,5 +718,90 @@ export class ServerInvitationService {
         },
       }));
     }
+  }
+
+  // 서버 나가기 (사용자 본인)
+  async leaveServer(serverUrl: string, userPk: number): Promise<{ message: string }> {
+    // 1. 서버 존재 확인
+    const server = await this.serverRepository.findOne({
+      where: { serverUrl, isDeletedServer: false }
+    });
+
+    if (!server) {
+      throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다`);
+    }
+
+    // 2. 요청자가 서버 멤버인지 확인
+    const serverMember = await this.serverMemberRepository.findOne({
+      where: {
+        serverPk: server.serverPk,
+        userPk,
+        sStatus: 'Active'
+      },
+      relations: ['user']
+    });
+
+    if (!serverMember) {
+      throw new NotFoundException('서버의 활성 멤버가 아닙니다');
+    }
+
+    // 3. 서버 소유자는 나갈 수 없음 (Owner는 서버를 삭제해야 함)
+    if (serverMember.serverRole === 'owner') {
+      throw new ForbiddenException('서버 소유자는 서버를 나갈 수 없습니다. 서버를 삭제해야 합니다.');
+    }
+
+    // 4. 상태를 Inactive로 변경 (soft delete)
+    await this._updateServerMemberStatus(serverMember.serverMemberPk, 'Inactive');
+
+    // 5. 해당 서버 내의 모든 프로젝트와 채널에서 사용자의 멤버십 상태를 Inactive로 변경
+    const projectsInServer = await this.projectRepository.find({
+      where: { serverPk: server.serverPk, isDeletedProject: false },
+      select: ['projectPk']
+    });
+
+    for (const project of projectsInServer) {
+      // 프로젝트 멤버십 비활성화
+      const projectMember = await this.projectMemberRepository.findOne({
+        where: { projectPk: project.projectPk, userPk, pStatus: 'Active' }
+      });
+      if (projectMember) {
+        projectMember.pStatus = 'Inactive';
+        await this.projectMemberRepository.save(projectMember);
+      }
+
+      // 채널 멤버십 비활성화
+      const channelMembersInProject = await this.channelMemberRepository
+        .createQueryBuilder('cm')
+        .leftJoin('cm.channel', 'channel')
+        .where('cm.userPk = :userPk', { userPk })
+        .andWhere('channel.projectPk = :projectPk', { projectPk: project.projectPk })
+        .getMany();
+
+      if (channelMembersInProject.length > 0) {
+        channelMembersInProject.forEach(cm => {
+          cm.cStatus = 'Inactive';
+        });
+        await this.channelMemberRepository.save(channelMembersInProject);
+      }
+    }
+    // TODO: Spring 서버로 멤버 제거 알림 전송
+
+    return { message: '서버에서 나갔습니다' };
+  }
+
+  private async _updateServerMemberStatus(
+    serverMemberPk: number,
+    newStatus: 'Pending' | 'Active' | 'Inactive' | 'Banned',
+  ): Promise<void> {
+    const serverMember = await this.serverMemberRepository.findOne({
+      where: { serverMemberPk },
+    });
+
+    if (!serverMember) {
+      throw new NotFoundException(`서버멤버 ${serverMemberPk} 를 찾을 수 없습니다.`);
+    }
+
+    serverMember.sStatus = newStatus;
+    await this.serverMemberRepository.save(serverMember);
   }
 }

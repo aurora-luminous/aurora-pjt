@@ -179,4 +179,20 @@ export class ChannelController {
     );
     return { message: '차단 해제 성공' };
   }
+
+  @Patch(':channelPk/leave')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '현재 유저가 채널 나가기' })
+  @ApiResponse({ status: 200, description: '채널 나가기 성공' })
+  @ApiResponse({ status: 404, description: '채널 또는 활성 멤버를 찾을 수 없음' })
+  async leaveChannel(
+    @Param('channelPk', ParseIntPipe) channelPk: number,
+    @CurrentUser() user: User
+  ): Promise<{ message: string }> {
+    return await this.channelInvitationService.leaveChannel(
+      channelPk,
+      user.userPk,
+    );
+  }
 }

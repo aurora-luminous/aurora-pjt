@@ -188,14 +188,10 @@ export class ServerMemberManagementService {
 
                 // 액션 수행
                 if (action === 'kick') {
-                    // 강퇴: sStatus를 Inactive로 변경
-                    targetMember.sStatus = 'Inactive';
+                    await this._updateServerMemberStatusInManagement(targetMember.serverMemberPk, 'Inactive');
                 } else if (action === 'ban') {
-                    // 밴: sStatus를 Banned로 변경
-                    targetMember.sStatus = 'Banned';
+                    await this._updateServerMemberStatusInManagement(targetMember.serverMemberPk, 'Banned');
                 }
-
-                await this.serverMemberRepository.save(targetMember);
                 results.processed++;
 
             } catch (error) {
@@ -206,7 +202,23 @@ export class ServerMemberManagementService {
             }
         }
 
-        return results;
-    }
+                return results;
 
-}
+            }
+
+            private async _updateServerMemberStatusInManagement(
+                serverMemberPk: number,
+                newStatus: 'Active' | 'Inactive' | 'Banned',
+            ): Promise<void> {
+                const serverMember = await this.serverMemberRepository.findOne({
+                    where: { serverMemberPk },
+                });
+
+                if (!serverMember) {
+                    throw new NotFoundException(`서버 멤버 ${serverMemberPk} 를 찾을 수 없습니다.`);
+                }
+                serverMember.sStatus = newStatus;
+
+                await this.serverMemberRepository.save(serverMember);
+            }
+        }

@@ -248,31 +248,47 @@ export class ServerController {
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '멤버 일괄 강퇴/밴 (Admin 이상)' })
   @ApiResponse({ status: 200, description: '일괄 액션 처리 완료' })
-  async bulkMemberAction(
-    @Param('serverUrl') serverUrl: string,
-    @Body() actionDto: {
-      action: 'kick' | 'ban';
-      userEmails: string[];
-    },
-    @CurrentUser() user: User
-  ): Promise<{ processed: number; failed: Array<{ userEmail: string; reason: string }> }> {
-    const adminUserPk = user.userPk;
-
-    // serverUrl로 serverPk 조회
-    const server = await this.serverCreationService.getServerByUrl(serverUrl);
-
-    // 일괄 강퇴/밴 실행
-    const result = await this.serverMemberManagementService.bulkMemberAction(
-      server.serverPk,
-      actionDto.action,
-      actionDto.userEmails,
-      adminUserPk
-    );
-
-    return {
-      processed: result.processed,
-      failed: result.failed
-    };
+    async bulkMemberAction(
+      @Param('serverUrl') serverUrl: string,
+      @Body() actionDto: {
+        action: 'kick' | 'ban';
+        userEmails: string[];
+      },
+      @CurrentUser() user: User
+    ): Promise<{ processed: number; failed: Array<{ userEmail: string; reason: string }> }> {
+      const adminUserPk = user.userPk;
+  
+      // serverUrl로 serverPk 조회
+      const server = await this.serverCreationService.getServerByUrl(serverUrl);
+  
+      // 일괄 강퇴/밴 실행
+      const result = await this.serverMemberManagementService.bulkMemberAction(
+        server.serverPk,
+        actionDto.action,
+        actionDto.userEmails,
+        adminUserPk
+      );
+  
+      return {
+        processed: result.processed,
+        failed: result.failed
+      };
+    }
+  
+    @Patch(':serverUrl/leave')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth('access-token')
+    @ApiOperation({ summary: '현재 유저가 서버 나가기' })
+    @ApiResponse({ status: 200, description: '서버 나가기 성공' })
+    @ApiResponse({ status: 403, description: '서버 소유자는 서버를 나갈 수 없음' })
+    @ApiResponse({ status: 404, description: '서버 또는 활성 멤버를 찾을 수 없음' })
+    async leaveServer(
+      @Param('serverUrl') serverUrl: string,
+      @CurrentUser() user: User
+    ): Promise<{ message: string }> {
+      return await this.serverInvitationService.leaveServer(
+        serverUrl,
+        user.userPk,
+      );
+    }
   }
-
-}

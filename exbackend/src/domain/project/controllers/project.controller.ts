@@ -189,7 +189,7 @@ export class ProjectController {
     return { message: '차단 해제 성공' };
   }
 
-  @Post(':projectPk/leave')
+  @Patch(':projectPk/leave')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '프로젝트 나가기 (PM 특별 로직 포함)' })

@@ -133,7 +133,7 @@ export const useServerFlow = () => {
       const targetUrl = createChannelUrl(
         serverUrl,
         firstProject.projectPk,
-        targetChannel.channelName,
+        targetChannel.channelPk,
         targetChannel.channelKind
       );
 

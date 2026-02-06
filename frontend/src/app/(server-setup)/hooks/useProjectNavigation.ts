@@ -119,7 +119,7 @@ export const useProjectNavigation = (serverUrl?: string) => {
         const targetUrl = createChannelUrl(
           serverUrl,
           project.projectPk,
-          targetChannel.channelName,
+          targetChannel.channelPk,
           targetChannel.channelKind
         );
 

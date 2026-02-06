@@ -15,6 +15,8 @@ import { createChannelUrl } from "../utils/serverAccessUtils";
 import { Channel } from "../types/Channel";
 import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
 import { useResponsive } from "../../lib/useResponsive";
+import { ChannelKind } from "../types/ChannelKind";
+import { AccessType } from "../types/AccessType";
 
 const AddChannelModal = () => {
   const { isMobile, isTablet } = useResponsive();
@@ -40,9 +42,7 @@ const AddChannelModal = () => {
   );
 
   const [channelName, setChannelName] = useState("");
-  const [channelKind, setChannelKind] = useState<"text" | "voice" | "notice">(
-    "text"
-  );
+  const [channelKind, setChannelKind] = useState<ChannelKind>(ChannelKind.TEXT);
   const [isPrivate, setIsPrivate] = useState(false);
   const projectMemberListQuery = useProjectMemberListQuery(
     (data as ChannelData)?.serverUrl || "",
@@ -65,7 +65,7 @@ const AddChannelModal = () => {
 
   const handleClose = () => {
     setChannelName("");
-    setChannelKind("text");
+    setChannelKind(ChannelKind.TEXT);
     setIsPrivate(false);
     setSelectedMembers(new Set());
     setCreatedChannel(null);
@@ -102,7 +102,7 @@ const AddChannelModal = () => {
         const targetUrl = createChannelUrl(
           channelData.serverUrl,
           channelData.projectPk,
-          createdChannel.channelName,
+          createdChannel.channelPk,
           createdChannel.channelKind
         );
 
@@ -133,9 +133,8 @@ const AddChannelModal = () => {
     try {
       const newChannelData = {
         channelName,
-        channelKind,
-        isPrivate,
-        channelPk: channelData.channelPk,
+        channelKind: channelKind,
+        accessType: isPrivate ? AccessType.PRIVATE : AccessType.PUBLIC,
       };
 
       console.log("🚀 채널 생성 시작:", newChannelData);
@@ -157,36 +156,36 @@ const AddChannelModal = () => {
     }
   };
 
-  const getChannelTypeDescription = (type: "text" | "voice" | "notice") => {
+  const getChannelTypeDescription = (type: ChannelKind) => {
     switch (type) {
-      case "text":
+      case ChannelKind.TEXT:
         return "텍스트 메시지를 주고받을 수 있는 채널입니다.";
-      case "voice":
+      case ChannelKind.VOICE:
         return "음성 통화를 할 수 있는 채널입니다.";
-      case "notice":
+      case ChannelKind.NOTIFICATION:
         return "채널 공지사항이 올라오는 전용 채널입니다.";
     }
   };
 
-  const getChannelIcon = (type: "text" | "voice" | "notice") => {
+  const getChannelIcon = (type: ChannelKind) => {
     switch (type) {
-      case "text":
+      case ChannelKind.TEXT:
         return "#";
-      case "voice":
+      case ChannelKind.VOICE:
         return "🔊";
-      case "notice":
+      case ChannelKind.NOTIFICATION:
         return "📢";
     }
   };
 
   // Validate permission and filtering channel types
   const channelTypes = [
-    { type: "notice" as const, label: "공지" },
-    { type: "text" as const, label: "채팅" },
-    { type: "voice" as const, label: "음성" },
+    { type: ChannelKind.NOTIFICATION, label: "공지" },
+    { type: ChannelKind.TEXT, label: "채팅" },
+    { type: ChannelKind.VOICE, label: "음성" },
   ].filter((item) => {
     // If user is a member, they cannot create 'notice' channels
-    if (userRole === "member" && item.type === "notice") {
+    if (userRole === "member" && item.type === ChannelKind.NOTIFICATION) {
       return false;
     }
     return true;
@@ -256,7 +255,7 @@ const AddChannelModal = () => {
                             checked={channelKind === type}
                             onChange={(e) =>
                               setChannelKind(
-                                e.target.value as "text" | "voice" | "notice"
+                                e.target.value as ChannelKind
                               )
                             }
                             className="sr-only"
@@ -461,7 +460,7 @@ const AddChannelModal = () => {
                           checked={channelKind === type}
                           onChange={(e) =>
                             setChannelKind(
-                              e.target.value as "text" | "voice" | "notice"
+                              e.target.value as ChannelKind
                             )
                           }
                           className="sr-only"

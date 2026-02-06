@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { useRouter } from "next/navigation";
 import { Project } from "@/app/(server-setup)/types/Projcets";
@@ -49,24 +51,24 @@ export const ProjectItem: React.FC<ProjectItemProps> = ({
         const targetUrl = createChannelUrl(
           serverId,
           project.projectPk,
-          firstChannel.channelName,
+          firstChannel.channelPk,
           firstChannel.channelKind
         );
         console.log(
-          `🎯 프로젝트 "${project.projectName}"의 첫 번째 채널로 이동: ${firstChannel.channelName}`
+          `🎯 프로젝트 "${project.projectName}"의 첫 번째 채널로 이동: ${firstChannel.channelName} (PK: ${firstChannel.channelPk})`
         );
         router.push(targetUrl);
       } else {
-        // 채널이 없으면 기본 경로로 이동
+        // 채널이 없으면 기본 경로로 이동 - 현재는 /channels/0 등으로 보내거나 에러 처리
         console.log(
           `⚠️ 프로젝트 "${project.projectName}"에 채널이 없어 기본 경로로 이동`
         );
-        router.push(`/${serverId}/projects/${project.projectPk}/channels/일반`);
+        router.push(`/${serverId}/projects/${project.projectPk}`);
       }
     } catch (error) {
       console.error("프로젝트 이동 실패:", error);
       // 에러 시 기본 경로로 이동
-      router.push(`/${serverId}/projects/${project.projectPk}/channels/일반`);
+      router.push(`/${serverId}`);
     }
   };
 

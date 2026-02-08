@@ -28,21 +28,32 @@ public class HttpHandshakeInterceptor implements HandshakeInterceptor {
             if (cookies != null) {
                 log.info("쿠키 개수: {}", cookies.length);
 
-                Arrays.stream(cookies)
+                boolean hasToken = Arrays.stream(cookies)
                         .filter(cookie -> "access_token".equals(cookie.getName()))
                         .findFirst()
-                        .ifPresent(cookie -> {
+                        .map(cookie -> {
                             attributes.put("jwt_token", cookie.getValue());
                             log.info("✅ JWT 토큰을 세션 속성에 저장: 완료");
-                        });
+                            return true; // 토큰 있으면 true 반환
+                        })
+                        .orElse(false);
+
+                if (hasToken) {
+                    log.info("🔐 핸드셰이크 완료, attributes: {}", attributes.keySet());
+                    return true;
+                } else {
+                    log.warn("access_token 쿠키가 없습니다. - 연결 거부");
+                    return false;
+                }
+
             } else {
                 log.warn("쿠키가 없습니다"); // ✅ 로그 추가
+                return false;
             }
         } else {
             log.warn(" ServletServerHttpRequest가 아닙니다: {}", request.getClass().getSimpleName());
+            return false;
         }
-        log.info("🔐 핸드셰이크 완료, attributes: {}", attributes.keySet());
-        return true;
     }
 
     @Override

@@ -34,9 +34,9 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 사용 안함 -> jwt 로그인 방식이기 때문
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/").permitAll() // 루트경로 허용
-                        .requestMatchers("/test.html").permitAll()
                         .requestMatchers("/api/jv/login","/api/jv/signup","/api/jv/refresh").permitAll() // 인증관련 api 전부 허용
-                        .requestMatchers("/ws/**").authenticated()
+                        .requestMatchers("/ws/info").permitAll() // 웹소켓 연결을 위한 SockJS 허용
+                        .requestMatchers("/ws/**").authenticated() // Websocket 연결은 인증
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -52,9 +52,7 @@ public class SecurityConfig {
                 "http://localhost:3000",      // Express 개발 서버
                 "http://localhost:8080",      // Spring Boot 개발 서버
                 "http://localhost:5173",      // React 개발 서버
-                "https://auro-ra.site",    // 프로덕션 서버
-                "http://127.0.0.1:5500"
-
+                "https://auro-ra.site"    // 프로덕션 서버
         ));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));

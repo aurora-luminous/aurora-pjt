@@ -73,40 +73,51 @@ export class ChannelInvitationService {
       throw new NotFoundException(`채널 ID ${inviteDto.channelPk}를 찾을 수 없습니다`);
     }
 
-    // 2. Private 채널은 초대만 가능
-    if (!channel.isPrivate) {
-      throw new ForbiddenException('공개 채널은 직접 참가가 가능합니다. 채널 참가 기능을 사용하세요.');
-    }
-
-    // 3. 초대하려는 사용자 존재 확인 (이메일로)
+    // 2. 초대하려는 사용자 존재 확인 (이메일로)
     const targetUser = await this.userService.findByEmailOrThrow(inviteDto.userEmail);
 
-    // 4. 초대자가 해당 채널의 관리자인지 확인
-    const inviterMember = await this.channelMemberRepository.findOne({
-      where: { 
-        channelPk: inviteDto.channelPk, 
-        userPk: inviteDto.inviterUserPk,
-        cStatus: 'Active'
+    // 3. 초대하는 사용자가 해당 채널에 다른 사용자를 초대할 권한이 있는지 확인
+    // Private 채널: 채널 관리자만 초대 가능
+    // Public 채널: 프로젝트 멤버라면 누구나 초대 가능 (혹은 프로젝트 관리자만?)
+    if (channel.accessType === 'PRIVATE') {
+      const inviterMember = await this.channelMemberRepository.findOne({
+        where: { 
+          channelPk: inviteDto.channelPk, 
+          userPk: inviteDto.inviterUserPk,
+          cStatus: 'Active'
+        }
+      });
+      if (!inviterMember || !MemberRoleUtils.hasAdminPermission(inviterMember.channelRole)) {
+        throw new ForbiddenException('비공개 채널은 채널 관리자 또는 소유자만 사용자를 초대할 수 있습니다');
       }
-    });
-
-    if (!inviterMember || !MemberRoleUtils.hasAdminPermission(inviterMember.channelRole)) {
-      throw new ForbiddenException('채널 관리자 또는 소유자만 비공개 채널에 사용자를 초대할 수 있습니다');
+    } else { // Public 채널
+      // Public 채널은 해당 프로젝트의 멤버면 누구나 초대 가능하도록 (혹은 프로젝트 관리자만?)
+      const projectMember = await this.projectMemberRepository.findOne({
+        where: {
+          projectPk: channel.projectPk,
+          userPk: inviteDto.inviterUserPk,
+          pStatus: 'Active'
+        }
+      });
+      if (!projectMember) {
+        throw new ForbiddenException('공개 채널에 다른 사용자를 초대하려면 먼저 프로젝트의 멤버여야 합니다.');
+      }
     }
 
-    // 5. 초대할 사용자가 해당 프로젝트의 멤버인지 확인
-    const projectMember = await this.projectMemberRepository.findOne({
+    // 4. 초대할 사용자가 해당 프로젝트의 멤버인지 확인
+    const targetProjectMember = await this.projectMemberRepository.findOne({
       where: { 
         projectPk: channel.projectPk, 
+        userPk: targetUser.userPk,
         pStatus: 'Active'
       }
     });
 
-    if (!projectMember) {
+    if (!targetProjectMember) {
       throw new ForbiddenException('채널에 참가하려면 프로젝트 멤버여야 합니다');
     }
 
-    // 6. 이미 채널 멤버인지 확인
+    // 5. 이미 채널 멤버인지 확인
     const existingMember = await this.channelMemberRepository.findOne({
       where: { channelPk: inviteDto.channelPk, userPk: targetUser.userPk }
     });
@@ -137,7 +148,7 @@ export class ChannelInvitationService {
       }
     }
 
-    // 7. 채널 멤버로 직접 추가 (Active 상태)
+    // 6. 채널 멤버로 직접 추가 (Active 상태)
     const channelMember = this.channelMemberRepository.create({
       channelPk: inviteDto.channelPk,
       userPk: targetUser.userPk,
@@ -172,8 +183,8 @@ export class ChannelInvitationService {
       throw new NotFoundException(`채널 ID ${channelPk}를 찾을 수 없습니다`);
     }
 
-    // 2. Public 채널인지 확인
-    if (channel.isPrivate) {
+    // 2. Public 채널인지 확인 (accessType이 PRIVATE인 경우 초대가 필요)
+    if (channel.accessType === 'PRIVATE') {
       throw new ForbiddenException('비공개 채널은 초대가 필요합니다');
     }
 
@@ -263,8 +274,8 @@ export class ChannelInvitationService {
       throw new NotFoundException(`채널 ID ${channelPk}를 찾을 수 없습니다`);
     }
 
-    // 2. Private 채널은 멤버만 조회 가능
-    if (channel.isPrivate) {
+    // 2. Private 채널은 멤버만 조회 가능 (accessType이 PRIVATE인 경우)
+    if (channel.accessType === 'PRIVATE') {
       const requestMember = await this.channelMemberRepository.findOne({
         where: { 
           channelPk, 
@@ -359,8 +370,7 @@ export class ChannelInvitationService {
     }
 
     // 6. 상태를 Inactive로 변경 (soft delete)
-    targetMember.cStatus = 'Inactive';
-    await this.channelMemberRepository.save(targetMember);
+    await this._updateChannelMemberStatus(targetMember.channelMemberPk, 'Inactive');
   }
 
   // 채널에서 사용자 차단
@@ -402,8 +412,7 @@ export class ChannelInvitationService {
     }
 
     // 6. 상태를 Banned로 변경
-    targetMember.cStatus = 'Banned';
-    await this.channelMemberRepository.save(targetMember);
+    await this._updateChannelMemberStatus(targetMember.channelMemberPk, 'Banned');
   }
 
   // 채널에서 차단 해제 (Admin만 가능)
@@ -566,5 +575,54 @@ export class ChannelInvitationService {
     const targetUser = await this.userService.findByEmailOrThrow(userEmail);
 
     await this.unbanUserFromChannel(channelPk, targetUser.userPk, ownerUserPk);
+  }
+
+  // 채널 나가기 (사용자 본인)
+  async leaveChannel(channelPk: number, userPk: number): Promise<{ message: string }> {
+    // 1. 채널 존재 확인 (선택 사항 - 이미 removeUserFromChannel에서 확인)
+    const channel = await this.channelRepository.findOne({
+      where: { channelPk, isDeletedChannel: false }
+    });
+
+    if (!channel) {
+      throw new NotFoundException(`채널 ID ${channelPk}를 찾을 수 없습니다`);
+    }
+
+    // 2. 요청자가 채널 멤버인지 확인
+    const channelMember = await this.channelMemberRepository.findOne({
+      where: {
+        channelPk,
+        userPk,
+        cStatus: 'Active'
+      },
+      relations: ['user'] // 알림을 위해 user 정보 로드
+    });
+
+    if (!channelMember) {
+      throw new NotFoundException('채널의 활성 멤버가 아닙니다');
+    }
+
+    // 3. 상태를 Inactive로 변경 (soft delete)
+    await this._updateChannelMemberStatus(channelMember.channelMemberPk, 'Inactive');
+
+    // TODO: Spring 서버로 멤버 제거 알림 전송 (필요하다면)
+
+    return { message: '채널에서 나갔습니다' };
+  }
+
+  private async _updateChannelMemberStatus(
+    channelMemberPk: number,
+    newStatus: 'Active' | 'Inactive' | 'Banned',
+  ): Promise<void> {
+    const channelMember = await this.channelMemberRepository.findOne({
+      where: { channelMemberPk },
+    });
+
+    if (!channelMember) {
+      throw new NotFoundException(`채널 멤버 ${channelMemberPk} 를 찾을 수 없습니다.`);
+    }
+
+    channelMember.cStatus = newStatus;
+    await this.channelMemberRepository.save(channelMember);
   }
 }

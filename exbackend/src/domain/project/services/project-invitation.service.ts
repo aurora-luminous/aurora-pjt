@@ -176,6 +176,15 @@ export class ProjectInvitationService {
 
   // 여러 사용자를 프로젝트에 일괄 초대
   async bulkInviteUsersToProject(bulkInviteDto: BulkInviteToProjectDto): Promise<void> {
+    // 1. 프로젝트 존재 확인 (일괄 초대 시작 전 한 번만)
+    const project = await this.projectRepository.findOne({
+      where: { projectPk: bulkInviteDto.projectPk, isDeletedProject: false },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`프로젝트 ID ${bulkInviteDto.projectPk}를 찾을 수 없습니다`);
+    }
+
     for (const userEmail of bulkInviteDto.users) {
       try {
         const inviteDto: InviteToProjectDto = {
@@ -188,7 +197,7 @@ export class ProjectInvitationService {
         await this.inviteUserToProject(inviteDto);
       } catch (error) {
         // 개별 초대 실패 시 로그만 남기고 계속 진행
-        console.error(`Failed to invite ${userEmail.userEmail}:`, error.message);
+        console.error(`초대 실패: ${userEmail.userEmail}:`, error.message);
       }
     }
   }
@@ -285,10 +294,16 @@ export class ProjectInvitationService {
     }
 
     // 5. 상태를 Inactive로 변경 (soft delete)
-    targetMember.pStatus = 'Inactive';
-    await this.projectMemberRepository.save(targetMember);
+    await this._updateProjectMemberStatus(targetMember.projectMemberPk, 'Inactive');
 
-    // 6. Spring 서버로 멤버 제거 알림 전송
+    // 6. 해당 프로젝트의 모든 채널에서 사용자 상태를 Inactive로 변경
+    await this._updateChannelMembersStatusInProject(
+      removeDto.projectPk,
+      removeDto.targetUserPk,
+      'Inactive'
+    );
+
+    // 7. Spring 서버로 멤버 제거 알림 전송
     await this.projectNotificationService.notifyMemberRemoved(
       removeDto.projectPk,
       removeDto.targetUserPk,
@@ -335,10 +350,12 @@ export class ProjectInvitationService {
     }
 
     // 5. 상태를 Banned로 변경
-    targetMember.pStatus = 'Banned';
-    await this.projectMemberRepository.save(targetMember);
+    await this._updateProjectMemberStatus(targetMember.projectMemberPk, 'Banned');
 
-    // 6. Spring 서버로 멤버 제거 알림 전송 (밴도 제거로 간주)
+    // 6. 해당 프로젝트의 모든 채널에서 사용자 상태를 Banned로 변경
+    await this._updateChannelMembersStatusInProject(projectPk, targetUserPk, 'Banned');
+
+    // 7. Spring 서버로 멤버 제거 알림 전송 (밴도 제거로 간주)
     await this.projectNotificationService.notifyMemberRemoved(
       projectPk,
       targetUserPk,
@@ -413,7 +430,7 @@ export class ProjectInvitationService {
       where: {
         projectPk,
         isDeletedChannel: false,
-        isPrivate: false
+        accessType: 'PUBLIC' // isPrivate 대신 accessType 사용
       }
     });
 
@@ -552,8 +569,22 @@ export class ProjectInvitationService {
     }
 
     // 5. 프로젝트에서 나가기 (일반 로직)
-    projectMember.pStatus = 'Inactive';
-    await this.projectMemberRepository.save(projectMember);
+    await this._updateProjectMemberStatus(projectMember.projectMemberPk, 'Inactive');
+
+    // 6. 해당 프로젝트의 모든 채널에서 사용자 상태를 Inactive로 변경
+    const userChannelsInProject = await this.channelMemberRepository
+      .createQueryBuilder('cm')
+      .leftJoin('cm.channel', 'channel')
+      .where('cm.userPk = :userPk', { userPk })
+      .andWhere('channel.projectPk = :projectPk', { projectPk })
+      .getMany();
+
+    if (userChannelsInProject.length > 0) {
+      userChannelsInProject.forEach(cm => {
+        cm.cStatus = 'Inactive';
+      });
+      await this.channelMemberRepository.save(userChannelsInProject);
+    }
 
     // Spring 서버로 멤버 제거 알림 전송
     await this.projectNotificationService.notifyMemberRemoved(
@@ -566,5 +597,41 @@ export class ProjectInvitationService {
     return {
       message: '프로젝트에서 나갔습니다'
     };
+  }
+
+  private async _updateProjectMemberStatus(
+    projectMemberPk: number,
+    newStatus: 'Active' | 'Inactive' | 'Banned',
+  ): Promise<void> {
+    const projectMember = await this.projectMemberRepository.findOne({
+      where: { projectMemberPk },
+    });
+
+    if (!projectMember) {
+      throw new NotFoundException(`ProjectMember with PK ${projectMemberPk} not found.`);
+    }
+
+    projectMember.pStatus = newStatus;
+    await this.projectMemberRepository.save(projectMember);
+  }
+
+  private async _updateChannelMembersStatusInProject(
+    projectPk: number,
+    userPk: number,
+    newStatus: 'Active' | 'Inactive' | 'Banned',
+  ): Promise<void> {
+    const userChannelsInProject = await this.channelMemberRepository
+      .createQueryBuilder('cm')
+      .leftJoin('cm.channel', 'channel')
+      .where('cm.userPk = :userPk', { userPk })
+      .andWhere('channel.projectPk = :projectPk', { projectPk })
+      .getMany();
+
+    if (userChannelsInProject.length > 0) {
+      userChannelsInProject.forEach(cm => {
+        cm.cStatus = newStatus;
+      });
+      await this.channelMemberRepository.save(userChannelsInProject);
+    }
   }
 }

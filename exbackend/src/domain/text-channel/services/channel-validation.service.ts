@@ -17,7 +17,7 @@ export class ChannelValidationService {
    */
   async validateChannelKind(
     channelPk: number,
-  ): Promise<{ isValid: boolean; channelKind?: 'TEXT' | 'VOICE' | 'VIDEO' }> {
+  ): Promise<{ isValid: boolean; channelKind?: 'TEXT' | 'VOICE' | 'NOTIFICATION' }> {
     const channel = await this.channelRepository.findOne({
       where: { channelPk, isDeletedChannel: false },
     });
@@ -26,8 +26,8 @@ export class ChannelValidationService {
       return { isValid: false };
     }
 
-    // VOICE 또는 VIDEO 채널만 유효한 것으로 간주
-    const isValid = channel.channelKind === 'VOICE' || channel.channelKind === 'VIDEO';
+    // VOICE 채널만 유효한 것으로 간주 (VIDEO는 VOICE에 포함)
+    const isValid = channel.channelKind === 'VOICE';
 
     return { isValid, channelKind: channel.channelKind };
   }

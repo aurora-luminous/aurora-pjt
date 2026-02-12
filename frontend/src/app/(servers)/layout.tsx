@@ -5,6 +5,8 @@ import { useServerLayout } from "./hooks/useServerLayout";
 import { useFullscreen } from "./hooks/useFullscreen";
 import { ServerHeader, ProjectSidebar, UserSidebar } from "./components";
 import { useResponsive } from "../lib/useResponsive";
+import { useChannelSubscription } from "./hooks/useChannelSubscription";
+import { ChatMessage } from "./types/websocket";
 
 export default function ServersLayout({
   children,
@@ -27,6 +29,15 @@ export default function ServersLayout({
   } = useServerLayout();
 
   const { isFullscreen } = useFullscreen();
+
+  // 웹소켓 연결 및 채널 구독
+  const { isConnected, isLoading: isLoadingChannels } = useChannelSubscription(
+    (message: ChatMessage) => {
+      // 메시지 수신 시 처리 로직
+      console.log("📨 레이아웃에서 메시지 수신:", message);
+      // 여기에 Redux store 업데이트 또는 다른 상태 관리 로직 추가 가능
+    }
+  );
 
   // 모바일에서 프로젝트 사이드바 표시 상태 관리
   const [isMobileProjectSidebarOpen, setIsMobileProjectSidebarOpen] =
@@ -220,6 +231,14 @@ export default function ServersLayout({
           )}
         </div>
       </div>
+
+      {/* 개발 환경에서 웹소켓 연결 상태 표시 */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="fixed bottom-4 right-4 bg-black/70 text-white p-2 rounded text-xs z-50">
+          <div>WebSocket: {isConnected ? "✅ 연결됨" : "❌ 연결 안됨"}</div>
+          {isLoadingChannels && <div>채널 로딩 중...</div>}
+        </div>
+      )}
     </div>
   );
 }

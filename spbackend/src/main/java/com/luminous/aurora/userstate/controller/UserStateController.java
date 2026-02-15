@@ -1,6 +1,7 @@
 package com.luminous.aurora.userstate.controller;
 
 import com.luminous.aurora.auth.repository.UserRepository;
+import com.luminous.aurora.common.error.exception.*;
 import com.luminous.aurora.jwt.JwtTokenProvider;
 import com.luminous.aurora.member.dto.DmRoomResponse;
 import com.luminous.aurora.project.entity.ProjectMember;
@@ -33,20 +34,15 @@ public class UserStateController {
     @GetMapping("/status")
     public ResponseEntity<UserStatusResponse> getCurrentUserStatus(
             HttpServletRequest request) {
-        try {
-            Integer userPk = extractUserPkFromRequest(request);
-            UserStatus status = userStateService.getUserStatus(userPk);
+        Integer userPk = extractUserPkFromRequest(request);
+        UserStatus status = userStateService.getUserStatus(userPk);
+        UserStatusResponse response = UserStatusResponse.builder()
+                .userPk(userPk)
+                .status(status)
+                .lastSeen(LocalDateTime.now()) // 실제로는 DB에서 조회
+                .build();
 
-            UserStatusResponse response = UserStatusResponse.builder()
-                    .userPk(userPk)
-                    .status(status)
-                    .lastSeen(LocalDateTime.now()) // 실제로는 DB에서 조회
-                    .build();
-
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(401).build();
-        }
+        return ResponseEntity.ok(response);
     }
 
 
@@ -55,20 +51,16 @@ public class UserStateController {
     public ResponseEntity<UserStatusChangeResponse> setCurrentUserStatus(
             @RequestBody UserStatusChangeRequestForRest request,
             HttpServletRequest httpRequest) {
-        try {
-            Integer userPk = extractUserPkFromRequest(httpRequest);
-            userStateService.setUserStatus(userPk, request.getStatus());
+        Integer userPk = extractUserPkFromRequest(httpRequest);
+        userStateService.setUserStatus(userPk, request.getStatus());
 
-            UserStatusChangeResponse response = UserStatusChangeResponse.builder()
-                    .userPk(userPk)
-                    .status(request.getStatus())
-                    .timestamp(System.currentTimeMillis())
-                    .build();
+        UserStatusChangeResponse response = UserStatusChangeResponse.builder()
+                .userPk(userPk)
+                .status(request.getStatus())
+                .timestamp(System.currentTimeMillis())
+                .build();
 
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(401).build();
-        }
+        return ResponseEntity.ok(response);
     }
 
     // ========== 프로젝트 멤버 조회 ==========
@@ -101,36 +93,39 @@ public class UserStateController {
      */
     @PostMapping("/member/notify")
     public ResponseEntity<String> notifyMemberChange(@RequestBody MemberChangeEvent event) {
-        try {
-            // 프로젝트 멤버 변경만 처리
-            if (event.getProjectPk() == null) {
-                return ResponseEntity.badRequest().body("프로젝트 정보가 필요합니다.");
-            }
-
-            String destination = "/topic/project/" + event.getProjectPk() + "/members";
-
-            // WebSocket으로 브로드캐스트
-            messagingTemplate.convertAndSend(destination, event);
-
-            log.info("프로젝트 멤버 변경 알림 전송: eventType={}, projectPk={}, userPk={}",
-                    event.getEventType(), event.getProjectPk(), event.getUserPk());
-
-            return ResponseEntity.ok("알림 전송 완료");
-        } catch (Exception e) {
-            log.error("멤버 변경 알림 전송 실패: {}", e.getMessage());
-            return ResponseEntity.status(500).body("알림 전송 실패: " + e.getMessage());
+        // 프로젝트 멤버 변경만 처리
+        if (event.getProjectPk() == null) {
+            throw new BadRequestException("프로젝트 정보가 필요합니다.");
         }
+
+        String destination = "/topic/project/" + event.getProjectPk() + "/members";
+
+        // WebSocket으로 브로드캐스트
+        messagingTemplate.convertAndSend(destination, event);
+
+        log.info("프로젝트 멤버 변경 알림 전송: eventType={}, projectPk={}, userPk={}",
+                event.getEventType(), event.getProjectPk(), event.getUserPk());
+
+        return ResponseEntity.ok("알림 전송 완료");
+
     }
 
-
+    /**
+     * JWT에서 userPk 추출
+     * - 토큰/사용자 없으면 UnauthorizedException → 401
+     */
     private Integer extractUserPkFromRequest(HttpServletRequest request) {
         // JWT 토큰 추출 및 userPk 반환
         String token = extractTokenFromCookie(request);
         String userEmail = jwtTokenProvider.getUserEmailFromToken(token);
         return userRepository.findUserPkByUserEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new UnauthorizedException("사용자를 찾을 수 없습니다."));
     }
 
+    /**
+     * 쿠키에서 access_token 추출
+     * - 토큰 없으면 UnauthorizedException → GlobalExceptionHandler가 401 반환
+     */
     private String extractTokenFromCookie(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
@@ -140,6 +135,6 @@ public class UserStateController {
                 }
             }
         }
-        throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
+        throw new UnauthorizedException("JWT 토큰을 찾을 수 없습니다.");
     }
 }

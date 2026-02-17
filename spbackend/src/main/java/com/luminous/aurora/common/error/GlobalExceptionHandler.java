@@ -4,6 +4,7 @@ import com.luminous.aurora.common.error.exception.*;
 import org.apache.coyote.BadRequestException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
@@ -101,4 +102,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+    /**
+     * Bean Validation 실패 시 (회원가입/로그인 등 @Valid 실패)
+     * - 첫 번째 필드 에러 메시지 반환
+     * - 400 Bad Request
+     */
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorResponseDto> handleMethodArgumentNotValid(MethodArgumentNotValidException e) {
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .map(fieldError -> fieldError.getDefaultMessage())
+                .findFirst()
+                .orElse("입력값이 올바르지 않습니다.");
+
+        ErrorResponseDto response = new ErrorResponseDto(
+                message,
+                "BAD_REQUEST",
+                HttpStatus.BAD_REQUEST.value()
+        );
+        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+    }
 }

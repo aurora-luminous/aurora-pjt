@@ -9,6 +9,7 @@ import com.luminous.aurora.auth.service.AuthService;
 import com.luminous.aurora.auth.service.TokenService;
 import com.luminous.aurora.common.error.exception.UnauthorizedException;
 import com.luminous.aurora.jwt.JwtTokenProvider;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,7 +38,7 @@ public class AuthController {
     private String cookieSameSite;
 
     @PostMapping("/signup")
-    public ResponseEntity<String> signup(@RequestBody SignUpRequest request) {
+    public ResponseEntity<String> signup(@Valid @RequestBody SignUpRequest request) {
         log.info("회원가입 요청 : userEmail = {}", request.getUserEmail());
         authService.signUp(request);
 
@@ -46,7 +47,7 @@ public class AuthController {
 
 
     @PostMapping("/login")
-    public ResponseEntity<TokenResponse> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
         log.info("로그인 요청: Email = {}",request.getUserEmail());
 
         TokenResponse tokens = authService.login(request);

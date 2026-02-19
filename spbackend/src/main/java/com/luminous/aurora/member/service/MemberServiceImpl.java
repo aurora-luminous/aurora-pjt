@@ -2,6 +2,7 @@ package com.luminous.aurora.member.service;
 
 import com.luminous.aurora.member.repository.ChannelMemberRepository;
 import com.luminous.aurora.member.repository.DmMemberRepository;
+import com.luminous.aurora.project.repository.ProjectMemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -9,10 +10,11 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class MemberServiceImpl implements MemberService{
+public class MemberServiceImpl implements MemberService {
 
     private final ChannelMemberRepository channelMemberRepository;
     private final DmMemberRepository dmMemberRepository;
+    private final ProjectMemberRepository projectMemberRepository;
 
     @Override
     public boolean hasChannelAccess(Integer channelPk, Integer userPk) {
@@ -36,7 +38,17 @@ public class MemberServiceImpl implements MemberService{
             log.debug("DM방 접근 권한 확인 : dmRoomPk={}, userPk={}, hasAccess={}", dmRoomPk, userPk, hasAccess);
             return hasAccess;
         } catch (Exception e) {
-            log.error("DM방 접근 권환 확인 실패: {}",e.getMessage());
+            log.error("DM방 접근 권환 확인 실패: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public boolean hasProjectAccess(Integer projectPk, Integer userPk) {
+        try {
+            return projectMemberRepository.existsByProject_ProjectPkAndUser_UserPk(projectPk, userPk);
+        } catch (Exception e) {
+            log.error("프로젝트 접근 권한 확인 실패 : {}", e.getMessage());
             return false;
         }
     }

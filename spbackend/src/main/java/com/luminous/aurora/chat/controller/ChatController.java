@@ -22,34 +22,27 @@ public class ChatController {
 
     // 채널 메시지 저장
     @PostMapping("/channel")
-    public ResponseEntity<String> saveChannelMessage(@RequestBody MessageRequest request,
-                                                              @CookieValue("access_token") String jwtToken) {
-        try {
-            // 저장
-            chatService.saveMessage(request, jwtToken);
+    public ResponseEntity<String> saveChannelMessage(
+            @RequestBody MessageRequest request,
+            @CookieValue("access_token") String jwtToken) {
+        // 저장
+        chatService.saveMessage(request, jwtToken);
 
-            log.info("채널 메시지 저장 성공 : channelPk ={}, dmRoomPk = {}",
-                    request.getChannelPk(), request.getDmRoomPk());
-            return ResponseEntity.ok("메시지가 성공적으로 저장되었습니다.");
-        } catch (Exception e) {
-            log.error("채널 메시지 저장 실패 :{}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
+        log.info("채널 메시지 저장 성공 : channelPk ={}, dmRoomPk = {}",
+                request.getChannelPk(), request.getDmRoomPk());
+        return ResponseEntity.ok("메시지가 성공적으로 저장되었습니다.");
+
     }
+
     // 채널 최신 메시지 조회 (최초 로드)
     @GetMapping("/channel/{channelPk}/messages")
     public ResponseEntity<List<MessageResponse>> getLatestChannelMessages(
             @PathVariable Integer channelPk,
             @CookieValue("access_token") String jwtToken) {
-        try {
             List<MessageResponse> messages = chatService.getLatestMessage(channelPk, jwtToken);
             log.info("채널 최신 메시지 조회 성공: channelPk={}, messageCount={}",
                     channelPk, messages.size());
             return ResponseEntity.ok(messages);
-        } catch (Exception e) {
-            log.error("채널 최신 메시지 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
     }
 
     // 채널 이전 메시지 조회 (무한스크롤)
@@ -58,15 +51,10 @@ public class ChatController {
             @PathVariable Integer channelPk,
             @RequestParam LocalDateTime lastMessageTime,
             @CookieValue("access_token") String jwtToken) {
-        try {
             List<MessageResponse> messages = chatService.getOlderMessage(channelPk, lastMessageTime, jwtToken);
             log.info("채널 이전 메시지 조회 성공: channelPk={}, messageCount={}, lastMessageTime={}",
                     channelPk, messages.size(), lastMessageTime);
             return ResponseEntity.ok(messages);
-        } catch (Exception e) {
-            log.error("채널 이전 메시지 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
     }
 
     // DM방 최신 메시지 조회
@@ -74,15 +62,10 @@ public class ChatController {
     public ResponseEntity<List<MessageResponse>> getLatestDmMessages(
             @PathVariable Integer dmRoomPk,
             @CookieValue("access_token") String jwtToken) {
-        try {
             List<MessageResponse> messages = chatService.getLatestDmMessage(dmRoomPk, jwtToken);
             log.info("DM방 최신 메시지 조회 성공: dmRoomPk={}, messageCount={}",
                     dmRoomPk, messages.size());
             return ResponseEntity.ok(messages);
-        } catch (Exception e) {
-            log.error("DM방 최신 메시지 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
     }
 
     // DM방 이전 메시지 조회 (무한스크롤)
@@ -91,14 +74,9 @@ public class ChatController {
             @PathVariable Integer dmRoomPk,
             @RequestParam LocalDateTime lastMessageTime,
             @CookieValue("access_token") String jwtToken) {
-        try {
             List<MessageResponse> messages = chatService.getOlderDmMessage(dmRoomPk, lastMessageTime, jwtToken);
             log.info("DM방 이전 메시지 조회 성공: dmRoomPk={}, messageCount={}, lastMessageTime={}",
                     dmRoomPk, messages.size(), lastMessageTime);
             return ResponseEntity.ok(messages);
-        } catch (Exception e) {
-            log.error("DM방 이전 메시지 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        }
     }
 }

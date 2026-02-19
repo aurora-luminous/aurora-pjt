@@ -1,8 +1,11 @@
 package com.luminous.aurora.common.error;
 
 import com.luminous.aurora.common.error.exception.*;
+<<<<<<< fix/#101-signup-login-validation
 import org.apache.coyote.BadRequestException;
 import org.springframework.http.HttpHeaders;
+=======
+>>>>>>> sp
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +23,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ErrorResponseDto> handleBadRequestException(BadRequestException e) {
         ErrorResponseDto response = new ErrorResponseDto(
                 e.getMessage() != null ? e.getMessage() : "잘못된 요청입니다.",
-                "BAD_REQEUST",
+                "BAD_REQUEST",
                 HttpStatus.BAD_REQUEST.value()
         );
 

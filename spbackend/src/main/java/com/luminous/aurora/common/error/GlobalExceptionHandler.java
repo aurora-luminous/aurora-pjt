@@ -1,7 +1,6 @@
 package com.luminous.aurora.common.error;
 
 import com.luminous.aurora.common.error.exception.*;
-import org.apache.coyote.BadRequestException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,7 +15,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ErrorResponseDto> handleBadRequestException(BadRequestException e) {
         ErrorResponseDto response = new ErrorResponseDto(
                 e.getMessage() != null ? e.getMessage() : "잘못된 요청입니다.",
-                "BAD_REQEUST",
+                "BAD_REQUEST",
                 HttpStatus.BAD_REQUEST.value()
         );
 

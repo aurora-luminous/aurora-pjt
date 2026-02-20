@@ -31,6 +31,13 @@ export class ServerCreationService {
         throw new NotFoundException(`사용자 ID ${createServerDto.serverUrl}를 찾을 수 없습니다`);
         }
 
+        // 영문명인지 검사
+        const ONLY_ENGLISH = /^[A-Za-z]+$/;
+
+        if (!ONLY_ENGLISH.test(createServerDto.serverUrl)) {
+            throw new ConflictException('영문만 입력할 수 있습니다.');
+        }
+        
         // 2. 서버 생성
         const isExistServer = await this.serverRepository.findOne({
             where: {serverUrl: createServerDto.serverUrl, isDeletedServer: false}
@@ -39,6 +46,7 @@ export class ServerCreationService {
         if (isExistServer) {
             throw new ConflictException(`이미 중복된 URL ${createServerDto.creatorUserPk}이 존재합니다.`);
         }
+
         const server = this.serverRepository.create({
         serverName: createServerDto.serverName,
         serverUrl: createServerDto.serverUrl,

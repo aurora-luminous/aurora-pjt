@@ -7,7 +7,7 @@ import { Project } from '../../project/entities/project.entity';
 import { ProjectMember } from '../../project/entities/project-member.entity';
 import { User } from '../../user/entities/user.entity';
 import { UserService } from '../../user/services/user.service';
-import { MemberRoleUtils } from '../../../common/enums/member-role.enum';
+import { MemberRoleUtils, ChannelRoleType } from '../../../common/enums/member-role.enum';
 
 export interface InviteToChannelDto {
   channelPk: number;
@@ -577,6 +577,85 @@ export class ChannelInvitationService {
     await this.unbanUserFromChannel(channelPk, targetUser.userPk, ownerUserPk);
   }
 
+  // 채널 멤버 역할 업데이트 (관리자만 가능)
+  async updateChannelMemberRole(
+    channelPk: number,
+    targetUserPk: number,
+    newRole: ChannelRoleType,
+    adminUserPk: number,
+  ): Promise<{ message: string }> {
+    // 1. 채널 존재 확인
+    const channel = await this.channelRepository.findOne({
+      where: { channelPk, isDeletedChannel: false }
+    });
+
+    if (!channel) {
+      throw new NotFoundException(`채널 ID ${channelPk}를 찾을 수 없습니다`);
+    }
+
+    // 2. 요청자가 채널 관리자인지 확인
+    const adminMember = await this.channelMemberRepository.findOne({
+      where: {
+        channelPk,
+        userPk: adminUserPk,
+        cStatus: 'Active'
+      }
+    });
+
+    if (!adminMember || !MemberRoleUtils.hasAdminPermission(adminMember.channelRole as ChannelRoleType)) {
+      throw new ForbiddenException('채널 관리자만 멤버의 역할을 변경할 수 있습니다');
+    }
+
+    // 3. 대상 멤버 확인
+    const targetMember = await this.channelMemberRepository.findOne({
+      where: {
+        channelPk,
+        userPk: targetUserPk,
+        cStatus: 'Active'
+      }
+    });
+
+    if (!targetMember) {
+      throw new NotFoundException('대상 멤버를 찾을 수 없거나 활성 멤버가 아닙니다');
+    }
+
+    // 4. 권한 변경 로직
+    // 4-1. 스스로를 강등하는 경우 방지 (다른 멤버가 있는 유일한 관리자일 때)
+    if (adminUserPk === targetUserPk && newRole === 'member') {
+      // 채널의 모든 활성 멤버 수
+      const totalActiveMembers = await this.channelMemberRepository.count({
+        where: { channelPk, cStatus: 'Active' }
+      });
+
+      // 채널의 활성 관리자 멤버 수
+      const activeAdminMembersCount = await this.channelMemberRepository.count({
+        where: { channelPk, cStatus: 'Active', channelRole: 'admin' as ChannelRoleType }
+      });
+
+      if (activeAdminMembersCount === 1 && totalActiveMembers > 1) {
+        throw new ForbiddenException(
+          '채널의 유일한 관리자는 자신을 멤버로 강등할 수 없습니다. 다른 관리자를 임명하거나 채널을 삭제해야 합니다.',
+        );
+      }
+    }
+
+    // 4-2. 다른 관리자를 강등하는 경우 방지 (현재 구현에서는 관리자끼리 서로 강등 불가)
+    if (targetMember.channelRole === 'admin' && newRole === 'member') {
+        throw new ForbiddenException('다른 관리자를 멤버로 강등할 수 없습니다.');
+    }
+
+    // 4-3. 이미 같은 역할로 변경하려는 경우
+    if (targetMember.channelRole === newRole) {
+      return { message: `대상 멤버는 이미 ${newRole} 역할입니다.` };
+    }
+
+    // 5. 역할 업데이트
+    targetMember.channelRole = newRole;
+    await this.channelMemberRepository.save(targetMember);
+
+    return { message: `멤버의 역할이 성공적으로 ${newRole}로 변경되었습니다.` };
+  }
+
   // 채널 나가기 (사용자 본인)
   async leaveChannel(channelPk: number, userPk: number): Promise<{ message: string }> {
     // 1. 채널 존재 확인 (선택 사항 - 이미 removeUserFromChannel에서 확인)
@@ -595,14 +674,38 @@ export class ChannelInvitationService {
         userPk,
         cStatus: 'Active'
       },
-      relations: ['user'] // 알림을 위해 user 정보 로드
+      relations: ['user']
     });
 
     if (!channelMember) {
       throw new NotFoundException('채널의 활성 멤버가 아닙니다');
     }
 
-    // 3. 상태를 Inactive로 변경 (soft delete)
+    // 3. 관리자 권한 확인 및 로직 적용
+    if (MemberRoleUtils.hasAdminPermission(channelMember.channelRole as ChannelRoleType)) {
+      // 채널의 모든 활성 멤버 수
+      const totalActiveMembers = await this.channelMemberRepository.count({
+        where: { channelPk, cStatus: 'Active' }
+      });
+
+      // 채널의 활성 관리자 멤버 수
+      const activeAdminMembersCount = await this.channelMemberRepository.count({
+        where: { channelPk, cStatus: 'Active', channelRole: 'admin' as ChannelRoleType }
+      });
+
+      // 유일한 관리자이면서 다른 멤버가 존재하는 경우 (다른 일반 멤버가 최소 1명 존재)
+      if (activeAdminMembersCount === 1 && totalActiveMembers > 1) {
+        throw new ForbiddenException(
+          '채널의 유일한 관리자이며 다른 멤버가 존재하여 채널을 나갈 수 없습니다. 채널 관리자를 위임하거나 채널을 삭제해야 합니다.',
+        );
+      }
+      // 유일한 관리자이면서 자신만 남은 경우 (다른 멤버 없음)
+      else if (activeAdminMembersCount === 1 && totalActiveMembers === 1) {
+        throw new ForbiddenException('채널에 멤버가 없으므로 채널을 직접 삭제해야 합니다.');
+      }
+    }
+
+    // 4. 상태를 Inactive로 변경 (soft delete)
     await this._updateChannelMemberStatus(channelMember.channelMemberPk, 'Inactive');
 
     // TODO: Spring 서버로 멤버 제거 알림 전송 (필요하다면)

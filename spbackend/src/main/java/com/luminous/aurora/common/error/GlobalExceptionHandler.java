@@ -1,11 +1,8 @@
 package com.luminous.aurora.common.error;
 
 import com.luminous.aurora.common.error.exception.*;
-<<<<<<< fix/#101-signup-login-validation
 import org.apache.coyote.BadRequestException;
 import org.springframework.http.HttpHeaders;
-=======
->>>>>>> sp
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;

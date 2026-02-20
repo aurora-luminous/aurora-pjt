@@ -14,6 +14,7 @@ import { CurrentUser } from '../../auth/current-user.decorator';
 import { User } from '../../user/entities/user.entity';
 import { ProjectCreationService } from '../services/project-creation.service';
 import { ProjectInvitationService } from '../services/project-invitation.service';
+import { ProjectDeletionService } from '../services/project-deletion.service'; // Import the new service
 import {
   CreateProjectDto,
   ProjectListDto,
@@ -29,6 +30,7 @@ export class ProjectController {
   constructor(
     private readonly projectCreationService: ProjectCreationService,
     private readonly projectInvitationService: ProjectInvitationService,
+    private readonly projectDeletionService: ProjectDeletionService,
   ) {}
 
   @Post()
@@ -200,12 +202,28 @@ export class ProjectController {
   ): Promise<{ message: string }> {
     const userPk = user.userPk;
 
-    // 프로젝트 나가기 로직 실행 (PM 특별 검증 포함)
+    // 프로젝트 나가기 로직 실행 (PM 검증 포함)
     const result = await this.projectInvitationService.leaveProject(
       projectPk,
       userPk
     );
 
     return result;
+  }
+
+  @Patch(':projectPk/delete')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '프로젝트 삭제 (Admin만 가능)' })
+  @ApiResponse({ status: 200, description: '프로젝트 삭제 성공' })
+  @ApiResponse({ status: 401, description: '프로젝트를 삭제할 권한 없음' })
+  @ApiResponse({ status: 400, description: '사용자가 존재하여 프로젝트를 삭제할 수 없음' })
+  @ApiResponse({ status: 404, description: '프로젝트를 찾을 수 없음' })
+  async deleteProject(
+    @Param('projectPk', ParseIntPipe) projectPk: number,
+    @CurrentUser() user: User,
+  ): Promise<{ message: string }> {
+    await this.projectDeletionService.deleteProject(projectPk, user.userPk);
+    return { message: '프로젝트가 성공적으로 삭제되었습니다.' };
   }
 }

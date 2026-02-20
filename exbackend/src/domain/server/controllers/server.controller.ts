@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { ServerCreationService } from '../services/server-creation.service';
 import { ServerInvitationService } from '../services/server-invitation.service';
 import { ServerMemberManagementService } from '../services/server-member-management.service';
+import { ServerDeletionService } from '../services/server-deletion.service'; // Import the new service
 import { CreateServerDto, ServerListDto, ServerCreateResponseDto, ServerMemberInfoDto, ServerMemberDetailDto } from '../dto';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CurrentUser } from '../../auth/current-user.decorator';
@@ -15,6 +16,7 @@ export class ServerController {
     private readonly serverCreationService: ServerCreationService,
     private readonly serverInvitationService: ServerInvitationService,
     private readonly serverMemberManagementService: ServerMemberManagementService,
+    private readonly serverDeletionService: ServerDeletionService, // Inject the new service
   ) {}
 
   @Post()

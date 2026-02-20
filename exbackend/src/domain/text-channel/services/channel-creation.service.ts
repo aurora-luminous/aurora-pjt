@@ -287,8 +287,6 @@ export class ChannelCreationService {
       .andWhere('channel.isDeletedChannel = false')
       .getMany();
 
-    console.log(`[DEBUG] Raw channels from getAllChannelsForUser for userPk ${userPk}:`, channels);
-
     return channels.map(channelMember => ({
       channelPk: channelMember.channel.channelPk,
       channelName: channelMember.channel.channelName,

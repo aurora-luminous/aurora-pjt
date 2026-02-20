@@ -12,6 +12,7 @@ import { ChannelMember } from '../text-channel/entities/channel-member.entity';
 import { ServerCreationService } from './services/server-creation.service';
 import { ServerInvitationService } from './services/server-invitation.service';
 import { ServerRolePermissionService } from './services/server-role-permission.service';
+import { ServerDeletionService } from './services/server-deletion.service';
 import { ServerController } from './controllers/server.controller';
 import { ServerRolePermissionController } from './controllers/server-role-permission.controller';
 import { ProjectModule } from '../project/project.module';
@@ -41,12 +42,14 @@ import { ServerMemberManagementService } from './services/server-member-manageme
     ServerInvitationService,
     ServerMemberManagementService,
     ServerRolePermissionService,
+    ServerDeletionService,
   ],
   exports: [
     ServerCreationService,
     ServerInvitationService,
     ServerMemberManagementService,
     ServerRolePermissionService,
+    ServerDeletionService,
   ],
 })
 export class ServerModule {}

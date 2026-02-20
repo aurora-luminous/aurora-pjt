@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ConflictException, ForbiddenException } 
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import * as crypto from 'crypto';
+import { v4 as uuidv4 } from 'uuid'; // Unique hash generation
 import { Server } from '../entities/server.entity';
 import { ServerMember } from '../entities/server-member.entity';
 import { User } from '../../user/entities/user.entity';
@@ -15,10 +15,10 @@ import { Channel } from '../../text-channel/entities/channel.entity';
 import { ChannelMember } from '../../text-channel/entities/channel-member.entity';
 import { ServerRolePermissionService } from './server-role-permission.service';
 import { PendingMemberDto, ServerMemberInfoDto, ServerMemberDetailDto, UpdateMemberStatusDto, JoinServerDto, ServerInviteDto } from '../dto';
+import { InviteLink } from '../entities/invite-link.entity'; // InviteLink entity 추가
 
 @Injectable()
 export class ServerInvitationService {
-  private readonly INVITE_SALT = 'server_invite_salt_2024'; // 환경변수로 관리 권장
 
   constructor(
     @InjectRepository(Server)
@@ -36,36 +36,14 @@ export class ServerInvitationService {
     private readonly channelRepository: Repository<Channel>,
     @InjectRepository(ChannelMember)
     private readonly channelMemberRepository: Repository<ChannelMember>,
+    @InjectRepository(InviteLink) // InviteLink Repository 주입
+    private readonly inviteLinkRepository: Repository<InviteLink>,
     private readonly configService: ConfigService,
     private readonly serverRolePermissionService: ServerRolePermissionService,
   ) {}
 
-  // serverPk를 해시로 변환
-  private generateInviteHash(serverPk: number): string {
-    return crypto
-      .createHash('sha256')
-      .update(`${serverPk}-${this.INVITE_SALT}`)
-      .digest('hex')
-      .substring(0, 16); // 16자리 해시
-  }
-
-  // 해시를 serverPk로 역변환 (모든 서버를 순회해서 매칭)
-  private async getServerPkFromHash(inviteHash: string): Promise<number | null> {
-    const servers = await this.serverRepository.find({
-      where: { isDeletedServer: false },
-      select: ['serverPk']
-    });
-
-    for (const server of servers) {
-      if (this.generateInviteHash(server.serverPk) === inviteHash) {
-        return server.serverPk;
-      }
-    }
-    return null;
-  }
-
   // 서버 초대 링크 생성
-  async generateInviteLink(serverPk: number, requestUserPk: number): Promise<ServerInviteDto> {
+  async generateInviteHash(serverPk: number, requestUserPk: number): Promise<{ inviteHash: string }> {
     // 1. 서버 존재 확인
     const server = await this.serverRepository.findOne({
       where: { serverPk, isDeletedServer: false }
@@ -88,15 +66,23 @@ export class ServerInvitationService {
       throw new ForbiddenException('서버 관리자 또는 소유자만 초대 링크를 생성할 수 있습니다');
     }
 
-    // 3. 해시 생성 및 링크 생성
-    const inviteHash = this.generateInviteHash(serverPk);
-    const baseUrl = this.configService.get('SERVER_URL', 'http://localhost:3001'); // env에 배포용 서버 URL 있으면 그거 사용, 없으면 localhost 사용
-    const inviteLink = `${baseUrl}/api/ex/servers/${server.serverUrl}/join/${inviteHash}`;
+    // 3. 고유 해시 생성 (UUID 사용)
+    const newInviteHash = uuidv4().substring(0, 12); // 12자리 해시
+
+    // 4. 만료 시간 설정 (현재 시간 + 7일)
+    const expiredTime = new Date();
+    expiredTime.setDate(expiredTime.getDate() + 7);
+
+    // 5. 초대 링크 정보 저장
+    const inviteLinkEntity = this.inviteLinkRepository.create({
+      serverPk: server.serverPk,
+      hash: newInviteHash,
+      expiredTime: expiredTime,
+    });
+    await this.inviteLinkRepository.save(inviteLinkEntity);
 
     return {
-      serverPk,
-      inviteHash,
-      inviteLink,
+      inviteHash: newInviteHash,
     };
   }
 
@@ -195,23 +181,30 @@ export class ServerInvitationService {
 
   // 초대 링크로 서버 정보 조회
   async getServerInfoByInvite(joinDto: JoinServerDto): Promise<{ serverUrl: string; serverName: string }> {
-    // 1. 해시로 서버 찾기
-    const serverPk = await this.getServerPkFromHash(joinDto.inviteHash);
+    // 1. 해시로 초대 링크 찾기
+    const inviteLinkRecord = await this.inviteLinkRepository.findOne({
+      where: { hash: joinDto.inviteHash },
+    });
 
-    if (!serverPk) {
+    if (!inviteLinkRecord) {
       throw new NotFoundException('잘못된 초대 링크입니다');
     }
 
-    // 2. 서버 존재 확인
+    // 2. 만료 시간 검증
+    if (inviteLinkRecord.expiredTime < new Date()) {
+      throw new ForbiddenException('만료된 초대 링크입니다');
+    }
+
+    // 3. 서버 존재 확인
     const server = await this.serverRepository.findOne({
-      where: { serverPk, isDeletedServer: false }
+      where: { serverPk: inviteLinkRecord.serverPk, isDeletedServer: false }
     });
 
     if (!server) {
-      throw new NotFoundException('서버를 찾을 수 없거나 삭제되었습니다');
+      throw new NotFoundException('서버를 찾을 수 없습니다');
     }
 
-    // 3. 사용자 존재 확인 (유효한 사용자인지만 확인)
+    // 4. 사용자 존재 확인 (유효한 사용자인지만 확인)
     const user = await this.userRepository.findOne({
       where: { userPk: joinDto.userPk, isDeleted: false }
     });
@@ -220,7 +213,7 @@ export class ServerInvitationService {
       throw new NotFoundException(`사용자 ID ${joinDto.userPk}를 찾을 수 없습니다`);
     }
 
-    // 4. 서버 정보만 반환
+    // 5. 서버 정보 반환
     return {
       serverUrl: server.serverUrl,
       serverName: server.serverName

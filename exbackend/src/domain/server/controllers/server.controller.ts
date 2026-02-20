@@ -276,20 +276,37 @@ export class ServerController {
       };
     }
   
-    @Patch(':serverUrl/leave')
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth('access-token')
-    @ApiOperation({ summary: '현재 유저가 서버 나가기' })
-    @ApiResponse({ status: 200, description: '서버 나가기 성공' })
-    @ApiResponse({ status: 403, description: '서버 소유자는 서버를 나갈 수 없음' })
-    @ApiResponse({ status: 404, description: '서버 또는 활성 멤버를 찾을 수 없음' })
-    async leaveServer(
-      @Param('serverUrl') serverUrl: string,
-      @CurrentUser() user: User
-    ): Promise<{ message: string }> {
-      return await this.serverInvitationService.leaveServer(
-        serverUrl,
-        user.userPk,
-      );
-    }
+  @Patch(':serverUrl/leave')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '현재 유저가 서버 나가기' })
+  @ApiResponse({ status: 200, description: '서버 나가기 성공' })
+  @ApiResponse({ status: 403, description: '서버 소유자는 서버를 나갈 수 없음' })
+  @ApiResponse({ status: 404, description: '서버 또는 활성 멤버를 찾을 수 없음' })
+  async leaveServer(
+    @Param('serverUrl') serverUrl: string,
+    @CurrentUser() user: User
+  ): Promise<{ message: string }> {
+    return await this.serverInvitationService.leaveServer(
+      serverUrl,
+      user.userPk,
+    );
   }
+
+  @Patch(':serverUrl/delete')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '서버 삭제 (Owner만 가능)' })
+  @ApiResponse({ status: 200, description: '서버 삭제 성공' })
+  @ApiResponse({ status: 401, description: '서버를 삭제할 권한 없음' })
+  @ApiResponse({ status: 404, description: '서버를 찾을 수 없음' })
+  async deleteServer(
+    @Param('serverUrl') serverUrl: string,
+    @CurrentUser() user: User,
+  ): Promise<{ message: string }> {
+    const server = await this.serverCreationService.getServerByUrl(serverUrl);
+    await this.serverDeletionService.deleteServer(server.serverPk, user.userPk);
+    return { message: '서버가 성공적으로 삭제되었습니다.' };
+  }
+}
+    

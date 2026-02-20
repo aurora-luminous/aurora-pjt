@@ -58,6 +58,11 @@ export class ProjectDeletionService {
         { channelPk: In(channelPks) },
         { isDeletedChannel: true },
       );
+      // 삭제된 채널의 모든 채널 멤버 비활성화
+      await this.channelMemberRepository.update(
+        { channelPk: In(channelPks), cStatus: 'Active' },
+        { cStatus: 'Inactive' },
+      )
     }
   }
 }

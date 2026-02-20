@@ -64,6 +64,11 @@ export class ServerDeletionService {
         { projectPk: In(projectPks) },
         { isDeletedProject: true },
       );
+      // 프로젝트 멤버들도 모두 삭제
+      await this.projectMemberRepository.update(
+        { projectPk: In(projectPks), pStatus: 'Active' },
+        { pStatus: 'Inactive' },
+      );
 
       // 6. 삭제된 프로젝트에 속한 모든 채널 소프트 삭제
       const channelsToDelete = await this.channelRepository.find({
@@ -76,6 +81,11 @@ export class ServerDeletionService {
         await this.channelRepository.update(
           { channelPk: In(channelPks) },
           { isDeletedChannel: true },
+        );
+        // 채널 멤버들도 모두 삭제
+        await this.channelMemberRepository.update(
+          { channelPk: In(channelPks), cStatus: 'Active' },
+          { cStatus: 'Inactive' },
         );
       }
     }

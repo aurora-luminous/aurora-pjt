@@ -634,7 +634,7 @@ export class ChannelInvitationService {
 
       if (activeAdminMembersCount === 1 && totalActiveMembers > 1) {
         throw new ForbiddenException(
-          '채널의 유일한 관리자는 자신을 멤버로 강등할 수 없습니다. 다른 관리자를 임명하거나 채널을 삭제해야 합니다.',
+          '다른 멤버에게 관리자 권한을 부여한 뒤 자신의 역할을 변경해야 합니다.',
         );
       }
     }
@@ -696,7 +696,7 @@ export class ChannelInvitationService {
       // 유일한 관리자이면서 다른 멤버가 존재하는 경우 (다른 일반 멤버가 최소 1명 존재)
       if (activeAdminMembersCount === 1 && totalActiveMembers > 1) {
         throw new ForbiddenException(
-          '채널의 유일한 관리자이며 다른 멤버가 존재하여 채널을 나갈 수 없습니다. 채널 관리자를 위임하거나 채널을 삭제해야 합니다.',
+          '다른 멤버에게 관리자 권한을 부여한 뒤에 나갈 수 있습니다.',
         );
       }
       // 유일한 관리자이면서 자신만 남은 경우 (다른 멤버 없음)
@@ -705,7 +705,7 @@ export class ChannelInvitationService {
       }
     }
 
-    // 4. 상태를 Inactive로 변경 (soft delete)
+    // 4. 상태를 Inactive로 변경
     await this._updateChannelMemberStatus(channelMember.channelMemberPk, 'Inactive');
 
     // TODO: Spring 서버로 멤버 제거 알림 전송 (필요하다면)

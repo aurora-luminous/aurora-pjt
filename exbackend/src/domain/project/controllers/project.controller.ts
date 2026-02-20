@@ -30,7 +30,7 @@ export class ProjectController {
   constructor(
     private readonly projectCreationService: ProjectCreationService,
     private readonly projectInvitationService: ProjectInvitationService,
-    private readonly projectDeletionService: ProjectDeletionService, // Inject the new service
+    private readonly projectDeletionService: ProjectDeletionService,
   ) {}
 
   @Post()
@@ -202,7 +202,7 @@ export class ProjectController {
   ): Promise<{ message: string }> {
     const userPk = user.userPk;
 
-    // 프로젝트 나가기 로직 실행 (PM 특별 검증 포함)
+    // 프로젝트 나가기 로직 실행 (PM 검증 포함)
     const result = await this.projectInvitationService.leaveProject(
       projectPk,
       userPk
@@ -211,11 +211,11 @@ export class ProjectController {
     return result;
   }
 
-  @Patch(':projectPk/delete') // Using projectPk directly as it's a specific resource
+  @Patch(':projectPk/delete')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: '프로젝트 삭제 (Admin만 가능, 소프트 삭제)' })
-  @ApiResponse({ status: 200, description: '프로젝트 소프트 삭제 성공' })
+  @ApiOperation({ summary: '프로젝트 삭제 (Admin만 가능)' })
+  @ApiResponse({ status: 200, description: '프로젝트 삭제 성공' })
   @ApiResponse({ status: 401, description: '프로젝트를 삭제할 권한 없음' })
   @ApiResponse({ status: 400, description: '사용자가 존재하여 프로젝트를 삭제할 수 없음' })
   @ApiResponse({ status: 404, description: '프로젝트를 찾을 수 없음' })

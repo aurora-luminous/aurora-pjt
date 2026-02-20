@@ -43,14 +43,11 @@ export class ServerDeletionService {
       throw new UnauthorizedException('서버를 삭제할 권한이 없습니다. 서버 owner만 삭제할 수 있습니다.');
     }
 
-    // 3. 활성 멤버 존재 여부 확인
-    const activeServerMembersCount = await this.serverMemberRepository.count({
-      where: { serverPk, sStatus: 'Active' },
-    });
-
-    if (activeServerMembersCount > 0) {
-      throw new BadRequestException('사용자가 존재하므로 서버를 삭제할 수 없습니다.');
-    }
+    // 3. 활성 멤버가 있으면 비활성으로 변경
+    await this.serverMemberRepository.update(
+      { serverPk, sStatus: 'Active' },
+      { sStatus: 'Inactive' },
+    );
 
     // 4. 서버 소프트 삭제
     await this.serverRepository.update(serverPk, { isDeletedServer: true });

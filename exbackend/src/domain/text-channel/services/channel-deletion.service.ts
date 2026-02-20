@@ -31,14 +31,11 @@ export class ChannelDeletionService {
       throw new UnauthorizedException('채널을 삭제할 권한이 없습니다. 채널 admin만 삭제할 수 있습니다.');
     }
 
-    // 3. 활성 멤버 존재 여부 확인
-    const activeChannelMembersCount = await this.channelMemberRepository.count({
-      where: { channelPk, cStatus: 'Active' },
-    });
-
-    if (activeChannelMembersCount > 0) {
-      throw new BadRequestException('사용자가 존재하므로 채널을 삭제할 수 없습니다.');
-    }
+    // 3. 활성 멤버 있으면 비활성으로 변경
+    await this.channelMemberRepository.update(
+      { channelPk, cStatus: 'Active' },
+      { cStatus: 'Inactive' },
+    )
 
     // 4. 채널 소프트 삭제
     await this.channelRepository.update(channelPk, { isDeletedChannel: true });

@@ -37,14 +37,11 @@ export class ProjectDeletionService {
       throw new UnauthorizedException('프로젝트를 삭제할 권한이 없습니다. 프로젝트 admin만 삭제할 수 있습니다.');
     }
 
-    // 3. 활성 멤버 존재 여부 확인
-    const activeProjectMembersCount = await this.projectMemberRepository.count({
-      where: { projectPk, pStatus: 'Active' },
-    });
-
-    if (activeProjectMembersCount > 0) {
-      throw new BadRequestException('사용자가 존재하므로 프로젝트를 삭제할 수 없습니다.');
-    }
+    // 3. 활성 멤버 있으면 비활성으로 변경
+    await this.projectMemberRepository.update(
+      { projectPk, pStatus: 'Active' },
+      { pStatus: 'Inactive' },
+    )
 
     // 4. 프로젝트 소프트 삭제
     await this.projectRepository.update(projectPk, { isDeletedProject: true });

@@ -616,7 +616,7 @@ export class ChannelInvitationService {
     });
 
     if (!targetMember) {
-      throw new NotFoundException('대상 멤버를 찾을 수 없거나 활성 멤버가 아닙니다');
+      throw new NotFoundException('대상 멤버를 찾을 수 없습니다');
     }
 
     // 4. 권한 변경 로직

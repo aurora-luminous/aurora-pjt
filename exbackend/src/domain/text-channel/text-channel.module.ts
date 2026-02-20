@@ -9,6 +9,7 @@ import { UserModule } from '../user/user.module';
 import { ChannelCreationService } from './services/channel-creation.service';
 import { ChannelInvitationService } from './services/channel-invitation.service';
 import { ChannelValidationService } from './services/channel-validation.service'; // Added import for ChannelValidationService
+import { ChannelDeletionService } from './services/channel-deletion.service';
 import { ChannelController } from './controllers/channel.controller';
 
 @Module({
@@ -29,11 +30,13 @@ import { ChannelController } from './controllers/channel.controller';
     ChannelCreationService,
     ChannelInvitationService,
     ChannelValidationService, // Added ChannelValidationService
+    ChannelDeletionService,
   ],
   exports: [
     ChannelCreationService,
     ChannelInvitationService,
     ChannelValidationService, // Added ChannelValidationService
+    ChannelDeletionService,
   ],
 })
 export class TextChannelModule {}

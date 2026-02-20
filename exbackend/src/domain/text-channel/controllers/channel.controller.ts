@@ -14,6 +14,7 @@ import { CurrentUser } from '../../auth/current-user.decorator';
 import { User } from '../../user/entities/user.entity';
 import { ChannelCreationService } from '../services/channel-creation.service';
 import { ChannelInvitationService } from '../services/channel-invitation.service';
+import { ChannelDeletionService } from '../services/channel-deletion.service'; // Import the new service
 import {
   CreateChannelDto,
   ChannelListDto,
@@ -21,6 +22,7 @@ import {
   BulkInviteToChannelDto,
   ChannelMemberDto,
   ManageMemberDto,
+  UpdateChannelMemberRoleDto,
 } from '../dto';
 
 @ApiTags('channels')
@@ -29,6 +31,7 @@ export class ChannelController {
   constructor(
     private readonly channelCreationService: ChannelCreationService,
     private readonly channelInvitationService: ChannelInvitationService,
+    private readonly channelDeletionService: ChannelDeletionService, // Inject the new service
   ) {}
 
   @Post()
@@ -180,6 +183,28 @@ export class ChannelController {
     return { message: '차단 해제 성공' };
   }
 
+  @Patch(':channelPk/members/:targetUserPk/role')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '채널 멤버 역할 변경 (Admin만 가능)' })
+  @ApiResponse({ status: 200, description: '멤버 역할 변경 성공' })
+  @ApiResponse({ status: 403, description: '권한 없음' })
+  @ApiResponse({ status: 404, description: '멤버를 찾을 수 없음' })
+  async updateChannelMemberRole(
+    @Param('channelPk', ParseIntPipe) channelPk: number,
+    @Param('targetUserPk', ParseIntPipe) targetUserPk: number,
+    @Body() updateChannelMemberRoleDto: UpdateChannelMemberRoleDto,
+    @CurrentUser() user: User,
+  ): Promise<{ message: string }> {
+    const adminUserPk = user.userPk;
+    return this.channelInvitationService.updateChannelMemberRole(
+      channelPk,
+      targetUserPk,
+      updateChannelMemberRoleDto.newRole,
+      adminUserPk,
+    );
+  }
+
   @Patch(':channelPk/leave')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
@@ -194,5 +219,21 @@ export class ChannelController {
       channelPk,
       user.userPk,
     );
+  }
+
+  @Patch(':channelPk/delete')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '채널 삭제 (Admin만 가능, 삭제)' })
+  @ApiResponse({ status: 200, description: '채널 삭제 성공' })
+  @ApiResponse({ status: 401, description: '채널을 삭제할 권한 없음' })
+  @ApiResponse({ status: 400, description: '사용자가 존재하여 채널을 삭제할 수 없음' })
+  @ApiResponse({ status: 404, description: '채널을 찾을 수 없음' })
+  async deleteChannel(
+    @Param('channelPk', ParseIntPipe) channelPk: number,
+    @CurrentUser() user: User,
+  ): Promise<{ message: string }> {
+    await this.channelDeletionService.deleteChannel(channelPk, user.userPk);
+    return { message: '채널이 성공적으로 삭제되었습니다.' };
   }
 }

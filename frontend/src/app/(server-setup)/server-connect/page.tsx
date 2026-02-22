@@ -60,7 +60,7 @@ const ServerConnectPage = () => {
         errorMessage = "채널 생성에 실패했습니다.";
       }
 
-      alert(`${errorMessage} 다시 시도해주세요.`);
+     console.error(errorMessage)
     }
   };
 

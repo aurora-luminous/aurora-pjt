@@ -7,16 +7,13 @@ import { useJoin } from "./hooks/useJoin";
 const JoinPage = () => {
   const {
     isPageLoading,
-    isContentLoading,
     isJoinError,
-    isJoinStatusLoading,
-    isJoinStatusError,
-    hasJoined,
+    isJoining,
+    isJoinError2,
     isJoinButtonDisabled,
     joinInfo,
-    projects,
-    members,
     serverOwner,
+    memberCount,
     handleJoin,
     handleGoHome,
   } = useJoin();
@@ -150,22 +147,13 @@ const JoinPage = () => {
                   서버 정보
                 </h3>
 
-                {isContentLoading ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        className="h-4 bg-slate-700/60 rounded animate-pulse"
-                      />
-                    ))}
-                  </div>
-                ) : (
+                  
                   <div className="space-y-3">
                     {/* 멤버 수 */}
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 text-xs">멤버 수</span>
                       <span className="text-white text-sm font-medium">
-                        {members?.length ?? 0}명
+                        {memberCount}명
                       </span>
                     </div>
 
@@ -177,33 +165,10 @@ const JoinPage = () => {
                           {serverOwner}
                         </span>
                       </div>
-                    )}
-
-                    {/* 프로젝트 목록 */}
-                    {projects && projects.length > 0 && (
-                      <>
-                        <div className="h-px bg-slate-700/40" />
-                        <div>
-                          <span className="text-slate-400 text-xs block mb-2">
-                            프로젝트 ({projects.length}개)
-                          </span>
-                          <div className="space-y-1.5">
-                            {projects.map((project) => (
-                              <div
-                                key={project.projectPk}
-                                className="flex items-center justify-between bg-slate-700/30 rounded-lg px-3 py-2"
-                              >
-                                <span className="text-white text-xs font-medium truncate">
-                                  {project.projectName}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    )}
+                    )}                    
+                    
                   </div>
-                )}
+                
               </motion.div>
 
               {/* 가입하기 영역 */}
@@ -220,7 +185,7 @@ const JoinPage = () => {
                 </p>
 
                 {/* 에러 메시지 */}
-                {isJoinStatusError && hasJoined && (
+                {isJoinError2 && (
                   <div className="mb-3 p-2.5 bg-red-500/20 border border-red-500/30 rounded-xl">
                     <p className="text-red-300 text-xs text-center">
                       가입 신청 중 오류가 발생했습니다.
@@ -236,12 +201,12 @@ const JoinPage = () => {
                   disabled={isJoinButtonDisabled}
                   className={`w-full font-semibold py-3 px-4 rounded-xl transition-all duration-200 text-sm
                     ${
-                      hasJoined || isJoinStatusLoading
+                      isJoining
                         ? "bg-gradient-to-r from-slate-600 to-slate-700 text-slate-400 cursor-not-allowed"
                         : "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-lg shadow-purple-500/20"
                     }`}
                 >
-                  {isJoinStatusLoading || hasJoined ? "처리 중..." : "서버 가입하기"}
+                  {isJoining ? "처리 중..." : "서버 가입하기"}
                 </motion.button>
               </motion.div>
             </div>

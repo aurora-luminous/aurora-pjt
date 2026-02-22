@@ -180,7 +180,14 @@ export class ServerInvitationService {
   }
 
   // 초대 링크로 서버 정보 조회
-  async getServerInfoByInvite(joinDto: JoinServerDto): Promise<{ serverUrl: string; serverName: string }> {
+  async getServerInfoByInvite(
+    joinDto: JoinServerDto
+  ): Promise<{
+    serverUrl: string;
+    serverName: string;
+    memberCount: number;
+    owner: string;
+  }> {
     // 1. 해시로 초대 링크 찾기
     const inviteLinkRecord = await this.inviteLinkRepository.findOne({
       where: { hash: joinDto.inviteHash },
@@ -213,10 +220,28 @@ export class ServerInvitationService {
       throw new NotFoundException(`사용자 ID ${joinDto.userPk}를 찾을 수 없습니다`);
     }
 
-    // 5. 서버 정보 반환
+    // 5. 서버 멤버 수 조회
+    const memberCount = await this.serverMemberRepository.count({
+      where: { serverPk: server.serverPk, sStatus: 'Active' },
+    });
+
+    // 6. 서버 Owner 정보 조회
+    const ownerMember = await this.serverMemberRepository.findOne({
+      where: { serverPk: server.serverPk, serverRole: 'owner' },
+      relations: ['user'],
+    });
+
+    if (!ownerMember || !ownerMember.user) {
+      throw new NotFoundException('서버 소유자를 찾을 수 없습니다.');
+    }
+
+    // 7. 서버 정보 반환
     return {
       serverUrl: server.serverUrl,
-      serverName: server.serverName
+      serverName: server.serverName,
+      memberCount: memberCount,
+      owner: ownerMember.user.userName,
+      
     };
   }
 

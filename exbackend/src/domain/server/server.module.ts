@@ -17,6 +17,7 @@ import { ServerController } from './controllers/server.controller';
 import { ServerRolePermissionController } from './controllers/server-role-permission.controller';
 import { ProjectModule } from '../project/project.module';
 import { ServerMemberManagementService } from './services/server-member-management.service';
+import { InviteLink } from './entities/invite-link.entity'; // InviteLink import 추가
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { ServerMemberManagementService } from './services/server-member-manageme
       ProjectMember,
       Channel,
       ChannelMember,
+      InviteLink,
     ]),
     UserModule,
     ProjectModule,

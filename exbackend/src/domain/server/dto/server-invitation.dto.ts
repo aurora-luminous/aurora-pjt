@@ -4,7 +4,5 @@ export interface JoinServerDto {
 }
 
 export interface ServerInviteDto {
-  serverPk: number;
   inviteHash: string;
-  inviteLink: string;
 }

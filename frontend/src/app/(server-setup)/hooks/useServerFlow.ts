@@ -73,7 +73,8 @@ export const useServerFlow = () => {
       const projects = projectResponse.data;
 
       if (!projects || projects.length === 0) {
-        throw new Error("프로젝트가 존재하지 않습니다.");
+        const pendingUrl = createPendingPageUrl(serverUrl, serverName);
+        router.push(pendingUrl);
       }
 
       const firstProject = projects[0];

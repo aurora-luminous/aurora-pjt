@@ -1,11 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useJoinQuery } from "./useJoinQuery";
-import {
-  useProjectListQuery,
-  useUserMemberListQuery,
-  useServerJoinStatusQuery,
-} from "@/app/(server-setup)/hooks/useServerMutation";
+import { useServerJoinStatusApi } from "@/app/(server-setup)/hooks/useServerApi";
 import { getAccessToken } from "@/app/lib/tokenStorage";
 
 export const useJoin = () => {
@@ -13,90 +9,82 @@ export const useJoin = () => {
   const router = useRouter();
   const inviteCode = searchParams.get("code") ?? "";
 
-  const [hasJoined, setHasJoined] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const [isJoinError2, setIsJoinError2] = useState(false);
 
   // 로그인 여부: accessToken 존재 확인
   const isLoggedIn = !!getAccessToken();
 
-  // 초대 코드로 서버 기본 정보 조회
+  // 미로그인 상태에서는 쿼리 자체를 막아 에러 캐시를 방지
+  // isPageLoading은 미로그인 리다이렉트 중에도 true → 에러 화면 안 보임
   const {
     data: joinInfo,
     isLoading: isJoinLoading,
     isError: isJoinError,
-  } = useJoinQuery(inviteCode);
+  } = useJoinQuery(inviteCode, isLoggedIn);
 
   const serverUrl = joinInfo?.serverUrl ?? "";
 
-  // serverUrl로 프로젝트 목록 조회
-  const { data: projects, isLoading: isProjectsLoading } =
-    useProjectListQuery(serverUrl);
+  console.log("서버 주소:",serverUrl);
 
-  // serverUrl로 멤버 목록 조회
-  const { data: members, isLoading: isMembersLoading } =
-    useUserMemberListQuery(serverUrl);
+  const serverOwner = joinInfo?.owner ?? "";
+  const memberCount = joinInfo?.memberCount ?? 0;
 
-  // 가입 신청 (hasJoined가 true일 때 POST 실행)
-  const {
-    data: joinStatus,
-    isLoading: isJoinStatusLoading,
-    isError: isJoinStatusError,
-  } = useServerJoinStatusQuery(serverUrl, hasJoined ? undefined : "Active");
+  // 미로그인: 리다이렉트 중이므로 로딩으로 처리 (에러 화면 차단)
+  const isPageLoading = !isLoggedIn || isJoinLoading;
+  const isJoinButtonDisabled = !serverUrl || isJoining;
 
-  // 파생 데이터
-  const serverOwner = members?.find(
-    (m) => m.serverRole === "owner"
-  )?.userInfo?.userName;
-
-  const isPageLoading = isJoinLoading;
-  const isContentLoading = isProjectsLoading || isMembersLoading;
-  const isJoinButtonDisabled = !serverUrl || isJoinStatusLoading || hasJoined;
+  // useServerJoinStatusApi의 execute를 뮤테이션처럼 직접 1회 호출
+  const { execute: requestJoin } = useServerJoinStatusApi(serverUrl);
 
   // 미로그인 → 로그인 페이지로 (현재 경로를 redirect 파라미터로 전달)
+  const hasRedirected = useRef(false);
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn && !hasRedirected.current) {
+      hasRedirected.current = true;
       const currentPath = `/join?code=${inviteCode}`;
       router.push(`/login?redirect=${encodeURIComponent(currentPath)}`);
     }
   }, [isLoggedIn, inviteCode, router]);
 
-  // 가입 신청 완료 → pending 페이지로 이동
-  useEffect(() => {
-    if (!hasJoined || !joinStatus) return;
+  // 서버 가입하기 버튼 핸들러 - 1회 POST 후 바로 pending으로 이동
+  const handleJoin = useCallback(async () => {
+    if (!serverUrl || isJoining) return;
 
-    const status = joinStatus.sStatus;
-    if (status === "Pending" || status === "Active") {
+    try {
+      setIsJoining(true);
+      await requestJoin();
+
+      // 가입 요청 성공 → pending 페이지로 이동 (serverUrl, serverName을 쿼리 파라미터로 전달)
       if (joinInfo) {
-        localStorage.setItem("pendingServerUrl", joinInfo.serverUrl);
-        localStorage.setItem("pendingServerName", joinInfo.serverName);
+        const params = new URLSearchParams({
+          serverUrl: joinInfo.serverUrl,
+          serverName: joinInfo.serverName,
+        });
+        router.push(`/pending?${params.toString()}`);
+      } else {
+        router.push("/pending");
       }
-      router.push("/pending");
+    } catch (error) {
+      console.error("서버 가입 실패:", error);
+      setIsJoinError2(true);
+      setIsJoining(false);
     }
-  }, [hasJoined, joinStatus, joinInfo, router]);
+  }, [serverUrl, isJoining, requestJoin, joinInfo, router]);
 
-  const handleJoin = () => {
-    if (!serverUrl) return;
-    setHasJoined(true);
-  };
-
-  const handleGoHome = () => {
-    router.push("/");
-  };
+  const handleGoHome = () => router.push("/");
 
   return {
     // 상태
     isPageLoading,
-    isContentLoading,
-    isJoinLoading,
     isJoinError,
-    isJoinStatusLoading,
-    isJoinStatusError,
-    hasJoined,
+    isJoining,
+    isJoinError2,
     isJoinButtonDisabled,
     // 데이터
     joinInfo,
-    projects,
-    members,
     serverOwner,
+    memberCount,
     // 액션
     handleJoin,
     handleGoHome,

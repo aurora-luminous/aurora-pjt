@@ -4,7 +4,9 @@ import {
   useBanChannelMemberMutation,
   useUnbanChannelMemberMutation,
   useLeaveChannelMutation,
+  useDeleteChannelMutation,
 } from "./useServerMutation";
+import { useModal } from "./useModal";
 
 export const useChannelFlow = (
   serverUrl: string,
@@ -12,6 +14,7 @@ export const useChannelFlow = (
   channelPk: number
 ) => {
   const queryClient = useQueryClient();
+  const { close } = useModal();
   const kickChannelMemberMutation = useKickChannelMemberMutation(
     serverUrl,
     projectPk,
@@ -33,6 +36,11 @@ export const useChannelFlow = (
     projectPk,
     channelPk
   );
+
+  const deleteChannelMutation = useDeleteChannelMutation(
+    serverUrl,
+    projectPk,
+  )
 
   const handleKickMember = async (userEmail: string) => {
     try {
@@ -86,10 +94,27 @@ export const useChannelFlow = (
     }
   };
 
+  const handleDeleteChannel = async (channelPk: number) => {
+    const isConfirm = confirm("채널을 삭제하시겠습니까?");
+    if (!isConfirm) return;
+    try {
+      const response = await deleteChannelMutation.mutateAsync(channelPk);
+      queryClient.invalidateQueries({
+        queryKey: ["channelList", serverUrl, projectPk],
+      });
+      close();
+      return response;
+    } catch (error) {
+      console.error("❌ 채널 삭제 실패:", error);
+      throw error;
+    }
+  };
+
   return {
     handleKickMember,
     handleBanMember,
     handleUnbanMember,
     handleLeaveChannel,
+    handleDeleteChannel
   };
 };

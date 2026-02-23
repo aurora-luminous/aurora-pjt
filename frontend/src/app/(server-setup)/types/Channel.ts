@@ -15,3 +15,9 @@ export interface ChannelRequest {
   channelKind: ChannelKind;
   accessType: AccessType;
 }
+
+export interface LastChannelResponse {
+  serverUrl: string;
+  projectPk: number;
+  channelPk: number
+}

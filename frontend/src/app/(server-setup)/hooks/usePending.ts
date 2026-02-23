@@ -1,7 +1,7 @@
 import { useServerJoinStatusQuery } from "./useServerMutation";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useServerFlow } from "./useServerFlow";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const usePending = () => {
   const router = useRouter();
@@ -20,6 +20,7 @@ export const usePending = () => {
     }
   }, [serverUrl, serverName, router]);
 
+
   // 로컬 상태
   const [approvalStatus, setApprovalStatus] = useState<
     "Pending" | "Active" | "Inactive" | "Checking"
@@ -27,19 +28,36 @@ export const usePending = () => {
 
   // 서버 접근 권한 조회 - Tanstack Query 자동 polling 사용
   const {
-    data: serverAccessList,
+    data: serverAccessData,
     isLoading,
     error,
     refetch,
   } = useServerJoinStatusQuery(serverUrl || "dummy", approvalStatus);
- 
 
+  // 서버가 삭제된 경우: API가 400 에러를 throw함
+  const isServerDeleted = !!error && (
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (error as any)?.response?.status === 400 ||
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (error as any)?.response?.data?.statusCode === 400
+  );
+
+  // serverAccessData를 ServerAccess 타입으로 좁히기
+  const serverAccessList = (serverAccessData as { sStatus: string } | undefined) ?? null;
+
+  // 서버 삭제(400) 감지 시 server-connect로 즉시 이동
+  useEffect(() => {
+    if (isServerDeleted) {
+      console.log("⚠️ 서버가 삭제되었습니다. 서버 연결 페이지로 이동합니다.");
+      router.push("/server-connect");
+    }
+  }, [isServerDeleted, router]);
 
   // 사용자의 승인 상태 확인 (이메일 필터링 불필요)
   useEffect(() => {
     if (!serverAccessList || !serverUrl) return;
 
-    // /join API는 현재 사용자의 상태만 반환하므로 첫 번째 항목 사용
+    // /join API는 현재 사용자의 상태만 반환
     const currentUserAccess = serverAccessList;
 
     if (currentUserAccess) {
@@ -63,20 +81,26 @@ export const usePending = () => {
     }
   }, [serverAccessList, serverUrl]);
 
+  // 최신 값을 ref로 유지 (useEffect 의존성 배열 문제 방지)
+  const handleServerConnectionRef = useRef(handleServerConnection);
+  const serverUrlRef = useRef(serverUrl);
+  const serverNameRef = useRef(serverName);
+  useEffect(() => { handleServerConnectionRef.current = handleServerConnection; }, [handleServerConnection]);
+  useEffect(() => { serverUrlRef.current = serverUrl; }, [serverUrl]);
+  useEffect(() => { serverNameRef.current = serverName; }, [serverName]);
+
   // 승인 완료 시 자동 입장
   useEffect(() => {
     console.log("approvalStatus", approvalStatus);
     if (approvalStatus === "Active") {
       console.log("✅ 승인 완료! 서버에 자동 입장합니다.");
 
-      // 잠시 승인 완료 메시지를 보여준 후 입장
       setTimeout(async () => {
         try {
-          await handleServerConnection(serverUrl, serverName);
-          router.push(`/${serverUrl}/projects/1/channels/일반`);
+          // handleServerConnection이 내부에서 projectPk, channelPk를 조회하고 라우팅까지 처리
+          await handleServerConnectionRef.current(serverUrlRef.current, serverNameRef.current);
         } catch (error) {
           console.error("자동 입장 실패:", error);
-          // 실패 시 수동으로 다시 시도할 수 있도록 UI 제공
         }
       }, 0);
     }

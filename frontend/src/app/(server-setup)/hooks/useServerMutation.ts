@@ -1,10 +1,9 @@
 import { ServerRequest, ChangePermission } from "../types/Server";
 import { RoleUsers } from "../types/Server";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Channel, ChannelRequest } from "../types/Channel";
+import { ChannelRequest } from "../types/Channel";
 import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
 import { ServerStatus } from "@/app/(servers)/types/ServerAccess";
-import { expressClient } from "@/app/lib/axiosClient";
 import {
   useAddServerApi,
   useServerListApi,
@@ -31,6 +30,9 @@ import {
   useServerPermessionApi,
   usePatchServerPermessionApi,
   useLeaveChannelApi,
+  useServerDeleteApi,
+  useProjectDeleteApi,
+  useChannelDeleteApi,
 } from "./useServerApi";
 
 export const useAddServerMutation = () => {
@@ -511,3 +513,61 @@ export const usePatchServerRolePermessionMutation = (serverUrl: string) => {
     },
   });
 };
+
+export const useDeleteServerMutation = (serverUrl: string) => {
+  const {execute: deleteServer} = useServerDeleteApi(serverUrl);
+  return useMutation({
+    mutationFn: async () => {
+      const result = await deleteServer();
+      return result;
+    },
+    onSuccess: (data) => {
+      console.log(data);
+    },
+    onError: (error) => {
+      console.error(error);
+    }
+  });
+}
+
+export const useDeleteProjectMutation = (serverUrl: string) => {
+  const queryClient = useQueryClient();
+
+  const {execute: deleteProject} = useProjectDeleteApi(serverUrl);
+  return useMutation({
+    mutationFn: async (projectPk: number) => {
+      const result = await deleteProject(undefined, {url: `/ex/servers/${serverUrl}/projects/${projectPk}/delete`});
+      return result;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: ["projectList", serverUrl],
+      });
+      console.log(data);
+    },
+    onError: (error) => {
+      console.error(error);
+    }
+  })
+}
+
+export const useDeleteChannelMutation = (serverUrl: string, projectPk: number) => {
+  const queryClient = useQueryClient();
+
+  const {execute: deleteChannel} = useChannelDeleteApi(serverUrl, projectPk);
+  return useMutation({
+    mutationFn: async (channelPk: number) => {
+      const result = await deleteChannel(undefined, {url: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/delete`});
+      return result;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: ["channelList", serverUrl],
+      });
+      console.log(data);
+    },
+    onError: (error) => {
+      console.error(error);
+    }
+  })
+}

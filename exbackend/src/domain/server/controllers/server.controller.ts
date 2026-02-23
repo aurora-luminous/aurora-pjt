@@ -304,6 +304,7 @@ export class ServerController {
   @ApiResponse({ status: 200, description: '서버 삭제 성공' })
   @ApiResponse({ status: 401, description: '서버를 삭제할 권한 없음' })
   @ApiResponse({ status: 404, description: '서버를 찾을 수 없음' })
+  @ApiResponse({ status: 400, description: '서버는 이미 삭제되었습니다' })
   async deleteServer(
     @Param('serverUrl') serverUrl: string,
     @CurrentUser() user: User,

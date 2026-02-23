@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from "@nestjs/common";
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Server } from "../entities/server.entity";
@@ -7,6 +7,7 @@ import { User } from "../../user/entities/user.entity";
 import { ProjectCreationService } from "../../project/services/project-creation.service";
 import { ServerRolePermissionService } from "./server-role-permission.service";
 import { CreateServerDto, ServerResponseDto, ServerListDto } from "../dto";
+import { findActiveEntityById } from '../../../common/utils/entity-status.util';
 
 @Injectable()
 export class ServerCreationService {
@@ -31,11 +32,11 @@ export class ServerCreationService {
         throw new NotFoundException(`사용자 ID ${createServerDto.serverUrl}를 찾을 수 없습니다`);
         }
 
-        // 영문명인지 검사
-        const ONLY_ENGLISH = /^[A-Za-z]+$/;
+        // 영문 및 숫자인지 검사
+        const ONLY_ENGLISH_AND_NUMBERS = /^[A-Za-z0-9]+$/;
 
-        if (!ONLY_ENGLISH.test(createServerDto.serverUrl)) {
-            throw new ConflictException('영문만 입력할 수 있습니다.');
+        if (!ONLY_ENGLISH_AND_NUMBERS.test(createServerDto.serverUrl)) {
+            throw new BadRequestException('서버 URL은 영문만 입력할 수 있습니다.');
         }
         
         // 2. 서버 생성
@@ -127,13 +128,24 @@ export class ServerCreationService {
     }
 
     async getServerById(serverPk: number): Promise<ServerResponseDto> {
+        // 1. findActiveEntityById를 사용하여 서버의 존재 및 활성 상태를 확인 (가드 역할)
+        await findActiveEntityById(
+            this.serverRepository,
+            serverPk,
+            '서버',
+            'serverPk',
+            'isDeletedServer',
+        );
+
+        // 2. 유효성이 확인된 서버 객체를 relations와 함께 다시 로드
+        // findActiveEntityById에서 이미 활성 상태임을 확인했으므로, 여기서는 해당 조건으로만 조회
         const server = await this.serverRepository.findOne({
-        where: { serverPk, isDeletedServer: false },
-        relations: ['serverMembers', 'serverMembers.user'],
+            where: { serverPk, isDeletedServer: false }, 
+            relations: ['serverMembers', 'serverMembers.user'],
         });
 
         if (!server) {
-        throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없습니다`);
+            throw new NotFoundException(`서버를 찾을 수 없습니다`);
         }
 
         const owner = server.serverMembers.find(member => member.serverRole === 'owner');
@@ -152,13 +164,24 @@ export class ServerCreationService {
     }
 
     async getServerByUrl(serverUrl: string): Promise<ServerResponseDto> {
+        // 1. findActiveEntityById를 사용하여 서버의 존재 및 활성 상태를 확인 (가드 역할)
+        await findActiveEntityById(
+            this.serverRepository,
+            serverUrl,
+            '서버',
+            'serverUrl',
+            'isDeletedServer',
+        );
+
+        // 2. 유효성이 확인된 서버 객체를 relations와 함께 다시 로드
+        // findActiveEntityById에서 이미 활성 상태임을 확인했으므로, 여기서는 해당 조건으로만 조회
         const server = await this.serverRepository.findOne({
-        where: { serverUrl, isDeletedServer: false },
-        relations: ['serverMembers', 'serverMembers.user'],
+            where: { serverUrl, isDeletedServer: false },
+            relations: ['serverMembers', 'serverMembers.user'],
         });
 
         if (!server) {
-        throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다`);
+            throw new NotFoundException(`서버를 찾을 수 없습니다`);
         }
 
         const owner = server.serverMembers.find(member => member.serverRole === 'owner');

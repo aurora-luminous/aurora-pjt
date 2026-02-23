@@ -16,7 +16,7 @@ import {
 } from "../types/Server";
 import { expressClient } from "@/app/lib/axiosClient";
 import { Project } from "../types/Projcets";
-import { Channel, ChannelRequest } from "../types/Channel";
+import { Channel, ChannelRequest, LastChannelResponse } from "../types/Channel";
 import { ServerAccess, ServerStatus } from "@/app/(servers)/types/ServerAccess";
 
 // 서버 생성
@@ -265,3 +265,35 @@ export const usePatchServerPermessionApi = (serverUrl: string) => {
     axiosInstance: expressClient,
   });
 };
+
+export const useServerDeleteApi = (serverUrl: string) => {
+  return useApi<{message: string}, void>({
+    endpoint: `/ex/servers/${serverUrl}/delete`,
+    method: "PATCH",
+    axiosInstance: expressClient,
+  })
+}
+
+export const useProjectDeleteApi = (serverUrl: string) => {
+  return useApi<{message: string}, void>({
+    endpoint: `/ex/servers/${serverUrl}/projects`,
+    method: "PATCH",
+    axiosInstance: expressClient
+  })
+}
+
+export const useChannelDeleteApi = (serverUrl: string, projectPk: number) => {
+  return useApi<{message: string}, void>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/`,
+    method: "PATCH",
+    axiosInstance: expressClient
+  })
+}
+
+export const useGetLastChannelApi = () => {
+  return useApi<LastChannelResponse, void>({
+    endpoint: "/ex/members/me/last-channel",
+    method: "GET",
+    axiosInstance: expressClient,
+  })
+}

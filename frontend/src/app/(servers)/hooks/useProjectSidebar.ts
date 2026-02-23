@@ -107,9 +107,11 @@ export const useProjectSidebar = ({
       badge: pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
     },
     { href: `/${serverId}/admin/members`, label: "구성원", icon: "👤" },
+    { href: `/${serverId}/admin/projects`, label: "프로젝트 관리", icon: "📦"},
     { href: `/${serverId}/admin/roles`, label: "역할", icon: "🏷️" },
     { href: `/${serverId}/admin/invitations`, label: "초대", icon: "✉️" },
     { href: `/${serverId}/admin/settings`, label: "서버 설정", icon: "⚙️" },
+    
   ];
 
   const isActiveAdminLink = (href: string) => pathname === href;

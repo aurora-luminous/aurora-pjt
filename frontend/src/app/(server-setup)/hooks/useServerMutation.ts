@@ -182,10 +182,17 @@ export const useServerJoinStatusQuery = (
     enabled: !!serverUrl && approvalStatus !== "Active", // serverUrl이 있고 승인되지 않았을 때만 실행
     staleTime: 0, // 항상 최신 데이터 확인
     gcTime: 1 * 60 * 1000, // 1분간 캐시 유지
-    refetchInterval: 5000, // 5초마다 자동 refetch
+    retry: false, // 에러 발생 시 재시도 안함 (400 = 서버 삭제됨)
+    refetchInterval: (query) => {
+      // 에러 상태거나 Active면 polling 중단
+      if (query.state.status === "error") return false;
+      if (approvalStatus === "Active") return false;
+      return 5000; // 정상 상태일 때만 5초마다 refetch
+    },
     refetchIntervalInBackground: false, // 백그라운드에서는 refetch 안함
   });
 };
+
 
 // ✅ Mutation: 서버 접근 권한 수정 (PATCH)
 export const usePatchServerAccessMutation = (serverUrl: string) => {

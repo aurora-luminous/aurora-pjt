@@ -11,6 +11,7 @@ const JoinPage = () => {
     isJoining,
     isJoinError2,
     isJoinButtonDisabled,
+    joinErrorMessage,
     joinInfo,
     serverOwner,
     memberCount,
@@ -185,10 +186,10 @@ const JoinPage = () => {
                 </p>
 
                 {/* 에러 메시지 */}
-                {isJoinError2 && (
+                {(joinErrorMessage || isJoinError2) && (
                   <div className="mb-3 p-2.5 bg-red-500/20 border border-red-500/30 rounded-xl">
                     <p className="text-red-300 text-xs text-center">
-                      가입 신청 중 오류가 발생했습니다.
+                      {joinErrorMessage ?? "가입 신청 중 오류가 발생했습니다."}
                     </p>
                   </div>
                 )}

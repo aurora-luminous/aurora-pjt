@@ -15,7 +15,7 @@ import { Channel } from '../../text-channel/entities/channel.entity';
 import { ChannelMember } from '../../text-channel/entities/channel-member.entity';
 import { ServerRolePermissionService } from './server-role-permission.service';
 import { PendingMemberDto, ServerMemberInfoDto, ServerMemberDetailDto, UpdateMemberStatusDto, JoinServerDto, ServerInviteDto } from '../dto';
-import { InviteLink } from '../entities/invite-link.entity'; // InviteLink entity 추가
+import { RedisService } from '../../../common/redis/redis.service'; // RedisService 추가
 import { findActiveEntityById } from '../../../common/utils/entity-status.util'; // findActiveEntityById import
 
 @Injectable()
@@ -37,8 +37,7 @@ export class ServerInvitationService {
     private readonly channelRepository: Repository<Channel>,
     @InjectRepository(ChannelMember)
     private readonly channelMemberRepository: Repository<ChannelMember>,
-    @InjectRepository(InviteLink) // InviteLink Repository 주입
-    private readonly inviteLinkRepository: Repository<InviteLink>,
+    private readonly redisService: RedisService, // RedisService 주입
     private readonly configService: ConfigService,
     private readonly serverRolePermissionService: ServerRolePermissionService,
   ) {}
@@ -78,17 +77,10 @@ export class ServerInvitationService {
     // 3. 고유 해시 생성 (UUID 사용)
     const newInviteHash = uuidv4().substring(0, 12); // 12자리 해시
 
-    // 4. 만료 시간 설정 (현재 시간 + 7일)
-    const expiredTime = new Date();
-    expiredTime.setDate(expiredTime.getDate() + 7);
-
-    // 5. 초대 링크 정보 저장
-    const inviteLinkEntity = this.inviteLinkRepository.create({
-      serverPk: server.serverPk,
-      hash: newInviteHash,
-      expiredTime: expiredTime,
-    });
-    await this.inviteLinkRepository.save(inviteLinkEntity);
+    // 4. Redis에 초대 해시와 serverPk 저장 (7일 TTL)
+    // Redis의 TTL은 초 단위이므로 7일 * 24시간 * 60분 * 60초 = 604800초
+    const TTL = 7 * 24 * 60 * 60;
+    await this.redisService.set(newInviteHash, server.serverPk.toString(), TTL);
 
     return {
       inviteHash: newInviteHash,
@@ -205,31 +197,26 @@ export class ServerInvitationService {
     memberCount: number;
     owner: string;
   }> {
-    // 1. 해시로 초대 링크 찾기
-    const inviteLinkRecord = await this.inviteLinkRepository.findOne({
-      where: { hash: joinDto.inviteHash },
-    });
+    // 1. 해시로 초대 링크 찾기 (Redis에서)
+    const serverPkString = await this.redisService.get(joinDto.inviteHash);
 
-    if (!inviteLinkRecord) {
-      throw new NotFoundException('잘못된 초대 링크입니다');
+    if (!serverPkString) {
+      throw new NotFoundException('잘못되었거나 만료된 초대 링크입니다');
     }
 
-    // 2. 만료 시간 검증
-    if (inviteLinkRecord.expiredTime < new Date()) {
-      throw new ForbiddenException('만료된 초대 링크입니다');
-    }
+    const serverPk = parseInt(serverPkString, 10);
 
     // 3. 서버 존재 확인
     await findActiveEntityById(
       this.serverRepository,
-      inviteLinkRecord.serverPk,
+      serverPk,
       '서버',
       'serverPk',
       'isDeletedServer',
     );
 
     const server = await this.serverRepository.findOne({
-        where: { serverPk: inviteLinkRecord.serverPk, isDeletedServer: false }
+        where: { serverPk, isDeletedServer: false }
     });
 
     if (!server) {

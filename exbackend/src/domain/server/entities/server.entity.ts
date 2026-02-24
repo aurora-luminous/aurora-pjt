@@ -3,7 +3,6 @@ import { ApiProperty } from '@nestjs/swagger';
 import { ServerMember } from './server-member.entity';
 import { Project } from '../../project/entities/project.entity';
 import { ServerRolePermission } from './server-role-permission.entity';
-import { InviteLink } from './invite-link.entity';
 
 @Entity('server')
 export class Server {
@@ -33,6 +32,4 @@ export class Server {
   @OneToMany(() => ServerRolePermission, (permission) => permission.server)
   rolePermissions: ServerRolePermission[];
 
-  @OneToMany(() => InviteLink, (inviteLink) => inviteLink.server) // inviteLinks 관계 추가
-  inviteLinks: InviteLink[];
 }

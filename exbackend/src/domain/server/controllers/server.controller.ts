@@ -72,13 +72,15 @@ export class ServerController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '초대링크 서버 정보 조회' })
-  @ApiResponse({ status: 200, description: '서버 정보 조회 성공' })
+  @ApiResponse({ status: 200, description: '서버 정보 조회 성공', type: Object, schema: { example: { serverUrl: 'url', serverName: 'name', memberCount: 1, owner: 'nickname' } } })
   async getServerInfoByInvite(
     @Param('inviteHash') inviteHash: string,
     @CurrentUser() user: User
   ): Promise<{
     serverUrl: string;
     serverName: string;
+    memberCount: number;
+    owner: string;
   }> {
     const userPk = user.userPk;
 
@@ -89,7 +91,9 @@ export class ServerController {
 
     return {
       serverUrl: result.serverUrl,
-      serverName: result.serverName
+      serverName: result.serverName,
+      memberCount: result.memberCount,
+      owner: result.owner,
     };
   }
 
@@ -300,6 +304,7 @@ export class ServerController {
   @ApiResponse({ status: 200, description: '서버 삭제 성공' })
   @ApiResponse({ status: 401, description: '서버를 삭제할 권한 없음' })
   @ApiResponse({ status: 404, description: '서버를 찾을 수 없음' })
+  @ApiResponse({ status: 400, description: '서버는 이미 삭제되었습니다' })
   async deleteServer(
     @Param('serverUrl') serverUrl: string,
     @CurrentUser() user: User,

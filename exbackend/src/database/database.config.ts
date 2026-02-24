@@ -11,7 +11,6 @@ import { ProjectMember } from '../domain/project/entities/project-member.entity'
 import { Event } from '../domain/project/entities/event.entity';
 import { Channel } from '../domain/text-channel/entities/channel.entity';
 import { ChannelMember } from '../domain/text-channel/entities/channel-member.entity';
-import { InviteLink } from '../domain/server/entities/invite-link.entity'; // InviteLink import 추가
 
 export const getDatabaseConfig = (ConfigService: ConfigService): TypeOrmModuleOptions => ({
     type: 'postgres',
@@ -31,7 +30,6 @@ export const getDatabaseConfig = (ConfigService: ConfigService): TypeOrmModuleOp
         Event,
         Channel,
         ChannelMember,
-        InviteLink
     ],
     synchronize: false,
     logging: ConfigService.get('NODE_ENV', 'development') === 'development',

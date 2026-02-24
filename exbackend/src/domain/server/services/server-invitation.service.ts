@@ -15,7 +15,8 @@ import { Channel } from '../../text-channel/entities/channel.entity';
 import { ChannelMember } from '../../text-channel/entities/channel-member.entity';
 import { ServerRolePermissionService } from './server-role-permission.service';
 import { PendingMemberDto, ServerMemberInfoDto, ServerMemberDetailDto, UpdateMemberStatusDto, JoinServerDto, ServerInviteDto } from '../dto';
-import { InviteLink } from '../entities/invite-link.entity'; // InviteLink entity 추가
+import { RedisService } from '../../../common/redis/redis.service'; // RedisService 추가
+import { findActiveEntityById } from '../../../common/utils/entity-status.util'; // findActiveEntityById import
 
 @Injectable()
 export class ServerInvitationService {
@@ -36,8 +37,7 @@ export class ServerInvitationService {
     private readonly channelRepository: Repository<Channel>,
     @InjectRepository(ChannelMember)
     private readonly channelMemberRepository: Repository<ChannelMember>,
-    @InjectRepository(InviteLink) // InviteLink Repository 주입
-    private readonly inviteLinkRepository: Repository<InviteLink>,
+    private readonly redisService: RedisService, // RedisService 주입
     private readonly configService: ConfigService,
     private readonly serverRolePermissionService: ServerRolePermissionService,
   ) {}
@@ -45,12 +45,20 @@ export class ServerInvitationService {
   // 서버 초대 링크 생성
   async generateInviteHash(serverPk: number, requestUserPk: number): Promise<{ inviteHash: string }> {
     // 1. 서버 존재 확인
+    await findActiveEntityById(
+      this.serverRepository,
+      serverPk,
+      '서버',
+      'serverPk',
+      'isDeletedServer',
+    );
+
     const server = await this.serverRepository.findOne({
-      where: { serverPk, isDeletedServer: false }
+        where: { serverPk, isDeletedServer: false }
     });
 
     if (!server) {
-      throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없습니다`);
+      throw new NotFoundException(`서버를 찾을 수 없습니다`);
     }
 
     // 2. 요청자가 서버 관리자인지 확인
@@ -69,17 +77,10 @@ export class ServerInvitationService {
     // 3. 고유 해시 생성 (UUID 사용)
     const newInviteHash = uuidv4().substring(0, 12); // 12자리 해시
 
-    // 4. 만료 시간 설정 (현재 시간 + 7일)
-    const expiredTime = new Date();
-    expiredTime.setDate(expiredTime.getDate() + 7);
-
-    // 5. 초대 링크 정보 저장
-    const inviteLinkEntity = this.inviteLinkRepository.create({
-      serverPk: server.serverPk,
-      hash: newInviteHash,
-      expiredTime: expiredTime,
-    });
-    await this.inviteLinkRepository.save(inviteLinkEntity);
+    // 4. Redis에 초대 해시와 serverPk 저장 (7일 TTL)
+    // Redis의 TTL은 초 단위이므로 7일 * 24시간 * 60분 * 60초 = 604800초
+    const TTL = 7 * 24 * 60 * 60;
+    await this.redisService.set(`server_invite_hash:${newInviteHash}`, server.serverPk.toString(), TTL);
 
     return {
       inviteHash: newInviteHash,
@@ -89,12 +90,20 @@ export class ServerInvitationService {
   // 직접 서버 가입 신청 (serverUrl로)
   async joinServerDirect(serverUrl: string, userPk: number): Promise<PendingMemberDto> {
     // 1. 서버 존재 확인
+    await findActiveEntityById(
+      this.serverRepository,
+      serverUrl,
+      '서버',
+      'serverUrl',
+      'isDeletedServer',
+    );
+
     const server = await this.serverRepository.findOne({
-      where: { serverUrl, isDeletedServer: false }
+        where: { serverUrl, isDeletedServer: false }
     });
 
     if (!server) {
-      throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다`);
+      throw new NotFoundException(`서버를 찾을 수 없습니다`);
     }
 
     // 2. 사용자 존재 확인
@@ -180,28 +189,38 @@ export class ServerInvitationService {
   }
 
   // 초대 링크로 서버 정보 조회
-  async getServerInfoByInvite(joinDto: JoinServerDto): Promise<{ serverUrl: string; serverName: string }> {
-    // 1. 해시로 초대 링크 찾기
-    const inviteLinkRecord = await this.inviteLinkRepository.findOne({
-      where: { hash: joinDto.inviteHash },
-    });
+  async getServerInfoByInvite(
+    joinDto: JoinServerDto
+  ): Promise<{
+    serverUrl: string;
+    serverName: string;
+    memberCount: number;
+    owner: string;
+  }> {
+    // 1. 해시로 초대 링크 찾기 (Redis에서)
+    const serverPkString = await this.redisService.get(`server_invite_hash:${joinDto.inviteHash}`);
 
-    if (!inviteLinkRecord) {
-      throw new NotFoundException('잘못된 초대 링크입니다');
+    if (!serverPkString) {
+      throw new NotFoundException('잘못되었거나 만료된 초대 링크입니다');
     }
 
-    // 2. 만료 시간 검증
-    if (inviteLinkRecord.expiredTime < new Date()) {
-      throw new ForbiddenException('만료된 초대 링크입니다');
-    }
+    const serverPk = parseInt(serverPkString, 10);
 
     // 3. 서버 존재 확인
+    await findActiveEntityById(
+      this.serverRepository,
+      serverPk,
+      '서버',
+      'serverPk',
+      'isDeletedServer',
+    );
+
     const server = await this.serverRepository.findOne({
-      where: { serverPk: inviteLinkRecord.serverPk, isDeletedServer: false }
+        where: { serverPk, isDeletedServer: false }
     });
 
     if (!server) {
-      throw new NotFoundException('서버를 찾을 수 없습니다');
+      throw new NotFoundException(`서버를 찾을 수 없습니다`);
     }
 
     // 4. 사용자 존재 확인 (유효한 사용자인지만 확인)
@@ -213,22 +232,48 @@ export class ServerInvitationService {
       throw new NotFoundException(`사용자 ID ${joinDto.userPk}를 찾을 수 없습니다`);
     }
 
-    // 5. 서버 정보 반환
+    // 5. 서버 멤버 수 조회
+    const memberCount = await this.serverMemberRepository.count({
+      where: { serverPk: server.serverPk, sStatus: 'Active' },
+    });
+
+    // 6. 서버 Owner 정보 조회
+    const ownerMember = await this.serverMemberRepository.findOne({
+      where: { serverPk: server.serverPk, serverRole: 'owner' },
+      relations: ['user'],
+    });
+
+    if (!ownerMember || !ownerMember.user) {
+      throw new NotFoundException('서버 소유자를 찾을 수 없습니다.');
+    }
+
+    // 7. 서버 정보 반환
     return {
       serverUrl: server.serverUrl,
-      serverName: server.serverName
+      serverName: server.serverName,
+      memberCount: memberCount,
+      owner: ownerMember.user.userName,
+      
     };
   }
 
   // 서버 승인 대기 목록 조회
   async getPendingMembers(serverPk: number, requestUserPk: number): Promise<PendingMemberDto[]> {
     // 1. 서버 존재 확인
+    await findActiveEntityById(
+      this.serverRepository,
+      serverPk,
+      '서버',
+      'serverPk',
+      'isDeletedServer',
+    );
+
     const server = await this.serverRepository.findOne({
-      where: { serverPk, isDeletedServer: false }
+        where: { serverPk, isDeletedServer: false }
     });
 
     if (!server) {
-      throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없습니다`);
+        throw new NotFoundException(`서버를 찾을 수 없습니다 (내부 오류).`);
     }
 
     // 2. 요청자가 서버 관리자인지 확인
@@ -471,12 +516,20 @@ export class ServerInvitationService {
   // 서버 멤버 목록 조회 (모든 상태)
   async getActiveServerMembers(serverPk: number, requestUserPk: number): Promise<PendingMemberDto[]> {
     // 1. 서버 존재 확인
+    await findActiveEntityById(
+      this.serverRepository,
+      serverPk,
+      '서버',
+      'serverPk',
+      'isDeletedServer',
+    );
+
     const server = await this.serverRepository.findOne({
-      where: { serverPk, isDeletedServer: false }
+        where: { serverPk, isDeletedServer: false }
     });
 
     if (!server) {
-      throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없습니다`);
+        throw new NotFoundException(`서버를 찾을 수 없습니다 (내부 오류).`);
     }
 
     // 2. 요청자가 서버 멤버인지 확인
@@ -512,13 +565,22 @@ export class ServerInvitationService {
 
   // 밴당한 멤버 목록 조회 (관리자만)
   async getBannedMembers(serverPk: number, requestUserPk: number): Promise<PendingMemberDto[]> {
-    // 1. 서버 존재 확인
+    // 1. 서버 존재 확인 (가드 역할)
+    await findActiveEntityById(
+      this.serverRepository,
+      serverPk,
+      '서버',
+      'serverPk',
+      'isDeletedServer',
+    );
+
+    // 1.5. 유효성이 확인된 서버 객체를 다시 로드
     const server = await this.serverRepository.findOne({
-      where: { serverPk, isDeletedServer: false }
+        where: { serverPk, isDeletedServer: false }
     });
 
     if (!server) {
-      throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없습니다`);
+        throw new NotFoundException(`서버를 찾을 수 없습니다 (내부 오류).`);
     }
 
     // 2. 요청자가 서버 관리자인지 확인
@@ -602,12 +664,21 @@ export class ServerInvitationService {
 
   async banMember(serverPk: number, targetUserPk: number, adminUserPk: number): Promise<void> {
     // 1. 서버 존재 확인
+    await findActiveEntityById(
+      this.serverRepository,
+      serverPk,
+      '서버',
+      'serverPk',
+      'isDeletedServer',
+    );
+
+    // 1.5. 유효성이 확인된 서버 객체를 다시 로드
     const server = await this.serverRepository.findOne({
-      where: { serverPk, isDeletedServer: false }
+        where: { serverPk, isDeletedServer: false }
     });
 
     if (!server) {
-      throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없습니다`);
+        throw new NotFoundException(`서버를 찾을 수 없습니다 (내부 오류).`);
     }
 
     // 2. 차단할 멤버 확인 (승인된 멤버만)
@@ -659,12 +730,21 @@ export class ServerInvitationService {
     requestUserPk: number
   ): Promise<ServerMemberInfoDto[] | ServerMemberDetailDto[]> {
     // 1. 서버 존재 확인
+    await findActiveEntityById(
+      this.serverRepository,
+      serverUrl,
+      '서버',
+      'serverUrl',
+      'isDeletedServer',
+    );
+
+    // 1.5. 유효성이 확인된 서버 객체를 다시 로드
     const server = await this.serverRepository.findOne({
-      where: { serverUrl, isDeletedServer: false }
+        where: { serverUrl, isDeletedServer: false }
     });
 
     if (!server) {
-      throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다`);
+        throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다 (내부 오류).`);
     }
 
     // 2. 요청자의 서버 멤버 정보 확인
@@ -716,12 +796,20 @@ export class ServerInvitationService {
   // 서버 나가기 (사용자 본인)
   async leaveServer(serverUrl: string, userPk: number): Promise<{ message: string }> {
     // 1. 서버 존재 확인
+    await findActiveEntityById(
+      this.serverRepository,
+      serverUrl,
+      '서버',
+      'serverUrl',
+      'isDeletedServer',
+    );
+
     const server = await this.serverRepository.findOne({
-      where: { serverUrl, isDeletedServer: false }
+        where: { serverUrl, isDeletedServer: false }
     });
 
     if (!server) {
-      throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다`);
+        throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다 (내부 오류).`);
     }
 
     // 2. 요청자가 서버 멤버인지 확인

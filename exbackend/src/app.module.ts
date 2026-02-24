@@ -22,6 +22,7 @@ import { AuthModule } from './domain/auth/auth.module';
 import { UserModule } from './domain/user/user.module';
 import { MemberStatusModule } from './member-status/member-status.module';
 import { UserChannelsModule } from './user-channels/user-channels.module';
+import { RedisModule } from './common/redis/redis.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { UserChannelsModule } from './user-channels/user-channels.module';
     SfuValidationModule,
     MemberStatusModule,
     UserChannelsModule,
+    RedisModule,
 
     // Workspace 도메인 라우터 설정
     RouterModule.register([

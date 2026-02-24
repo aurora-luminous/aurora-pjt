@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Server } from '../entities/server.entity';
@@ -7,6 +7,7 @@ import { Project } from '../../project/entities/project.entity';
 import { ProjectMember } from '../../project/entities/project-member.entity';
 import { Channel } from '../../text-channel/entities/channel.entity';
 import { ChannelMember } from '../../text-channel/entities/channel-member.entity';
+import { findActiveEntityById } from '../../../common/utils/entity-status.util';
 
 @Injectable()
 export class ServerDeletionService {
@@ -27,12 +28,13 @@ export class ServerDeletionService {
 
   async deleteServer(serverPk: number, deleterUserPk: number): Promise<void> {
     // 1. 서버 존재 및 삭제 여부 확인
-    const server = await this.serverRepository.findOne({
-      where: { serverPk, isDeletedServer: false },
-    });
-    if (!server) {
-      throw new NotFoundException(`서버 ID ${serverPk}를 찾을 수 없거나 이미 삭제되었습니다.`);
-    }
+    await findActiveEntityById(
+      this.serverRepository,
+      serverPk,
+      '서버',
+      'serverPk',
+      'isDeletedServer',
+    );
 
     // 2. 권한 확인 (삭제하려는 사용자가 서버의 owner인지 확인)
     const deleterMember = await this.serverMemberRepository.findOne({

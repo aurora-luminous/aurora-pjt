@@ -33,15 +33,15 @@ export const InviteChannelDropDown: React.FC<InviteChannelDropdownProps> = ({ on
     }, [triggerRef]);
 
     const handleCopy = () => {
-        if (inviteCodeMutation.data?.inviteLink) {
-            navigator.clipboard.writeText(inviteCodeMutation.data.inviteLink);
+        if (inviteCodeMutation.data?.inviteHash) {
+            navigator.clipboard.writeText(inviteCodeMutation.data.inviteHash);
         }
     };
 
     const getInviteLinkStatus = () => {
         if (inviteCodeMutation.isPending) return "링크 생성 중...";
         if (inviteCodeMutation.isError) return "권한이 없습니다 (관리자 문의)";
-        return inviteCodeMutation.data?.inviteLink || "링크를 불러올 수 없습니다";
+        return inviteCodeMutation.data?.inviteHash || "링크를 불러올 수 없습니다";
     };
 
     const dropdownContent = (
@@ -79,9 +79,9 @@ export const InviteChannelDropDown: React.FC<InviteChannelDropdownProps> = ({ on
                     />
                     <button 
                         onClick={handleCopy}
-                        disabled={!inviteCodeMutation.data?.inviteLink}
+                        disabled={!inviteCodeMutation.data?.inviteHash}
                         className={`text-white text-sm px-3.5 py-1.5 rounded font-medium whitespace-nowrap transition-colors ${
-                            !inviteCodeMutation.data?.inviteLink 
+                            !inviteCodeMutation.data?.inviteHash 
                                 ? "bg-gray-500 cursor-not-allowed" 
                                 : "bg-blue-600 hover:bg-blue-500"
                         }`}

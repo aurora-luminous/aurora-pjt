@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { Channel } from "@/app/(server-setup)/types/Channel";
 import { ChannelDropdownMenu } from "./ChannelDropdownMenu";
+import { useUpdateLastChannelMutation } from "@/app/(server-setup)/hooks/useServerMutation";
 
 interface ChannelItemProps {
   channel: Channel;
@@ -24,6 +25,8 @@ export const ChannelItem: React.FC<ChannelItemProps> = ({
   onDropdownClose,
   onChannelManage,
 }) => {
+  const updateLastChannelMutation = useUpdateLastChannelMutation();
+
   const getChannelIcon = () => {
     switch (channel.channelKind) {
       case "notice":
@@ -35,9 +38,14 @@ export const ChannelItem: React.FC<ChannelItemProps> = ({
     }
   };
 
+  const handleChannelClick = () => {
+    // 채널 클릭 시 마지막 채널 정보 업데이트
+    updateLastChannelMutation.mutate(channel.channelPk);
+  };
+
   return (
     <div className="relative mb-1">
-      <Link href={createChannelLink(channel)}>
+      <Link href={createChannelLink(channel)} onClick={handleChannelClick}>
         <div
           className={`flex items-center px-2 py-1 rounded cursor-pointer transition-colors ${
             isCurrentChannel

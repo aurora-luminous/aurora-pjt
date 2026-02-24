@@ -41,7 +41,7 @@ const RoleCard: React.FC<RoleCardProps> = ({
   onPermissionChange,
   isChanging = false,
 }) => {
-  const { isMobile, isTablet } = useResponsive();
+  const { isMobile } = useResponsive();
   const [expanded, setExpanded] = useState(false);
 
   const handleDeleteClick = () => {

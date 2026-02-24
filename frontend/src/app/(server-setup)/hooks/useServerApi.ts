@@ -16,7 +16,7 @@ import {
 } from "../types/Server";
 import { expressClient } from "@/app/lib/axiosClient";
 import { Project } from "../types/Projcets";
-import { Channel } from "../types/Channel";
+import { Channel, ChannelRequest, LastChannelResponse } from "../types/Channel";
 import { ServerAccess, ServerStatus } from "@/app/(servers)/types/ServerAccess";
 
 // 서버 생성
@@ -68,7 +68,7 @@ export const useChannelListApi = (serverUrl: string, projectPk: number) => {
 export const useCreateChannelApi = (serverUrl: string, projectPk: number) => {
   return useApi<
     Channel,
-    Omit<Channel, "channelName"> & { channelName?: string }
+    ChannelRequest
   >({
     endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels`,
     method: "POST",
@@ -85,9 +85,9 @@ export const useServerAccessApi = (serverUrl: string) => {
   });
 };
 
-// 서버 가입 상태 조회 (사용자용)
+// 서버 가입 상태 조회 (사용자용) - 서버 삭제 시 { message: string } 응답 가능
 export const useServerJoinStatusApi = (serverUrl: string) => {
-  return useApi<ServerAccess[], void>({
+  return useApi<ServerAccess | { message: string }, void>({
     endpoint: `/ex/servers/${serverUrl}/join`,
     method: "POST",
     axiosInstance: expressClient,
@@ -182,6 +182,18 @@ export const useInvitePrivateChannelApi = (
   });
 };
 
+export const useLeaveChannelApi = (
+  serverUrl: string,
+  projectPk: number,
+  channelPk: number
+) => {
+  return useApi<{ message: string }, MemberEmail>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/members/remove`,
+    method: "PATCH",
+    axiosInstance: expressClient,
+  });
+};
+
 export const useChannelMemberListApi = (
   serverUrl: string,
   projectPk: number,
@@ -253,3 +265,35 @@ export const usePatchServerPermessionApi = (serverUrl: string) => {
     axiosInstance: expressClient,
   });
 };
+
+export const useServerDeleteApi = (serverUrl: string) => {
+  return useApi<{message: string}, void>({
+    endpoint: `/ex/servers/${serverUrl}/delete`,
+    method: "PATCH",
+    axiosInstance: expressClient,
+  })
+}
+
+export const useProjectDeleteApi = (serverUrl: string) => {
+  return useApi<{message: string}, void>({
+    endpoint: `/ex/servers/${serverUrl}/projects`,
+    method: "PATCH",
+    axiosInstance: expressClient
+  })
+}
+
+export const useChannelDeleteApi = (serverUrl: string, projectPk: number) => {
+  return useApi<{message: string}, void>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/`,
+    method: "PATCH",
+    axiosInstance: expressClient
+  })
+}
+
+export const useGetLastChannelApi = () => {
+  return useApi<LastChannelResponse, void>({
+    endpoint: "/ex/members/me/last-channel",
+    method: "GET",
+    axiosInstance: expressClient,
+  })
+}

@@ -4,16 +4,20 @@ import {
   useSignUpMutation,
   useLoginMutation,
   useLogoutMutation,
+  useGetLastChannelQuery,
 } from "./useAuthMutations";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 
 export const useAuth = (type: "login" | "register" = "register") => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectPath = searchParams.get("redirect");
   const signUpMutation = useSignUpMutation();
   const loginMutation = useLoginMutation();
   const logoutMutation = useLogoutMutation();
   const queryClient = useQueryClient();
+  const {data: lastChannel} = useGetLastChannelQuery();
   // 회원가입 처리 함수
   const handleRegister = async (data: AuthFormData) => {
     console.log("회원가입 프로세스 시작 - 폼 데이터:", data);
@@ -33,10 +37,12 @@ export const useAuth = (type: "login" | "register" = "register") => {
         password: data.password,
       });
       console.log("✅ 자동 로그인 성공:", loginResponse);
+      console.log(lastChannel)
 
       // 3. 로그인 성공 후 서버 연결 페이지로 이동
-      console.log("🎉 회원가입 및 로그인 완료! 서버 연결 페이지로 이동합니다.");
-      router.push("/server-connect");
+     
+        router.push(redirectPath ? decodeURIComponent(redirectPath) : "/server-connect");
+      
     } catch (error) {
       console.error("❌ 회원가입 또는 로그인 에러:", error);
       throw error;
@@ -58,8 +64,13 @@ export const useAuth = (type: "login" | "register" = "register") => {
         `💾 로그인 상태 유지: ${data.rememberMe ? "활성화" : "비활성화"}`
       );
       queryClient.invalidateQueries({ queryKey: ["userInfo"] });
-      // 로그인 성공 후 서버 연결 페이지로 이동
-      router.push("/server-connect");
+      // redirect 파라미터가 있으면 해당 경로로, 없으면 기본 페이지로 이동
+
+      if (!lastChannel) {
+        router.push(redirectPath ? decodeURIComponent(redirectPath) : "/server-connect");
+      }else {
+        router.push(lastChannel?.serverUrl + "/projects/" + lastChannel?.projectPk + "/channels/" + lastChannel?.channelPk);
+      }
     } catch (error) {
       console.error("❌ 로그인 에러:", error);
       throw error;

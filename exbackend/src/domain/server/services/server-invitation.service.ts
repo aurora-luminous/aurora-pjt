@@ -80,7 +80,7 @@ export class ServerInvitationService {
     // 4. Redis에 초대 해시와 serverPk 저장 (7일 TTL)
     // Redis의 TTL은 초 단위이므로 7일 * 24시간 * 60분 * 60초 = 604800초
     const TTL = 7 * 24 * 60 * 60;
-    await this.redisService.set(newInviteHash, server.serverPk.toString(), TTL);
+    await this.redisService.set(`server_invite_hash:${newInviteHash}`, server.serverPk.toString(), TTL);
 
     return {
       inviteHash: newInviteHash,
@@ -198,7 +198,7 @@ export class ServerInvitationService {
     owner: string;
   }> {
     // 1. 해시로 초대 링크 찾기 (Redis에서)
-    const serverPkString = await this.redisService.get(joinDto.inviteHash);
+    const serverPkString = await this.redisService.get(`server_invite_hash:${joinDto.inviteHash}`);
 
     if (!serverPkString) {
       throw new NotFoundException('잘못되었거나 만료된 초대 링크입니다');

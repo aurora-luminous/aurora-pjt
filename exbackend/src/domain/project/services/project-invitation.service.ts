@@ -10,7 +10,6 @@ import { ServerMember } from '../../server/entities/server-member.entity';
 import { Channel } from '../../text-channel/entities/channel.entity';
 import { ChannelMember } from '../../text-channel/entities/channel-member.entity';
 import { MemberRoleUtils, ServerRoleUtils } from '../../../common/enums/member-role.enum';
-import { ProjectNotificationService } from './project-notification.service';
 import {
   InviteToProjectDto,
   UserEmailDto,
@@ -37,7 +36,6 @@ export class ProjectInvitationService {
     private readonly channelRepository: Repository<Channel>,
     @InjectRepository(ChannelMember)
     private readonly channelMemberRepository: Repository<ChannelMember>,
-    private readonly projectNotificationService: ProjectNotificationService, // 알림 서비스 추가
   ) {}
 
   // 계층적 권한 확인 헬퍼 메서드 (서버 권한 > 프로젝트 권한)
@@ -121,13 +119,7 @@ export class ProjectInvitationService {
         // 재활성화된 멤버를 모든 public 채널에 추가
         await this.addMemberToPublicChannels(inviteDto.projectPk, targetUser.userPk);
 
-        // 알림 전송 (재활성화)
-        await this.projectNotificationService.notifyMemberAdded(
-          inviteDto.projectPk,
-          targetUser.userPk,
-          targetUser.userName,
-          reactivatedMember.projectRole
-        );
+
 
         return {
           projectPk: reactivatedMember.projectPk,
@@ -151,13 +143,7 @@ export class ProjectInvitationService {
     });
     const savedMember = await this.projectMemberRepository.save(projectMember);
 
-    // 7. Spring 서버로 멤버 추가 알림 전송
-    await this.projectNotificationService.notifyMemberAdded(
-      inviteDto.projectPk,
-      targetUser.userPk,
-      targetUser.userName,
-      savedMember.projectRole
-    );
+
 
     // 8. 새 멤버를 모든 public 채널에 자동 추가
     await this.addMemberToPublicChannels(inviteDto.projectPk, targetUser.userPk);
@@ -303,13 +289,7 @@ export class ProjectInvitationService {
       'Inactive'
     );
 
-    // 7. Spring 서버로 멤버 제거 알림 전송
-    await this.projectNotificationService.notifyMemberRemoved(
-      removeDto.projectPk,
-      removeDto.targetUserPk,
-      targetMember.user.userName,
-      targetMember.projectRole
-    );
+
   }
 
   // 프로젝트에서 사용자 차단
@@ -355,13 +335,7 @@ export class ProjectInvitationService {
     // 6. 해당 프로젝트의 모든 채널에서 사용자 상태를 Banned로 변경
     await this._updateChannelMembersStatusInProject(projectPk, targetUserPk, 'Banned');
 
-    // 7. Spring 서버로 멤버 제거 알림 전송 (밴도 제거로 간주)
-    await this.projectNotificationService.notifyMemberRemoved(
-      projectPk,
-      targetUserPk,
-      targetMember.user.userName,
-      targetMember.projectRole
-    );
+
   }
 
   // 프로젝트에서 차단 해제 (Admin만 가능)
@@ -403,13 +377,7 @@ export class ProjectInvitationService {
     // 5. 차단 해제된 멤버를 모든 public 채널에 추가
     await this.addMemberToPublicChannels(projectPk, targetUserPk);
 
-    // 6. Spring 서버로 멤버 추가 알림 전송 (언밴도 추가로 간주)
-    await this.projectNotificationService.notifyMemberAdded(
-      projectPk,
-      targetUserPk,
-      bannedMember.user.userName,
-      unbannedMember.projectRole
-    );
+
 
     return {
       projectPk: unbannedMember.projectPk,
@@ -586,13 +554,7 @@ export class ProjectInvitationService {
       await this.channelMemberRepository.save(userChannelsInProject);
     }
 
-    // Spring 서버로 멤버 제거 알림 전송
-    await this.projectNotificationService.notifyMemberRemoved(
-      projectPk,
-      userPk,
-      projectMember.user?.userName || 'Unknown',
-      projectMember.projectRole
-    );
+
 
     return {
       message: '프로젝트에서 나갔습니다'

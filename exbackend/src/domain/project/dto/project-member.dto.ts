@@ -36,12 +36,3 @@ export class ProjectMemberDto {
   })
   userInfo: ProjectMemberUserInfoDto;
 }
-
-export interface ProjectMemberNotificationDto {
-  eventType: 'MEMBER_ADDED' | 'MEMBER_REMOVED';
-  projectPk: number;
-  userPk: number;
-  userName: string;
-  projectRole: string;
-  timestamp: number;
-}

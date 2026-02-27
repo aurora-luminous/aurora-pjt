@@ -7,3 +7,4 @@ export { ChannelMemberDto, ChannelMemberUserInfoDto } from './channel-member.dto
 export { ManageMemberDto } from './manage-member.dto';
 export { ChannelUserListDto } from './channel-user-list.dto';
 export { UpdateChannelMemberRoleDto } from './update-channel-member-role.dto';
+export { ChannelMemberNotificationDto } from './channel-member-notification.dto';

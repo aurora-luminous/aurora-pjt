@@ -15,7 +15,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -30,7 +29,6 @@ public class UserStateController {
     private final UserStateService userStateService;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
-    private final SimpMessagingTemplate messagingTemplate;
     private final MemberService memberService;
 
     //사용자 상태 조회
@@ -108,27 +106,6 @@ public class UserStateController {
     }
 
 
-    /**
-     * Express에서 멤버 변경 시 호출하는 API
-     */
-    @PostMapping("/member/notify")
-    public ResponseEntity<String> notifyMemberChange(@RequestBody MemberChangeEvent event) {
-        // 프로젝트 멤버 변경만 처리
-        if (event.getProjectPk() == null) {
-            throw new BadRequestException("프로젝트 정보가 필요합니다.");
-        }
-
-        String destination = "/topic/project/" + event.getProjectPk() + "/members";
-
-        // WebSocket으로 브로드캐스트
-        messagingTemplate.convertAndSend(destination, event);
-
-        log.info("프로젝트 멤버 변경 알림 전송: eventType={}, projectPk={}, userPk={}",
-                event.getEventType(), event.getProjectPk(), event.getUserPk());
-
-        return ResponseEntity.ok("알림 전송 완료");
-
-    }
 
     /**
      * JWT에서 userPk 추출

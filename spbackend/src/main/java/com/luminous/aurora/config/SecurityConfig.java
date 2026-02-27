@@ -24,6 +24,7 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final InternalApiAuthFilter internalApiAuthFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception{
@@ -35,10 +36,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/").permitAll() // 루트경로 허용
                         .requestMatchers("/api/jv/login","/api/jv/signup","/api/jv/refresh").permitAll() // 인증관련 api 전부 허용
+                        .requestMatchers("/api/jv/internal/**").permitAll() // 내부경로 허용
                         .requestMatchers("/ws/info").permitAll() // 웹소켓 연결을 위한 SockJS 허용
                         .requestMatchers("/ws/**").authenticated() // Websocket 연결은 인증
                         .anyRequest().authenticated()
                 )
+                .addFilterBefore(internalApiAuthFilter, JwtAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

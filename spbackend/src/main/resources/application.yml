@@ -52,3 +52,6 @@ logging:
 cookie:
   secure: true
   same-site: Strict
+
+internal:
+  secret: ${INTERNAL_SECRET}

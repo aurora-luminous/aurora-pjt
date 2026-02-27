@@ -2,7 +2,8 @@ package com.luminous.aurora.internal.controller;
 
 
 import com.luminous.aurora.common.error.exception.BadRequestException;
-import com.luminous.aurora.userstate.dto.MemberChangeEvent;
+import com.luminous.aurora.internal.dto.ChannelMemberBroadcast;
+import com.luminous.aurora.internal.dto.MemberChangeEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,22 +23,31 @@ public class InternalController {
 
     /**
      * Express에서 멤버 변경 시 호출하는 API
-     * Express에서 받은 MemberChangeEvent를 그대로 다시 프론트에게 전달
+     * Express에서 채널 멤버 변경 시 호출, channelPks 제외하고 프론트에 브로드캐스트
      */
     @PostMapping("/member/notify")
     public ResponseEntity<String> notifyMemberChange(@RequestBody MemberChangeEvent event) {
         // 프로젝트 멤버 변경만 처리
-        if (event.getProjectPk() == null) {
+        if (event.getChannelPks() == null) {
             throw new BadRequestException("프로젝트 정보가 필요합니다.");
         }
 
-        String destination = "/topic/project/" + event.getProjectPk() + "/members";
+        // channelPks 제외하고 브로드 캐스트용 객체로 변환
+        ChannelMemberBroadcast broadcast = ChannelMemberBroadcast.builder()
+                .eventType(event.getEventType())
+                .userName(event.getUserName())
+                .userEmail(event.getUserEmail())
+                .profileImagePath(event.getProfileImagePath())
+                .build();
 
-        // WebSocket으로 가공없이 브로드캐스트
-        messagingTemplate.convertAndSend(destination, event);
+        for (Integer channelPk : event.getChannelPks()) {
+            String destination = "/topic/channel/"+ channelPk + "/members";
+            messagingTemplate.convertAndSend(destination, broadcast);
+        }
 
-        log.info("프로젝트 멤버 변경 알림 전송: eventType={}, projectPk={}, userPk={}",
-                event.getEventType(), event.getProjectPk(), event.getUserPk());
+
+        log.info("채널 멤버 변경 알림 전송: eventType={}, channelPks = {}, userEmail = {}",
+                event.getEventType(), event.getChannelPks(), event.getUserEmail());
 
         return ResponseEntity.ok("알림 전송 완료");
 

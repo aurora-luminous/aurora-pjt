@@ -8,6 +8,7 @@ import { ProjectMember } from '../../project/entities/project-member.entity';
 import { User } from '../../user/entities/user.entity';
 import { UserService } from '../../user/services/user.service';
 import { MemberRoleUtils, ChannelRoleType } from '../../../common/enums/member-role.enum';
+import { ChannelNotificationService } from './channel-notification.service'; // Added import
 
 export interface InviteToChannelDto {
   channelPk: number;
@@ -59,6 +60,7 @@ export class ChannelInvitationService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly userService: UserService,
+    private readonly channelNotificationService: ChannelNotificationService, // Injected
   ) {}
 
   // 이메일로 채널에 사용자 초대 (직접 추가)
@@ -133,6 +135,13 @@ export class ChannelInvitationService {
         existingMember.channelRole = inviteDto.channelRole || 'member';
         const reactivatedMember = await this.channelMemberRepository.save(existingMember);
         
+        await this.channelNotificationService.notifyMemberAdded(
+          [reactivatedMember.channelPk],
+          targetUser.userEmail,
+          targetUser.userName,
+          targetUser.profileImagePath,
+        );
+
         return {
           channelPk: reactivatedMember.channelPk,
           cStatus: reactivatedMember.cStatus,
@@ -153,13 +162,21 @@ export class ChannelInvitationService {
       channelPk: inviteDto.channelPk,
       userPk: targetUser.userPk,
       cStatus: 'Active',
-      channelRole: inviteDto.channelRole || 'member',
-    });
-    const savedMember = await this.channelMemberRepository.save(channelMember);
-
-    return {
-      channelPk: savedMember.channelPk,
-      cStatus: savedMember.cStatus,
+                channelRole: inviteDto.channelRole || 'member',
+              });
+              const savedMember = await this.channelMemberRepository.save(channelMember);
+      
+              await this.channelNotificationService.notifyMemberAdded(
+                [savedMember.channelPk],
+                targetUser.userEmail,
+                targetUser.userName,
+                targetUser.profileImagePath,
+              );
+      
+              return {
+                channelPk: savedMember.channelPk,
+                cStatus: savedMember.cStatus,
+            
       channelRole: savedMember.channelRole,
       isMute: savedMember.isMute,
       lastReadMessage: savedMember.lastReadMessage,
@@ -225,6 +242,13 @@ export class ChannelInvitationService {
         existingMember.cStatus = 'Active';
         const reactivatedMember = await this.channelMemberRepository.save(existingMember);
         
+        await this.channelNotificationService.notifyMemberAdded(
+          [reactivatedMember.channelPk],
+          user.userEmail,
+          user.userName,
+          user.profileImagePath,
+        );
+
         return {
           channelPk: reactivatedMember.channelPk,
           cStatus: reactivatedMember.cStatus,
@@ -241,17 +265,25 @@ export class ChannelInvitationService {
     }
 
     // 6. 채널 멤버로 추가 (기본 member 권한)
-    const channelMember = this.channelMemberRepository.create({
-      channelPk,
-      userPk,
-      cStatus: 'Active',
-      channelRole: 'member',
-    });
-    const savedMember = await this.channelMemberRepository.save(channelMember);
-
-    return {
-      channelPk: savedMember.channelPk,
-      cStatus: savedMember.cStatus,
+            const channelMember = this.channelMemberRepository.create({
+              channelPk,
+              userPk,
+              cStatus: 'Active',
+              channelRole: 'member',
+            });
+            const savedMember = await this.channelMemberRepository.save(channelMember);
+    
+            await this.channelNotificationService.notifyMemberAdded(
+              [savedMember.channelPk],
+              user.userEmail,
+              user.userName,
+              user.profileImagePath,
+            );
+    
+            return {
+              channelPk: savedMember.channelPk,
+              cStatus: savedMember.cStatus,
+          
       channelRole: savedMember.channelRole,
       isMute: savedMember.isMute,
       lastReadMessage: savedMember.lastReadMessage,
@@ -371,6 +403,16 @@ export class ChannelInvitationService {
 
     // 6. 상태를 Inactive로 변경 (soft delete)
     await this._updateChannelMemberStatus(targetMember.channelMemberPk, 'Inactive');
+
+    const removedUser = await this.userService.findByPk(targetMember.userPk);
+    if (removedUser) {
+      await this.channelNotificationService.notifyMemberRemoved(
+        [removeDto.channelPk],
+        removedUser.userEmail,
+        removedUser.userName,
+        removedUser.profileImagePath,
+      );
+    }
   }
 
   // 채널에서 사용자 차단
@@ -413,6 +455,16 @@ export class ChannelInvitationService {
 
     // 6. 상태를 Banned로 변경
     await this._updateChannelMemberStatus(targetMember.channelMemberPk, 'Banned');
+
+    const bannedUser = await this.userService.findByPk(targetMember.userPk);
+    if (bannedUser) {
+      await this.channelNotificationService.notifyMemberRemoved(
+        [channelPk],
+        bannedUser.userEmail,
+        bannedUser.userName,
+        bannedUser.profileImagePath,
+      );
+    }
   }
 
   // 채널에서 차단 해제 (Admin만 가능)
@@ -443,6 +495,13 @@ export class ChannelInvitationService {
     // 3. 상태를 Active로 복구
     bannedMember.cStatus = 'Active';
     const unbannedMember = await this.channelMemberRepository.save(bannedMember);
+
+    await this.channelNotificationService.notifyMemberAdded(
+      [unbannedMember.channelPk],
+      bannedMember.user.userEmail,
+      bannedMember.user.userName,
+      bannedMember.user.profileImagePath,
+    );
 
     return {
       channelPk: unbannedMember.channelPk,
@@ -708,7 +767,12 @@ export class ChannelInvitationService {
     // 4. 상태를 Inactive로 변경
     await this._updateChannelMemberStatus(channelMember.channelMemberPk, 'Inactive');
 
-    // TODO: Spring 서버로 멤버 제거 알림 전송 (필요하다면)
+    await this.channelNotificationService.notifyMemberRemoved(
+      [channelPk],
+      channelMember.user.userEmail,
+      channelMember.user.userName,
+      channelMember.user.profileImagePath,
+    );
 
     return { message: '채널에서 나갔습니다' };
   }

@@ -41,8 +41,8 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").authenticated() // Websocket 연결은 인증
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(internalApiAuthFilter, JwtAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(internalApiAuthFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

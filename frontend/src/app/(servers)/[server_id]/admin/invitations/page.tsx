@@ -18,9 +18,8 @@ const InvitationsPage = () => {
     const generateInviteLink = async () => {
       try {
         const result = await createInviteCodeMutation.mutateAsync();
-        console.log("생성된 초대 링크:", result);
         if (result) {
-          const link = String(result.inviteLink);
+          const link = window.location.origin +"/join?code=" + result.inviteHash;
           localStorage.setItem("inviteLink", link);
           setInviteLink(link);
         }

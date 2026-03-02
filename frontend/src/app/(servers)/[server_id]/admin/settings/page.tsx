@@ -4,13 +4,17 @@ import React, { useState } from "react";
 import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
 import { useResponsive } from "../../../../lib/useResponsive";
 import { useAdminPermission } from "../../../hooks/useAdmin";
+import { useDeleteServerMutation } from "@/app/(server-setup)/hooks/useServerMutation";
+import { useRouter } from "next/navigation";
 
 const SettingsPage = () => {
-  const { isMobile, isTablet } = useResponsive();
+  const { isMobile } = useResponsive();
   const { isAdmin, currentServerRole, isLoading } = useAdminPermission();
   const serverInfo = useCurrentServerInfo();
   const [confirmDeleteText, setConfirmDeleteText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
+  const { mutate: deleteServer } = useDeleteServerMutation(serverInfo?.serverUrl || "");
 
   const handleDeleteServer = async () => {
     if (confirmDeleteText !== serverInfo?.serverName) {
@@ -29,9 +33,10 @@ const SettingsPage = () => {
     setIsDeleting(true);
     try {
       // 실제 API 호출 로직
-      // await deleteServer(serverId);
+      deleteServer();  
       console.log("서버 삭제 완료");
       // 실제로는 서버 목록 페이지로 리다이렉트
+      router.push("/");
     } catch (error) {
       console.error("서버 삭제 실패:", error);
     } finally {

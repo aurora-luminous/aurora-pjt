@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import { ChannelManageData, useModal } from "../hooks/useModal";
@@ -13,7 +13,7 @@ export const ChannelManageModal = () => {
   const { isOpen, isChannelManageModal, close, data } = useModal();
   const channelData = data as ChannelManageData;
 
-  const { handleKickMember, handleBanMember, handleUnbanMember } =
+  const { handleKickMember, handleBanMember, handleUnbanMember, handleDeleteChannel } =
     useChannelFlow(
       channelData?.serverUrl || "",
       channelData?.projectPk || 0,
@@ -80,6 +80,18 @@ export const ChannelManageModal = () => {
       return response;
     } catch (error) {
       console.error("❌ 채널 멤버 차단 해제 실패:", error);
+      throw error;
+    }
+  };
+
+  const deleteChannel = async () => {
+    try {
+      const response = await handleDeleteChannel(channelData?.channelPk || 0);
+
+      console.log("✅ 채널 삭제 성공 및 캐시 업데이트 완료");
+      return response;
+    } catch (error) {
+      console.error("❌ 채널 삭제 실패:", error);
       throw error;
     }
   };
@@ -179,7 +191,15 @@ export const ChannelManageModal = () => {
                     </div>
                   ))}
                 </div>
-
+                {/* 삭제 버튼 */}
+                <div className="pt-4 pb-4">
+                  <button
+                    onClick={deleteChannel}
+                    className="w-full bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium py-2 text-sm"
+                  >
+                    채널 삭제
+                  </button>
+                </div>
                 {/* 완료 버튼 */}
                 <div className="pt-4 pb-4">
                   <button
@@ -452,6 +472,15 @@ export const ChannelManageModal = () => {
                     </p>
                   </div>
                 )}
+                 {/* 삭제 버튼 */}
+                <div className="pt-4 pb-4">
+                  <button
+                    onClick={deleteChannel}
+                    className="w-full bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium py-2 text-sm"
+                  >
+                    채널 삭제
+                  </button>
+                </div>
 
                 {/* 버튼 그룹 */}
                 <div
@@ -459,6 +488,7 @@ export const ChannelManageModal = () => {
                     isMobile ? "space-x-2" : "space-x-3"
                   } pt-2`}
                 >
+                  
                   <button
                     type="button"
                     onClick={handleClose}

@@ -1,7 +1,7 @@
 import { ServerRequest, ChangePermission } from "../types/Server";
 import { RoleUsers } from "../types/Server";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Channel } from "../types/Channel";
+import { ChannelRequest } from "../types/Channel";
 import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
 import { ServerStatus } from "@/app/(servers)/types/ServerAccess";
 import { expressClient } from "@/app/lib/axiosClient";
@@ -30,6 +30,10 @@ import {
   useServerRoleApi,
   useServerPermessionApi,
   usePatchServerPermessionApi,
+  useLeaveChannelApi,
+  useServerDeleteApi,
+  useProjectDeleteApi,
+  useChannelDeleteApi,
 } from "./useServerApi";
 
 export const useAddServerMutation = () => {
@@ -107,7 +111,7 @@ export const useCreateChannelMutation = (
 
   return useMutation({
     mutationFn: async (
-      channelData: Omit<Channel, "channelName"> & { channelName?: string }
+      channelData: ChannelRequest
     ) => {
       const result = await createChannel(channelData);
       return result;
@@ -169,20 +173,27 @@ export const useServerAccessQuery = (
 // 🔄 Query: 사용자 본인의 서버 가입 상태 조회 (POST) - 승인 대기 페이지용
 export const useServerJoinStatusQuery = (
   serverUrl: string,
-  approvalStatus?: "pending" | "active" | "inactive" | "checking"
+  approvalStatus?: "Pending" | "Active" | "Inactive" | "Checking"
 ) => {
   const { execute: getServerJoinStatus } = useServerJoinStatusApi(serverUrl);
 
   return useQuery({
     queryKey: ["serverJoinStatus", serverUrl],
     queryFn: () => getServerJoinStatus(),
-    enabled: !!serverUrl && approvalStatus !== "active", // serverUrl이 있고 승인되지 않았을 때만 실행
+    enabled: !!serverUrl && approvalStatus !== "Active", // serverUrl이 있고 승인되지 않았을 때만 실행
     staleTime: 0, // 항상 최신 데이터 확인
     gcTime: 1 * 60 * 1000, // 1분간 캐시 유지
-    refetchInterval: 5000, // 5초마다 자동 refetch
+    retry: false, // 에러 발생 시 재시도 안함 (400 = 서버 삭제됨)
+    refetchInterval: (query) => {
+      // 에러 상태거나 Active면 polling 중단
+      if (query.state.status === "error") return false;
+      if (approvalStatus === "Active") return false;
+      return 5000; // 정상 상태일 때만 5초마다 refetch
+    },
     refetchIntervalInBackground: false, // 백그라운드에서는 refetch 안함
   });
 };
+
 
 // ✅ Mutation: 서버 접근 권한 수정 (PATCH)
 export const usePatchServerAccessMutation = (serverUrl: string) => {
@@ -364,6 +375,54 @@ export const useChannelMemberListQuery = (
   });
 };
 
+export const useLeaveChannelMutation = (
+  serverUrl: string,
+  projectPk: number,
+  channelPk: number
+) => {
+  const { execute: leaveChannel } = useLeaveChannelApi(
+    serverUrl,
+    projectPk,
+    channelPk
+  );
+
+  return useMutation({
+    mutationFn: async (userEmail: string) => {
+      const result = await leaveChannel({ userEmail });
+      return result;
+    },
+  });
+};
+
+// // 사이드바 등 목록에서 여러 채널을 나갈 때 사용하는 유동적 뮤테이션
+// export const useLeaveChannelDynamicMutation = (
+//   serverUrl: string,
+//   projectPk: number
+// ) => {
+//   const queryClient = useQueryClient();
+
+//   return useMutation({
+//     mutationFn: async ({
+//       channelPk,
+//       userEmail,
+//     }: {
+//       channelPk: number;
+//       userEmail: string;
+//     }) => {
+//       const response = await expressClient.patch(
+//         `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/members/remove`,
+//         { userEmail }
+//       );
+//       return response.data;
+//     },
+//     onSuccess: () => {
+//       queryClient.invalidateQueries({
+//         queryKey: ["channelList", serverUrl, projectPk],
+//       });
+//     },
+//   });
+// };
+
 export const useKickChannelMemberMutation = (
   serverUrl: string,
   projectPk: number,
@@ -421,6 +480,8 @@ export const useUnbanChannelMemberMutation = (
   });
 };
 
+
+
 export const useServerRoleMutation = (serverUrl: string) => {
   const { execute: patchServerRole } = useServerRoleApi(serverUrl);
 
@@ -461,6 +522,7 @@ export const usePatchServerRolePermessionMutation = (serverUrl: string) => {
   });
 };
 
+<<<<<<< HEAD
 // 마지막 채널 업데이트 Mutation
 export const useUpdateLastChannelMutation = () => {
   return useMutation({
@@ -478,3 +540,62 @@ export const useUpdateLastChannelMutation = () => {
     },
   });
 };
+=======
+export const useDeleteServerMutation = (serverUrl: string) => {
+  const {execute: deleteServer} = useServerDeleteApi(serverUrl);
+  return useMutation({
+    mutationFn: async () => {
+      const result = await deleteServer();
+      return result;
+    },
+    onSuccess: (data) => {
+      console.log(data);
+    },
+    onError: (error) => {
+      console.error(error);
+    }
+  });
+}
+
+export const useDeleteProjectMutation = (serverUrl: string) => {
+  const queryClient = useQueryClient();
+
+  const {execute: deleteProject} = useProjectDeleteApi(serverUrl);
+  return useMutation({
+    mutationFn: async (projectPk: number) => {
+      const result = await deleteProject(undefined, {url: `/ex/servers/${serverUrl}/projects/${projectPk}/delete`});
+      return result;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: ["projectList", serverUrl],
+      });
+      console.log(data);
+    },
+    onError: (error) => {
+      console.error(error);
+    }
+  })
+}
+
+export const useDeleteChannelMutation = (serverUrl: string, projectPk: number) => {
+  const queryClient = useQueryClient();
+
+  const {execute: deleteChannel} = useChannelDeleteApi(serverUrl, projectPk);
+  return useMutation({
+    mutationFn: async (channelPk: number) => {
+      const result = await deleteChannel(undefined, {url: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/delete`});
+      return result;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: ["channelList", serverUrl],
+      });
+      console.log(data);
+    },
+    onError: (error) => {
+      console.error(error);
+    }
+  })
+}
+>>>>>>> 136936d3096668ece26f3bc5b5c81cad716381fc

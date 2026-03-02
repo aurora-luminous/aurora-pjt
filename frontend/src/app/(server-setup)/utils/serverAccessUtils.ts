@@ -46,10 +46,9 @@ export const getChannelPath = (channelKind: string): string => {
 export const createChannelUrl = (
   serverUrl: string,
   projectPk: number,
-  channelName: string,
+  channelId: number | string,
   channelKind: string
 ): string => {
-  const encodedChannelName = encodeURIComponent(channelName);
   const channelPath = getChannelPath(channelKind);
-  return `/${serverUrl}/projects/${projectPk}/${channelPath}/${encodedChannelName}`;
+  return `/${serverUrl}/projects/${projectPk}/${channelPath}/${channelId}`;
 };

@@ -522,7 +522,6 @@ export const usePatchServerRolePermessionMutation = (serverUrl: string) => {
   });
 };
 
-<<<<<<< HEAD
 // 마지막 채널 업데이트 Mutation
 export const useUpdateLastChannelMutation = () => {
   return useMutation({
@@ -540,7 +539,7 @@ export const useUpdateLastChannelMutation = () => {
     },
   });
 };
-=======
+
 export const useDeleteServerMutation = (serverUrl: string) => {
   const {execute: deleteServer} = useServerDeleteApi(serverUrl);
   return useMutation({
@@ -598,4 +597,3 @@ export const useDeleteChannelMutation = (serverUrl: string, projectPk: number) =
     }
   })
 }
->>>>>>> 136936d3096668ece26f3bc5b5c81cad716381fc

@@ -4,8 +4,12 @@ import React from "react";
 import Link from "next/link";
 import { Channel } from "@/app/(server-setup)/types/Channel";
 import { ChannelDropdownMenu } from "./ChannelDropdownMenu";
+<<<<<<< HEAD
+import { useUpdateLastChannelMutation } from "@/app/(server-setup)/hooks/useServerMutation";
+=======
 import { InviteChannelDropDown } from "./InviteChannelDropdown";
 import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
+>>>>>>> 136936d3096668ece26f3bc5b5c81cad716381fc
 
 interface ChannelItemProps {
   channel: Channel;
@@ -36,6 +40,8 @@ export const ChannelItem: React.FC<ChannelItemProps> = ({
   onChannelManage,
   onChannelInviteDropdown,
 }) => {
+  const updateLastChannelMutation = useUpdateLastChannelMutation();
+
   const getChannelIcon = () => {
     switch (channel.channelKind) {
       case "notification":
@@ -48,8 +54,23 @@ export const ChannelItem: React.FC<ChannelItemProps> = ({
   };
   const buttonRef = React.useRef<HTMLButtonElement>(null);
 
+  const handleChannelClick = () => {
+    // 채널 클릭 시 마지막 채널 정보 업데이트
+    updateLastChannelMutation.mutate(channel.channelPk);
+  };
+
   return (
     <div className="relative mb-1">
+<<<<<<< HEAD
+      <Link href={createChannelLink(channel)} onClick={handleChannelClick}>
+        <div
+          className={`flex items-center px-2 py-1 rounded cursor-pointer transition-colors ${
+            isCurrentChannel
+              ? "bg-gray-600 text-white"
+              : "text-gray-300 hover:bg-gray-600 hover:text-white"
+          }`}
+          onContextMenu={(e) => onContextMenu(e, channel.channelName)}
+=======
       <div
         className={`group flex items-center justify-between px-2 py-1 rounded cursor-pointer transition-colors ${
           isCurrentChannel
@@ -61,6 +82,7 @@ export const ChannelItem: React.FC<ChannelItemProps> = ({
         <Link
           href={createChannelLink(channel)}
           className="flex items-center flex-1 overflow-hidden"
+>>>>>>> 136936d3096668ece26f3bc5b5c81cad716381fc
         >
           <span className="mr-2 text-gray-400">{getChannelIcon()}</span>
           <span className="truncate text-sm">{channel.channelName}</span>

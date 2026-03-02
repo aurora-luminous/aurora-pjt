@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChannelRequest } from "../types/Channel";
 import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
 import { ServerStatus } from "@/app/(servers)/types/ServerAccess";
+import { expressClient } from "@/app/lib/axiosClient";
 import {
   useAddServerApi,
   useServerListApi,
@@ -521,6 +522,25 @@ export const usePatchServerRolePermessionMutation = (serverUrl: string) => {
   });
 };
 
+<<<<<<< HEAD
+// 마지막 채널 업데이트 Mutation
+export const useUpdateLastChannelMutation = () => {
+  return useMutation({
+    mutationFn: async (channelPk: number) => {
+      const response = await expressClient.patch<{ message: string }>(
+        `/ex/members/me/last-channel/${channelPk}`
+      );
+      return response.data;
+    },
+    onSuccess: (data) => {
+      console.log("🎉 마지막 채널 업데이트 성공:", data);
+    },
+    onError: (error) => {
+      console.error("❌ 마지막 채널 업데이트 실패:", error);
+    },
+  });
+};
+=======
 export const useDeleteServerMutation = (serverUrl: string) => {
   const {execute: deleteServer} = useServerDeleteApi(serverUrl);
   return useMutation({
@@ -578,3 +598,4 @@ export const useDeleteChannelMutation = (serverUrl: string, projectPk: number) =
     }
   })
 }
+>>>>>>> 136936d3096668ece26f3bc5b5c81cad716381fc

@@ -13,7 +13,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -44,10 +44,9 @@ server:
 # 로깅 설정
 logging:
   level:
-    com.luminous.aurora: DEBUG
-    org.springframework.web: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    com.luminous.aurora: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
 
 cookie:
   secure: true

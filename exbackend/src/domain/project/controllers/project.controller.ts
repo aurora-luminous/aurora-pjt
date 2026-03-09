@@ -12,9 +12,11 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import { User } from '../../user/entities/user.entity';
+import { Project } from '../entities/project.entity';
 import { ProjectCreationService } from '../services/project-creation.service';
 import { ProjectInvitationService } from '../services/project-invitation.service';
-import { ProjectDeletionService } from '../services/project-deletion.service'; // Import the new service
+import { ProjectDeletionService } from '../services/project-deletion.service';
+import { ProjectUpdateService } from '../services/project-update.service';
 import {
   CreateProjectDto,
   ProjectListDto,
@@ -22,6 +24,7 @@ import {
   BulkInviteToProjectDto,
   ProjectMemberDto,
   ManageMemberDto,
+  UpdateProjectDto,
 } from '../dto';
 
 @ApiTags('projects')
@@ -31,6 +34,7 @@ export class ProjectController {
     private readonly projectCreationService: ProjectCreationService,
     private readonly projectInvitationService: ProjectInvitationService,
     private readonly projectDeletionService: ProjectDeletionService,
+    private readonly projectUpdateService: ProjectUpdateService,
   ) {}
 
   @Post()
@@ -225,5 +229,28 @@ export class ProjectController {
   ): Promise<{ message: string }> {
     await this.projectDeletionService.deleteProject(projectPk, user.userPk);
     return { message: '프로젝트가 성공적으로 삭제되었습니다.' };
+  }
+
+  @Patch(':projectPk/update')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '프로젝트 이름 변경 (Admin만 가능)' })
+  @ApiResponse({ status: 200, description: '프로젝트 이름 변경 성공', type: Project })
+  @ApiResponse({ status: 403, description: '프로젝트 이름을 변경할 권한 없음' })
+  @ApiResponse({ status: 404, description: '프로젝트를 찾을 수 없음' })
+  async updateProjectName(
+    @Param('serverUrl') serverUrl: string,
+    @Param('projectPk', ParseIntPipe) projectPk: number,
+    @Body() updateProjectDto: UpdateProjectDto,
+    @CurrentUser() user: User
+  ): Promise<{ message: string }> {
+    const modifierUserPk = user.userPk;
+    await this.projectUpdateService.updateProjectName(
+      serverUrl,
+      projectPk,
+      updateProjectDto.projectName,
+      modifierUserPk,
+    );
+    return { message: '프로젝트가 성공적으로 업데이트 되었습니다.' };
   }
 }

@@ -4,3 +4,4 @@ export { InviteToProjectDto, UserEmailDto, BulkInviteToProjectDto } from './invi
 export { RemoveFromProjectDto } from './remove-from-project.dto';
 export { ProjectMemberDto, ProjectMemberUserInfoDto } from './project-member.dto';
 export { ManageMemberDto } from './manage-member.dto';
+export { UpdateProjectDto } from './update-project.dto';

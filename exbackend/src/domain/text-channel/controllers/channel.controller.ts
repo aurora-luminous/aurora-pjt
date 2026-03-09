@@ -23,7 +23,9 @@ import {
   ChannelMemberDto,
   ManageMemberDto,
   UpdateChannelMemberRoleDto,
+  UpdateChannelDto,
 } from '../dto';
+import { ChannelUpdateService } from '../services/channel-update.service';
 
 @ApiTags('channels')
 @Controller()
@@ -31,7 +33,8 @@ export class ChannelController {
   constructor(
     private readonly channelCreationService: ChannelCreationService,
     private readonly channelInvitationService: ChannelInvitationService,
-    private readonly channelDeletionService: ChannelDeletionService, // Inject the new service
+    private readonly channelDeletionService: ChannelDeletionService,
+    private readonly channelUpdateService: ChannelUpdateService,
   ) {}
 
   @Post()
@@ -235,5 +238,30 @@ export class ChannelController {
   ): Promise<{ message: string }> {
     await this.channelDeletionService.deleteChannel(channelPk, user.userPk);
     return { message: '채널이 성공적으로 삭제되었습니다.' };
+  }
+
+  @Patch(':channelPk/update')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '채널 이름 변경' })
+  @ApiResponse({
+    status: 200,
+    description: '채널 이름 변경 성공',
+    type: UpdateChannelDto,
+  })
+  async updateChannelName(
+    @Param('projectPk', ParseIntPipe) projectPk: number,
+    @Param('channelPk', ParseIntPipe) channelPk: number,
+    @Body() updateChannelDto: UpdateChannelDto,
+    @CurrentUser() user: User,
+  ): Promise<{ message: string }> {
+    const modifierUserPk = user.userPk;
+    const updatedChannel = await this.channelUpdateService.updateChannelName(
+      projectPk,
+      channelPk,
+      updateChannelDto.channelName,
+      modifierUserPk,
+    );
+    return { message: '채널이 성공적으로 업데이트 되었습니다.' }
   }
 }

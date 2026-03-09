@@ -8,9 +8,10 @@ import { User } from '../user/entities/user.entity';
 import { UserModule } from '../user/user.module';
 import { ChannelCreationService } from './services/channel-creation.service';
 import { ChannelInvitationService } from './services/channel-invitation.service';
-import { ChannelValidationService } from './services/channel-validation.service'; // Added import for ChannelValidationService
+import { ChannelValidationService } from './services/channel-validation.service';
 import { ChannelDeletionService } from './services/channel-deletion.service';
 import { ChannelNotificationService } from './services/channel-notification.service';
+import { ChannelUpdateService } from './services/channel-update.service';
 import { ChannelController } from './controllers/channel.controller';
 
 @Module({
@@ -30,16 +31,18 @@ import { ChannelController } from './controllers/channel.controller';
   providers: [
     ChannelCreationService,
     ChannelInvitationService,
-    ChannelValidationService, // Added ChannelValidationService
+    ChannelValidationService,
     ChannelDeletionService,
     ChannelNotificationService,
+    ChannelUpdateService,
   ],
   exports: [
     ChannelCreationService,
     ChannelInvitationService,
-    ChannelValidationService, // Added ChannelValidationService
+    ChannelValidationService,
     ChannelDeletionService,
     ChannelNotificationService,
+    ChannelUpdateService,
   ],
 })
 export class TextChannelModule {}

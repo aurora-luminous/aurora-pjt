@@ -1,19 +1,24 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import { ChannelManageData, useModal } from "../hooks/useModal";
 import { useChannelFlow } from "../hooks/useChannelFlow";
-import { useChannelMemberListQuery } from "../hooks/useServerMutation";
+import { useChannelListQuery, useChannelMemberListQuery } from "../hooks/useServerMutation";
 import { useResponsive } from "../../lib/useResponsive";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const ChannelManageModal = () => {
   const { isMobile, isTablet } = useResponsive();
   const { isOpen, isChannelManageModal, close, data } = useModal();
   const channelData = data as ChannelManageData;
+  const queryClient = useQueryClient();
 
-  const { handleKickMember, handleBanMember, handleUnbanMember, handleDeleteChannel } =
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState("");
+
+  const { handleKickMember, handleBanMember, handleUnbanMember, handleDeleteChannel, handleUpdateChannel } =
     useChannelFlow(
       channelData?.serverUrl || "",
       channelData?.projectPk || 0,
@@ -31,6 +36,42 @@ export const ChannelManageModal = () => {
     isLoading: isChannelMemberListLoading,
     error: channelMemberListError,
   } = channelMemberList;
+
+  const channelList = useChannelListQuery(channelData?.serverUrl, channelData?.projectPk);
+  const channelName = channelList.data?.filter((channel) => channel.channelPk === channelData.channelPk)[0]?.channelName;
+
+  useEffect(() => {
+    if (channelName) {
+      setEditedName(channelName);
+    }
+   
+  }, [channelName]);
+
+  const handleEditStart = () => {
+    setEditedName(channelName || "");
+    setIsEditing(true);
+  }
+
+  const handleEditCancel = () => {
+    setEditedName(channelName || "");
+    setIsEditing(false);
+  }
+
+  const handleEditSave = async () => {
+    if (!editedName.trim() || editedName === channelName) {
+      setIsEditing(false);
+      return;
+    };
+    try {
+      await handleUpdateChannel({channelName: editedName.trim()})
+      await queryClient.invalidateQueries({
+        queryKey: ["channelList", channelData?.serverUrl, channelData?.projectPk],
+      });
+      setIsEditing(false)
+    }catch (e){
+      console.error(e)
+    }
+  }
 
   if (isChannelMemberListLoading) {
     return <div>Loading...</div>;
@@ -125,7 +166,7 @@ export const ChannelManageModal = () => {
               <div className="flex justify-between items-center px-4 pb-4">
                 <h2 className="text-lg font-semibold text-white flex items-center">
                   <span className="mr-3 text-base">#</span>
-                  채널 멤버 관리
+                  채널 관리
                 </h2>
                 <button
                   onClick={handleClose}
@@ -133,6 +174,44 @@ export const ChannelManageModal = () => {
                 >
                   ✕
                 </button>
+              </div>
+
+              {/* 채널 이름 수정 영역 (모바일) */}
+              <div className="flex items-center gap-2 px-4 pb-3">
+                <input
+                  type="text"
+                  value={editedName}
+                  readOnly={!isEditing}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  className={`flex-1 text-white text-sm rounded-lg px-3 py-2 outline-none transition-all ${
+                    isEditing
+                      ? "bg-gray-600 border border-blue-500 focus:ring-2 focus:ring-blue-500/40"
+                      : "bg-transparent border border-transparent cursor-default select-none"
+                  }`}
+                />
+                {isEditing ? (
+                  <div className="flex gap-1">
+                    <button
+                      onClick={handleEditSave}
+                      className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors font-medium"
+                    >
+                      저장
+                    </button>
+                    <button
+                      onClick={handleEditCancel}
+                      className="text-xs bg-gray-500 hover:bg-gray-400 text-white px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      취소
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleEditStart}
+                    className="text-xs bg-gray-500 hover:bg-gray-400 text-white px-3 py-1.5 rounded-lg transition-colors font-medium whitespace-nowrap"
+                  >
+                    수정
+                  </button>
+                )}
               </div>
 
               {/* 스크롤 가능한 콘텐츠 */}
@@ -250,6 +329,51 @@ export const ChannelManageModal = () => {
                 >
                   ✕
                 </button>
+              </div>
+
+              <div className="flex items-center gap-2 mb-5">
+                <input
+                  type="text"
+                  value={editedName}
+                  readOnly={!isEditing}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  className={`flex-1 text-white rounded-lg px-3 py-2 outline-none transition-all ${
+                    isTablet ? "text-sm" : "text-base"
+                  } ${
+                    isEditing
+                      ? "bg-gray-600 border border-blue-500 focus:ring-2 focus:ring-blue-500/40"
+                      : "bg-transparent border border-transparent cursor-default select-none"
+                  }`}
+                />
+                {isEditing ? (
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={handleEditSave}
+                      className={`bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors ${
+                        isTablet ? "text-xs px-3 py-1.5" : "text-sm px-4 py-2"
+                      }`}
+                    >
+                      저장
+                    </button>
+                    <button
+                      onClick={handleEditCancel}
+                      className={`bg-gray-500 hover:bg-gray-400 text-white rounded-lg transition-colors ${
+                        isTablet ? "text-xs px-3 py-1.5" : "text-sm px-4 py-2"
+                      }`}
+                    >
+                      취소
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleEditStart}
+                    className={`bg-gray-500 hover:bg-gray-400 text-white font-medium rounded-lg transition-colors whitespace-nowrap ${
+                      isTablet ? "text-xs px-3 py-1.5" : "text-sm px-4 py-2"
+                    }`}
+                  >
+                    수정
+                  </button>
+                )}
               </div>
 
               <div className={`${isMobile ? "space-y-3" : "space-y-4"}`}>

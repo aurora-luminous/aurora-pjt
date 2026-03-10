@@ -15,10 +15,10 @@ interface ApiErrorData {
  *   3. error.message (네트워크 오류 등)
  *   4. fallback 문자열
  */
-export function parseApiError(
+export const parseApiError =(
   error: unknown,
   fallback = "오류가 발생했습니다. 잠시 후 다시 시도해주세요."
-): string {
+): string  => {
   if (!error) return fallback;
 
   const axiosErr = error as AxiosError<ApiErrorData>;

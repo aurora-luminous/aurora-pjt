@@ -5,6 +5,7 @@ import { Project } from '../entities/project.entity';
 import { ProjectMember } from '../entities/project-member.entity';
 import { User } from '../../user/entities/user.entity';
 import { Server } from '../../server/entities/server.entity';
+import { ProjectNotificationService } from './project-notification.service';
 
 @Injectable()
 export class ProjectUpdateService {
@@ -17,6 +18,7 @@ export class ProjectUpdateService {
         private readonly userRepository: Repository<User>,
         @InjectRepository(Server)
         private readonly serverRepository: Repository<Server>,
+        private readonly projectNotificationService: ProjectNotificationService,
     ) {}
 
     async updateProjectName(serverUrl: string, projectPk: number, newProjectName: string, modifierUserPk: number): Promise<Project> {
@@ -46,6 +48,9 @@ export class ProjectUpdateService {
         project.projectName = newProjectName;
 
         await this.projectRepository.save(project);
+
+        // 알림 전송 (비동기)
+        this.projectNotificationService.notifyProjectUpdated(project.projectPk, project.projectName);
 
         return project;
     }

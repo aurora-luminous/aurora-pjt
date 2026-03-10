@@ -18,6 +18,7 @@ import { expressClient } from "@/app/lib/axiosClient";
 import { Project } from "../types/Projcets";
 import { Channel, ChannelRequest, LastChannelResponse } from "../types/Channel";
 import { ServerAccess, ServerStatus } from "@/app/(servers)/types/ServerAccess";
+import { ChannelPayload, ProjectPayload } from "../types/Payload";
 
 // 서버 생성
 export const useAddServerApi = () => {
@@ -294,6 +295,22 @@ export const useGetLastChannelApi = () => {
   return useApi<LastChannelResponse, void>({
     endpoint: "/ex/members/me/last-channel",
     method: "GET",
+    axiosInstance: expressClient,
+  })
+}
+
+export const usePatchPrjectApi = (serverUrl: string, projectPk: number) => {
+  return useApi<{message: string}, ProjectPayload>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/update`,
+    method: "PATCH",
+    axiosInstance: expressClient,
+  })
+}
+
+export const usePatchChannelApi = (serverUrl: string, projectPk: number, channelPk: number) => {
+  return useApi<{message: string}, ChannelPayload>({
+    endpoint: `/ex/servers/${serverUrl}/projects/${projectPk}/channels/${channelPk}/update`,
+    method: "PATCH",
     axiosInstance: expressClient,
   })
 }

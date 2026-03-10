@@ -34,7 +34,10 @@ import {
   useServerDeleteApi,
   useProjectDeleteApi,
   useChannelDeleteApi,
+  usePatchPrjectApi,
+  usePatchChannelApi,
 } from "./useServerApi";
+import { ChannelPayload, ProjectPayload } from "../types/Payload";
 
 export const useAddServerMutation = () => {
   const { execute: addServer } = useAddServerApi();
@@ -590,6 +593,38 @@ export const useDeleteChannelMutation = (serverUrl: string, projectPk: number) =
       queryClient.invalidateQueries({
         queryKey: ["channelList", serverUrl],
       });
+      console.log(data);
+    },
+    onError: (error) => {
+      console.error(error);
+    }
+  })
+}
+
+export const useUpdateProjectMutation = (serverUrl: string, projectPk: number) => {
+  const {execute: updateProject} = usePatchPrjectApi(serverUrl, projectPk);
+  return useMutation({
+    mutationFn : async (payload: ProjectPayload) => {
+      const result = updateProject(payload);
+      return result;
+    },
+    onSuccess: (data) => {
+      console.log(data)
+    },
+    onError: (error) => {
+      console.error(error);
+    }
+  })
+}
+
+export const useUpdateChannelMutation = (serverUrl: string, projectPk: number, channelPk: number) => {
+  const {execute: updateChannel} = usePatchChannelApi(serverUrl, projectPk, channelPk);
+  return useMutation({
+    mutationFn: async (payload: ChannelPayload) => {
+      const result = updateChannel(payload);
+      return result;
+    },
+    onSuccess: (data) => {
       console.log(data);
     },
     onError: (error) => {

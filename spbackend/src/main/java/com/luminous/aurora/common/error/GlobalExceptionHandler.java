@@ -1,7 +1,6 @@
 package com.luminous.aurora.common.error;
 
 import com.luminous.aurora.common.error.exception.*;
-import org.apache.coyote.BadRequestException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -110,13 +109,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      * - 첫 번째 필드 에러 메시지 반환
      * - 400 Bad Request
      */
-    @Override
-    public ResponseEntity<Object> handleMethodArgumentNotValid(
-            MethodArgumentNotValidException e,
-            HttpHeaders headers,
-            HttpStatusCode status,
-            WebRequest request
-    ) {
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException e) {
         String message = e.getBindingResult().getFieldErrors().stream()
                 .map(fieldError -> fieldError.getDefaultMessage())
                 .findFirst()

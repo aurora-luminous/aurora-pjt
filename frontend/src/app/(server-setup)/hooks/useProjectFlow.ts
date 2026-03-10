@@ -1,7 +1,9 @@
+import { ProjectPayload } from "../types/Payload";
 import {
   useBanProjectMemberMutation,
   useLeaveProjectMutation,
   useUnbanProjectMemberMutation,
+  useUpdateProjectMutation,
 } from "./useServerMutation";
 
 export const useProjectFlow = (serverUrl: string, projectPk: number) => {
@@ -14,6 +16,7 @@ export const useProjectFlow = (serverUrl: string, projectPk: number) => {
     projectPk
   );
   const leaveProjectMutation = useLeaveProjectMutation(serverUrl, projectPk);
+  const updateProjectMutation = useUpdateProjectMutation(serverUrl, projectPk);
 
   const handleLeaveProject = async (memberEmail: string) => {
     try {
@@ -47,9 +50,20 @@ export const useProjectFlow = (serverUrl: string, projectPk: number) => {
     }
   };
 
+  const handleUpdateProject = async (payload: ProjectPayload) => {
+    try {
+      const response = await updateProjectMutation.mutateAsync(payload);
+      return response;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   return {
     handleLeaveProject,
     handleBanMember,
     handleUnbanMember,
+    handleUpdateProject,
   };
 };

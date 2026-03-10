@@ -5,3 +5,4 @@ export { RemoveFromProjectDto } from './remove-from-project.dto';
 export { ProjectMemberDto, ProjectMemberUserInfoDto } from './project-member.dto';
 export { ManageMemberDto } from './manage-member.dto';
 export { UpdateProjectDto } from './update-project.dto';
+export { ProjectNotificationDto, ProjectEventType } from './project-notification.dto';

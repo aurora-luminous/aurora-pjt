@@ -16,6 +16,9 @@ const ChannelPage = () => {
     handleSendMessage,
     loadingChannels,
     loadingMessages,
+    loadOlderMessages,
+    loadingOlderMessages,
+    hasMoreMessages,
   } = useChannelPage();
 
   // URL의 channelId로 실제 채널명 가져오기
@@ -49,6 +52,9 @@ const ChannelPage = () => {
           messages={messages}
           channelName={channelName}
           isLoading={loadingMessages}
+          onLoadOlder={loadOlderMessages}
+          isLoadingOlder={loadingOlderMessages}
+          hasMoreMessages={hasMoreMessages}
         />
 
         {/* 메시지 입력 영역 */}

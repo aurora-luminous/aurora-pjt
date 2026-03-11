@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Channel } from '../entities/channel.entity';
 import { ChannelMember } from '../entities/channel-member.entity';
+import { ChannelNotificationService } from './channel-notification.service';
 
 @Injectable()
 export class ChannelUpdateService {
@@ -11,6 +12,7 @@ export class ChannelUpdateService {
         private readonly channelRepository: Repository<Channel>,
         @InjectRepository(ChannelMember)
         private readonly channelMemberRepository: Repository<ChannelMember>,
+        private readonly channelNotificationService: ChannelNotificationService,
     ) {}
 
     async updateChannelName(
@@ -42,6 +44,9 @@ export class ChannelUpdateService {
         channel.channelName = newChannelName;
 
         await this.channelRepository.save(channel);
+
+        // 알림 전송 (비동기)
+        this.channelNotificationService.notifyChannelUpdated(channel.channelPk, channel.channelName);
 
         return channel;
     }

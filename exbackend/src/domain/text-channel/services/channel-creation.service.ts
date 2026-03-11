@@ -17,6 +17,7 @@ import {
   ChannelCreateDto,
   ChannelUserListDto,
 } from '../dto';
+import { ChannelNotificationService } from './channel-notification.service';
 
 @Injectable()
 export class ChannelCreationService {
@@ -31,6 +32,7 @@ export class ChannelCreationService {
     private readonly projectMemberRepository: Repository<ProjectMember>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly channelNotificationService: ChannelNotificationService,
   ) {}
 
 
@@ -171,6 +173,9 @@ export class ChannelCreationService {
         channelRole = 'member';
       }
     }
+
+    // 알림 전송 (비동기)
+    this.channelNotificationService.notifyChannelAdded(savedChannel.channelPk, savedChannel.channelName);
 
     return {
       channelPk: savedChannel.channelPk,

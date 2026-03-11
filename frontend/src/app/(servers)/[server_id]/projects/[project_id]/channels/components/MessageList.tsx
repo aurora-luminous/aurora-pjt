@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Message } from "../../../../../types";
 import { MessageItem } from "./MessageItem";
 import { WelcomeMessage } from "./WelcomeMessage";
@@ -14,9 +14,26 @@ export const MessageList: React.FC<MessageListProps> = ({
   channelName,
 }) => {
   const { isMobile } = useResponsive();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastMessageRef = useRef<HTMLDivElement>(null);
+
+  // 메시지가 추가되면 자동으로 스크롤을 맨 아래로 이동
+  useEffect(() => {
+    if (lastMessageRef.current) {
+      lastMessageRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  // 채널 변경 시 스크롤을 맨 아래로 초기화
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
+  }, [channelName]);
 
   return (
     <div
+      ref={scrollContainerRef}
       className={`
       bg-chatting-background flex-1 overflow-y-auto
       ${isMobile ? "p-3" : "p-4"}
@@ -35,8 +52,13 @@ export const MessageList: React.FC<MessageListProps> = ({
       </div>
 
       {/* 메시지 목록 */}
-      {messages.map((message) => (
-        <MessageItem key={message.id} message={message} />
+      {messages.map((message, index) => (
+        <div
+          key={message.id}
+          ref={index === messages.length - 1 ? lastMessageRef : null}
+        >
+          <MessageItem message={message} />
+        </div>
       ))}
     </div>
   );

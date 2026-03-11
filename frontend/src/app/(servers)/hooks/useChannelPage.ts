@@ -6,6 +6,7 @@ import { Channel } from "@/app/(server-setup)/types/Channel";
 import { useChannels } from "./useChannels";
 import { useWebSocket } from "@/app/lib/useWebSocket";
 import { ChatMessage } from "../types/websocket";
+import { useChannelMessagesQuery } from "./useChatApi";
 
 export const useChannelPage = () => {
   const params = useParams();
@@ -141,63 +142,6 @@ export const useChannelPage = () => {
         `✅ 채널 찾음: "${channel.channelName}", 정확한 매칭: ${wasExactMatch}`
       );
       setCurrentChannel(channel);
-
-      // 채널별 환영 메시지 설정
-      const welcomeMessages: Message[] = [
-        {
-          id: 1,
-          user: "시스템",
-          content: `${channel.channelName} 채널에 오신 것을 환영합니다!`,
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          }),
-          isSystem: true,
-        },
-        {
-          id: 2,
-          user: "시스템",
-          content: `이 채널은 ${getChannelTypeText(channel.channelKind)} ${
-            channel.isPrivate ? "비공개" : "공개"
-          } 채널입니다.`,
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          }),
-          isSystem: true,
-        },
-      ];
-
-      // 정확한 매칭이 아닌 경우 안내 메시지 추가
-      if (!wasExactMatch && channelId !== channel.channelName) {
-        welcomeMessages.splice(1, 0, {
-          id: 1.5,
-          user: "시스템",
-          content: `"${channelId}" 채널을 찾지 못해 "${channel.channelName}" 채널로 연결되었습니다.`,
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          }),
-          isSystem: true,
-        });
-      }
-
-      welcomeMessages.push({
-        id: 3,
-        user: "시스템",
-        content: "실제 메시지 API 연동 전이므로 임시 메시지입니다.",
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        }),
-        isSystem: true,
-      });
-
-      setMessages(welcomeMessages);
     } else if (!loadingChannels) {
       // 채널 목록이 비어있고 로딩 중이 아닐 때
       setCurrentChannel(null);
@@ -228,6 +172,40 @@ export const useChannelPage = () => {
       setMessages(noChannelMessages);
     }
   }, [channelId, channels, findChannel, loadingChannels, channelIdRaw]);
+
+  // 채널 최신 메시지 조회
+  const {
+    data: messageResponses,
+    isLoading: loadingMessages,
+  } = useChannelMessagesQuery(currentChannel?.channelPk ?? null);
+
+  // API로 받은 메시지를 Message 형식으로 변환하고 순서 반전 (최신 메시지가 아래로)
+  useEffect(() => {
+    if (!messageResponses) {
+      setMessages([]);
+      return;
+    }
+
+    console.log(`✅ 채널 ${currentChannel?.channelPk} 최신 메시지 조회 성공:`, messageResponses.length, "개");
+
+    // MessageResponse를 Message 형식으로 변환
+    // 백엔드에서 오래된 순서로 오므로 reverse()로 최신 메시지가 아래에 오도록 함
+    const loadedMessages: Message[] = [...messageResponses]
+      .reverse()
+      .map((msg) => ({
+        id: msg.messagePk,
+        user: msg.userName,
+        content: msg.content,
+        timestamp: new Date(msg.createdAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        }),
+        isSystem: false,
+      }));
+
+    setMessages(loadedMessages);
+  }, [messageResponses, currentChannel?.channelPk]);
 
   // 웹소켓 메시지 수신 리스너 등록 (모든 채널의 메시지를 받지만 현재 채널만 표시)
   useEffect(() => {
@@ -272,20 +250,6 @@ export const useChannelPage = () => {
       unsubscribe();
     };
   }, [currentChannel?.channelPk, isConnected, addMessageListener]);
-
-  // 채널 타입 텍스트 변환
-  const getChannelTypeText = (channelKind: string) => {
-    switch (channelKind) {
-      case "text":
-        return "텍스트";
-      case "voice":
-        return "음성";
-      case "notice":
-        return "공지";
-      default:
-        return "일반";
-    }
-  };
 
   // 실제 채널 이름 가져오기 (디코딩된 이름 사용)
   const getChannelName = (id: string) => {
@@ -369,6 +333,7 @@ export const useChannelPage = () => {
     currentChannel,
     channels,
     loadingChannels,
+    loadingMessages,
 
     // 상태
     newMessage,

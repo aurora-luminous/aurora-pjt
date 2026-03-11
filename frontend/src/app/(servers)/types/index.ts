@@ -40,6 +40,18 @@ export interface Message {
   isSystem: boolean;
 }
 
+// 백엔드 API 응답 타입
+export interface MessageResponse {
+  messagePk: number;
+  channelPk: number | null;
+  dmRoomPk: number | null;
+  userPk: number;
+  userName: string;
+  content: string;
+  createdAt: string;
+  messageType: string;
+}
+
 export interface OnlineUser {
   id: number;
   name: string;

@@ -15,6 +15,7 @@ const ChannelPage = () => {
     getChannelName,
     handleSendMessage,
     loadingChannels,
+    loadingMessages,
   } = useChannelPage();
 
   // URL의 channelId로 실제 채널명 가져오기
@@ -44,7 +45,11 @@ const ChannelPage = () => {
         <ChatHeader channelName={channelName} />
 
         {/* 채팅 메시지 영역 - 실제 서버 데이터 사용 */}
-        <MessageList messages={messages} channelName={channelName} />
+        <MessageList
+          messages={messages}
+          channelName={channelName}
+          isLoading={loadingMessages}
+        />
 
         {/* 메시지 입력 영역 */}
         <MessageInput

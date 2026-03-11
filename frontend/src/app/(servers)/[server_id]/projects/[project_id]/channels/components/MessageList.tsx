@@ -3,15 +3,18 @@ import { Message } from "../../../../../types";
 import { MessageItem } from "./MessageItem";
 import { WelcomeMessage } from "./WelcomeMessage";
 import { useResponsive } from "../../../../../../lib/useResponsive";
+import { MessageListSkeleton } from "./MessageSkeleton";
 
 interface MessageListProps {
   messages: Message[];
   channelName: string;
+  isLoading?: boolean;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
   messages,
   channelName,
+  isLoading = false,
 }) => {
   const { isMobile } = useResponsive();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -52,14 +55,18 @@ export const MessageList: React.FC<MessageListProps> = ({
       </div>
 
       {/* 메시지 목록 */}
-      {messages.map((message, index) => (
-        <div
-          key={message.id}
-          ref={index === messages.length - 1 ? lastMessageRef : null}
-        >
-          <MessageItem message={message} />
-        </div>
-      ))}
+      {isLoading ? (
+        <MessageListSkeleton />
+      ) : (
+        messages.map((message, index) => (
+          <div
+            key={message.id}
+            ref={index === messages.length - 1 ? lastMessageRef : null}
+          >
+            <MessageItem message={message} />
+          </div>
+        ))
+      )}
     </div>
   );
 };

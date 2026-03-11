@@ -15,6 +15,7 @@ console.log("🔗 Using Next.js proxy: /api");
 // 스프링 서버 전용 클라이언트 (인증 필요)
 export const springClient = axios.create({
   baseURL: "/api/jv", // 스프링 서버로 라우팅
+  withCredentials: true, // 쿠키 포함 (백엔드에서 @CookieValue 사용)
 });
 
 // 스프링 서버 전용 클라이언트 (인증 불필요 - 회원가입, 로그인용)

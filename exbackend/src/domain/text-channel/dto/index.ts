@@ -9,3 +9,4 @@ export { ChannelUserListDto } from './channel-user-list.dto';
 export { UpdateChannelMemberRoleDto } from './update-channel-member-role.dto';
 export { ChannelMemberNotificationDto } from './channel-member-notification.dto';
 export { UpdateChannelDto } from './update-channel.dto';
+export { ChannelNotificationDto, ChannelEventType } from './channel-notification.dto';

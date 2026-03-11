@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ChannelMemberNotificationDto } from '../dto';
+import { ChannelMemberNotificationDto, ChannelNotificationDto } from '../dto';
 
 @Injectable()
 export class ChannelNotificationService {
@@ -39,7 +39,7 @@ export class ChannelNotificationService {
     }
   }
 
-  async notifyMemberAdded(channelPks: number[], userEmail: string, userName: string, profileImagePath: string): Promise<void> {
+    async notifyMemberAdded(channelPks: number[], userEmail: string, userName: string, profileImagePath: string): Promise<void> {
     await this.notifyMemberChange({
       eventType: 'MEMBER_ADDED',
       channelPks,
@@ -66,6 +66,55 @@ export class ChannelNotificationService {
       userEmail,
       userName,
       profileImagePath,
+    });
+  }
+
+  async notifyChannelChange(notificationDto: ChannelNotificationDto): Promise<void> {
+    try {
+      const response = await fetch(`${this.springBaseUrl}/api/jv/internal/channel/notify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Internal-Secret': this.internalSecret,
+        },
+        body: JSON.stringify({
+          ...notificationDto,
+          timestamp: Date.now(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.text();
+      this.logger.log(`Channel notification sent successfully: ${result}`);
+    } catch (error) {
+      this.logger.error(`Failed to send channel notification: ${error.message}`, error.stack);
+    }
+  }
+
+  async notifyChannelAdded(channelPk: number, channelName: string): Promise<void> {
+    await this.notifyChannelChange({
+      eventType: 'CHANNEL_ADDED',
+      channelPk,
+      channelName,
+    });
+  }
+
+  async notifyChannelRemoved(channelPk: number, channelName: string): Promise<void> {
+    await this.notifyChannelChange({
+      eventType: 'CHANNEL_REMOVED',
+      channelPk,
+      channelName,
+    });
+  }
+
+  async notifyChannelUpdated(channelPk: number, channelName: string): Promise<void> {
+    await this.notifyChannelChange({
+      eventType: 'CHANNEL_UPDATED',
+      channelPk,
+      channelName,
     });
   }
 }

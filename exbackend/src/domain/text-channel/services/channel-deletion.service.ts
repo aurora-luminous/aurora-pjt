@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Channel } from '../entities/channel.entity';
 import { ChannelMember } from '../entities/channel-member.entity';
+import { ChannelNotificationService } from './channel-notification.service';
 
 @Injectable()
 export class ChannelDeletionService {
@@ -11,6 +12,7 @@ export class ChannelDeletionService {
     private readonly channelRepository: Repository<Channel>,
     @InjectRepository(ChannelMember)
     private readonly channelMemberRepository: Repository<ChannelMember>,
+    private readonly channelNotificationService: ChannelNotificationService,
   ) {}
 
   async deleteChannel(channelPk: number, deleterUserPk: number): Promise<void> {
@@ -39,5 +41,8 @@ export class ChannelDeletionService {
 
     // 4. 채널 소프트 삭제
     await this.channelRepository.update(channelPk, { isDeletedChannel: true });
+
+    // 알림 전송 (비동기)
+    this.channelNotificationService.notifyChannelRemoved(channel.channelPk, channel.channelName);
   }
 }

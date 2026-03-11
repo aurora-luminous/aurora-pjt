@@ -10,6 +10,7 @@ import { Channel } from "../../text-channel/entities/channel.entity";
 import { ChannelMember } from "../../text-channel/entities/channel-member.entity";
 import { CreateProjectDto, ProjectResponseDto, ProjectListDto } from "../dto";
 import { ServerRoleUtils } from "../../../common/enums/member-role.enum";
+import { ProjectNotificationService } from "./project-notification.service";
 
 @Injectable()
 export class ProjectCreationService {
@@ -28,6 +29,7 @@ export class ProjectCreationService {
         private readonly channelRepository: Repository<Channel>,
         @InjectRepository(ChannelMember)
         private readonly channelMemberRepository: Repository<ChannelMember>,
+        private readonly projectNotificationService: ProjectNotificationService,
     ) {}
 
     async createProject(createProjectDto: CreateProjectDto): Promise<ProjectResponseDto> {
@@ -102,6 +104,9 @@ export class ProjectCreationService {
         channelRole: 'admin',
         });
         await this.channelMemberRepository.save(channelMember);
+
+        // 알림 전송 (비동기)
+        this.projectNotificationService.notifyProjectAdded(savedProject.projectPk, savedProject.projectName);
 
         return {
         projectPk: savedProject.projectPk,

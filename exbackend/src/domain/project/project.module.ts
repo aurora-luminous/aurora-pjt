@@ -13,6 +13,7 @@ import { ProjectInvitationService } from './services/project-invitation.service'
 import { ProjectController } from './controllers/project.controller';
 import { ProjectDeletionService } from './services/project-deletion.service';
 import { ProjectUpdateService } from './services/project-update.service';
+import { ProjectNotificationService } from './services/project-notification.service';
 
 @Module({
   imports: [
@@ -35,12 +36,14 @@ import { ProjectUpdateService } from './services/project-update.service';
     ProjectInvitationService,
     ProjectDeletionService,
     ProjectUpdateService,
+    ProjectNotificationService,
   ],
   exports: [
     ProjectCreationService,
     ProjectInvitationService,
     ProjectDeletionService,
     ProjectUpdateService,
+    ProjectNotificationService,
   ],
 })
 export class ProjectModule {}

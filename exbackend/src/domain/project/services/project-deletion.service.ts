@@ -5,6 +5,7 @@ import { Project } from '../entities/project.entity';
 import { ProjectMember } from '../entities/project-member.entity';
 import { Channel } from '../../text-channel/entities/channel.entity';
 import { ChannelMember } from '../../text-channel/entities/channel-member.entity';
+import { ProjectNotificationService } from './project-notification.service';
 
 @Injectable()
 export class ProjectDeletionService {
@@ -17,6 +18,7 @@ export class ProjectDeletionService {
     private readonly channelRepository: Repository<Channel>,
     @InjectRepository(ChannelMember)
     private readonly channelMemberRepository: Repository<ChannelMember>,
+    private readonly projectNotificationService: ProjectNotificationService,
   ) {}
 
   async deleteProject(projectPk: number, deleterUserPk: number): Promise<void> {
@@ -64,5 +66,8 @@ export class ProjectDeletionService {
         { cStatus: 'Inactive' },
       )
     }
+
+    // 알림 전송 (비동기)
+    this.projectNotificationService.notifyProjectRemoved(project.projectPk, project.projectName);
   }
 }

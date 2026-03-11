@@ -4,6 +4,8 @@ import { Message } from "../types";
 import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
 import { Channel } from "@/app/(server-setup)/types/Channel";
 import { useChannels } from "./useChannels";
+import { useWebSocket } from "@/app/lib/useWebSocket";
+import { ChatMessage } from "../types/websocket";
 
 export const useChannelPage = () => {
   const params = useParams();
@@ -35,6 +37,9 @@ export const useChannelPage = () => {
     loadChannels,
     findChannel,
   } = useChannels(serverInfo?.serverUrl, urlProjectPk);
+
+  // 웹소켓 훅 사용 (전역 인스턴스 사용)
+  const { sendMessage, isConnected, addMessageListener } = useWebSocket();
 
   // 상태 관리
   const [newMessage, setNewMessage] = useState("");
@@ -224,6 +229,50 @@ export const useChannelPage = () => {
     }
   }, [channelId, channels, findChannel, loadingChannels, channelIdRaw]);
 
+  // 웹소켓 메시지 수신 리스너 등록 (모든 채널의 메시지를 받지만 현재 채널만 표시)
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const channelPk = currentChannel?.channelPk;
+    
+    // 전역 메시지 리스너 등록 (레이아웃에서 구독한 모든 채널의 메시지를 받음)
+    const unsubscribe = addMessageListener((chatMessage: ChatMessage) => {
+      // 현재 채널의 메시지만 처리
+      if (channelPk && chatMessage.channelPk === channelPk) {
+        // ChatMessage를 Message 형식으로 변환
+        const newMessage: Message = {
+          id: chatMessage.messagePk,
+          user: chatMessage.userName,
+          content: chatMessage.content,
+          timestamp: new Date(chatMessage.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          }),
+          isSystem: false,
+        };
+
+        console.log(`📨 채널 ${channelPk} 메시지 수신 및 추가:`, newMessage);
+        
+        // 메시지 추가 (중복 방지)
+        setMessages((prev) => {
+          // 이미 존재하는 메시지인지 확인 (messagePk로)
+          const exists = prev.some((msg) => msg.id === chatMessage.messagePk);
+          if (exists) {
+            console.log(`⚠️ 메시지 ${chatMessage.messagePk}는 이미 존재합니다.`);
+            return prev;
+          }
+          return [...prev, newMessage];
+        });
+      }
+      // 다른 채널의 메시지는 무시 (나중에 알람 기능에서 사용 가능)
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [currentChannel?.channelPk, isConnected, addMessageListener]);
+
   // 채널 타입 텍스트 변환
   const getChannelTypeText = (channelKind: string) => {
     switch (channelKind) {
@@ -277,31 +326,36 @@ export const useChannelPage = () => {
   // 메시지 전송 처리
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim()) {
-      const newMsg: Message = {
-        id: messages.length + 1,
-        user: "사용자", // TODO: 실제 로그인한 사용자 이름 사용
-        content: newMessage,
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        }),
-        isSystem: false,
-      };
+    if (!newMessage.trim()) return;
 
-      setMessages((prev) => [...prev, newMsg]);
-      setNewMessage("");
-
-      // TODO: 실제 메시지 전송 API 호출
-      console.log("메시지 전송:", {
-        channelId: channelId, // 디코딩된 channelId 사용
-        channelName: getChannelName(channelId),
-        serverUrl: serverInfo?.serverUrl,
-        projectPk: serverInfo?.projectPk,
-        message: newMessage,
-      });
+    // 현재 채널이 없거나 channelPk가 없으면 전송 불가
+    if (!currentChannel || !currentChannel.channelPk) {
+      console.error("❌ 채널 정보가 없어 메시지를 전송할 수 없습니다.");
+      return;
     }
+
+    // 웹소켓이 연결되지 않았으면 전송 불가
+    if (!isConnected) {
+      console.error("❌ 웹소켓이 연결되지 않아 메시지를 전송할 수 없습니다.");
+      return;
+    }
+
+    const messageContent = newMessage.trim();
+    
+    // 웹소켓을 통해 메시지 전송
+    sendMessage(currentChannel.channelPk, messageContent);
+
+    // 입력 필드만 초기화 (실제 메시지는 웹소켓을 통해 수신되어 자동으로 추가됨)
+    setNewMessage("");
+
+    console.log("📤 메시지 전송:", {
+      channelPk: currentChannel.channelPk,
+      channelId: channelId,
+      channelName: getChannelName(channelId),
+      serverUrl: serverInfo?.serverUrl,
+      projectPk: serverInfo?.projectPk,
+      message: messageContent,
+    });
   };
 
   return {

@@ -31,7 +31,6 @@ export const useChannelSubscription = (
     isConnected,
     isConnecting,
     connect,
-    disconnect,
     subscribeToChannels,
   } = useWebSocket();
 
@@ -66,12 +65,8 @@ export const useChannelSubscription = (
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, channels, subscribeToChannels]);
 
-  // 컴포넌트 언마운트 시 연결 해제
-  useEffect(() => {
-    return () => {
-      disconnect();
-    };
-  }, [disconnect]);
+  // 웹소켓은 전역으로 관리되므로 언마운트 시 연결 해제하지 않음
+  // (다른 컴포넌트에서도 사용할 수 있도록 유지)
 
   return {
     channels,

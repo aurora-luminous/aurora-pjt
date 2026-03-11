@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
         source: "/api/ex/:path*",
         destination: "https://auro-ra.site/api/ex/:path*",
       },
+      // 웹소켓 프록시 추가가
+      {
+        source: "/ws/:path*",
+        destination: "https://auro-ra.site/ws/:path*",
+      },
     ];
   },
   async redirects() {

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { expressClient } from "@/app/lib/axiosClient";
 import { ChannelInfo } from "../types/websocket";
 import { useWebSocket } from "@/app/lib/useWebSocket";
-import { useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import { ChatMessage } from "../types/websocket";
 
 /**
@@ -63,7 +63,8 @@ export const useChannelSubscription = (
       console.log("🔌 모든 채널 구독 해제");
       unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
     };
-  }, [isConnected, channels, subscribeToChannels, onMessage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, channels, subscribeToChannels]);
 
   // 컴포넌트 언마운트 시 연결 해제
   useEffect(() => {

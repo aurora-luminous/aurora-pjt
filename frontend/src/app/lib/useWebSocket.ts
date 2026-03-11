@@ -8,7 +8,7 @@ import { ChannelInfo, ChatMessage, MessageRequest, WebSocketState } from "@/app/
 
 // SockJS를 전역으로 설정 (브라우저 환경에서만)
 if (typeof window !== "undefined") {
-  (window as any).SockJS = SockJS;
+  (window as Window & { SockJS?: typeof SockJS }).SockJS = SockJS;
 }
 
 export const useWebSocket = () => {
@@ -21,10 +21,12 @@ export const useWebSocket = () => {
 
   const clientRef = useRef<Client | null>(null);
   const messageHandlersRef = useRef<Map<number, (message: ChatMessage) => void>>(new Map());
+  const isConnectingRef = useRef(false);
+  const subscribedChannelsRef = useRef<number[]>([]);
 
   // 웹소켓 연결
   const connect = useCallback(() => {
-    if (clientRef.current?.connected || state.isConnecting) {
+    if (clientRef.current?.connected || isConnectingRef.current) {
       console.log("⚠️ 이미 연결 중이거나 연결되어 있습니다.");
       return;
     }
@@ -36,16 +38,20 @@ export const useWebSocket = () => {
       return;
     }
 
+    isConnectingRef.current = true;
     setState((prev) => ({ ...prev, isConnecting: true, error: null }));
 
-    // 웹소켓 URL 설정 (프로덕션/개발 환경 자동 감지)
+    // 웹소켓 URL 설정
+    // Next.js 프록시를 통해 연결 (같은 origin이므로 쿠키 자동 전송)
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 
-                  (typeof window !== "undefined" && window.location.hostname === "localhost" 
-                    ? "http://localhost:8080" 
+                  (typeof window !== "undefined" && window.location.hostname === "localhost"
+                    ? ""  // 빈 문자열 = 같은 origin (Next.js 프록시 사용)
                     : "https://auro-ra.site");
 
-    // SockJS를 사용하여 웹소켓 연결
-    const socket = new SockJS(`${wsUrl}/ws`);
+    const socket = new SockJS(`${wsUrl}/ws`, null, {
+      // 같은 origin이므로 쿠키가 자동으로 전송됩니다
+    });
+    
     const client = new Client({
       webSocketFactory: () => socket,
       reconnectDelay: 5000,
@@ -58,6 +64,7 @@ export const useWebSocket = () => {
       },
       onConnect: () => {
         console.log("✅ 웹소켓 연결 성공");
+        isConnectingRef.current = false;
         setState((prev) => ({
           ...prev,
           isConnected: true,
@@ -67,6 +74,7 @@ export const useWebSocket = () => {
       },
       onStompError: (frame) => {
         console.error("❌ STOMP 에러:", frame);
+        isConnectingRef.current = false;
         setState((prev) => ({
           ...prev,
           isConnected: false,
@@ -76,6 +84,7 @@ export const useWebSocket = () => {
       },
       onDisconnect: () => {
         console.log("🔌 웹소켓 연결 해제");
+        subscribedChannelsRef.current = [];
         setState((prev) => ({
           ...prev,
           isConnected: false,
@@ -84,6 +93,7 @@ export const useWebSocket = () => {
       },
       onWebSocketClose: () => {
         console.log("🔌 웹소켓 소켓 닫힘");
+        subscribedChannelsRef.current = [];
         setState((prev) => ({
           ...prev,
           isConnected: false,
@@ -92,16 +102,16 @@ export const useWebSocket = () => {
       },
     });
 
-    // 연결 시 JWT 토큰을 세션에 저장하기 위한 헤더 설정
+    // 연결 전 준비 작업
     client.beforeConnect = () => {
-      // SockJS 연결 시 쿠키로 JWT 토큰 전달 (백엔드에서 쿠키로 읽음)
-      // 또는 헤더로 전달할 수 있도록 설정
-      console.log("🔐 웹소켓 연결 준비 중...");
+      // 백엔드 HttpHandshakeInterceptor가 쿠키에서 'access_token'을 읽습니다
+      // 쿠키는 SockJS가 자동으로 전송하므로 별도 설정 불필요
+      console.log("🔐 웹소켓 연결 준비 중... (쿠키 자동 전송)");
     };
 
     client.activate();
     clientRef.current = client;
-  }, [state.isConnecting]);
+  }, []);
 
   // 웹소켓 연결 해제
   const disconnect = useCallback(() => {
@@ -109,6 +119,8 @@ export const useWebSocket = () => {
       console.log("🔌 웹소켓 연결 해제 중...");
       clientRef.current.deactivate();
       clientRef.current = null;
+      isConnectingRef.current = false;
+      subscribedChannelsRef.current = [];
       setState({
         isConnected: false,
         isConnecting: false,
@@ -127,7 +139,7 @@ export const useWebSocket = () => {
         return () => {};
       }
 
-      if (state.subscribedChannels.includes(channelPk)) {
+      if (subscribedChannelsRef.current.includes(channelPk)) {
         console.log(`⚠️ 채널 ${channelPk}는 이미 구독 중입니다.`);
         return () => {};
       }
@@ -146,6 +158,7 @@ export const useWebSocket = () => {
       );
 
       messageHandlersRef.current.set(channelPk, onMessage);
+      subscribedChannelsRef.current = [...subscribedChannelsRef.current, channelPk];
       setState((prev) => ({
         ...prev,
         subscribedChannels: [...prev.subscribedChannels, channelPk],
@@ -157,6 +170,7 @@ export const useWebSocket = () => {
       return () => {
         subscription.unsubscribe();
         messageHandlersRef.current.delete(channelPk);
+        subscribedChannelsRef.current = subscribedChannelsRef.current.filter((pk) => pk !== channelPk);
         setState((prev) => ({
           ...prev,
           subscribedChannels: prev.subscribedChannels.filter((pk) => pk !== channelPk),
@@ -164,7 +178,7 @@ export const useWebSocket = () => {
         console.log(`🔌 채널 ${channelPk} 구독 해제`);
       };
     },
-    [state.subscribedChannels]
+    []
   );
 
   // 여러 채널 일괄 구독

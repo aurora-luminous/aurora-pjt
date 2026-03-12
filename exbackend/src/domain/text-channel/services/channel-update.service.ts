@@ -46,7 +46,7 @@ export class ChannelUpdateService {
         await this.channelRepository.save(channel);
 
         // 알림 전송 (비동기)
-        this.channelNotificationService.notifyChannelUpdated(channel.channelPk, channel.channelName);
+        this.channelNotificationService.notifyChannelUpdated(channel.channelPk, channel.channelName, channel.projectPk);
 
         return channel;
     }

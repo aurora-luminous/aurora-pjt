@@ -94,27 +94,30 @@ export class ChannelNotificationService {
     }
   }
 
-  async notifyChannelAdded(channelPk: number, channelName: string): Promise<void> {
+  async notifyChannelAdded(channelPk: number, channelName: string, projectPk: number): Promise<void> {
     await this.notifyChannelChange({
       eventType: 'CHANNEL_ADDED',
       channelPk,
       channelName,
+      projectPk,
     });
   }
 
-  async notifyChannelRemoved(channelPk: number, channelName: string): Promise<void> {
+  async notifyChannelRemoved(channelPk: number, channelName: string, projectPk: number): Promise<void> {
     await this.notifyChannelChange({
       eventType: 'CHANNEL_REMOVED',
       channelPk,
       channelName,
+      projectPk,
     });
   }
 
-  async notifyChannelUpdated(channelPk: number, channelName: string): Promise<void> {
+  async notifyChannelUpdated(channelPk: number, channelName: string, projectPk: number): Promise<void> {
     await this.notifyChannelChange({
       eventType: 'CHANNEL_UPDATED',
       channelPk,
       channelName,
+      projectPk,
     });
   }
 }

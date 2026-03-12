@@ -6,7 +6,7 @@ import { Channel } from "@/app/(server-setup)/types/Channel";
 import { useChannels } from "./useChannels";
 import { useWebSocket } from "@/app/lib/useWebSocket";
 import { ChatMessage } from "../types/websocket";
-import { useChannelMessagesQuery, getOlderChannelMessages } from "./useChatApi";
+import { useChannelMessagesQuery, useOlderChannelMessagesMutation } from "./useChatApi";
 
 export const useChannelPage = () => {
   const params = useParams();
@@ -46,8 +46,10 @@ export const useChannelPage = () => {
   const [newMessage, setNewMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentChannel, setCurrentChannel] = useState<Channel | null>(null);
-  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
+
+  // 이전 메시지 조회 Mutation
+  const olderMessagesMutation = useOlderChannelMessagesMutation();
 
   // 채널 목록 로딩 (Redux 사용)
   useEffect(() => {
@@ -215,7 +217,7 @@ export const useChannelPage = () => {
 
   // 이전 메시지 로드 함수
   const loadOlderMessages = useCallback(async () => {
-    if (!currentChannel?.channelPk || loadingOlderMessages || !hasMoreMessages) {
+    if (!currentChannel?.channelPk || olderMessagesMutation.isPending || !hasMoreMessages) {
       return;
     }
 
@@ -247,14 +249,13 @@ export const useChannelPage = () => {
       }
     }
 
-    setLoadingOlderMessages(true);
     try {
       console.log(`📥 채널 ${currentChannel.channelPk} 이전 메시지 조회 시작 (기준 시간: ${oldestMessageTime})`);
       
-      const olderMessages = await getOlderChannelMessages(
-        currentChannel.channelPk,
-        oldestMessageTime
-      );
+      const olderMessages = await olderMessagesMutation.mutateAsync({
+        channelPk: currentChannel.channelPk,
+        lastMessageTime: oldestMessageTime,
+      });
 
       console.log(`✅ 채널 ${currentChannel.channelPk} 이전 메시지 조회 성공:`, olderMessages.length, "개");
 
@@ -301,10 +302,8 @@ export const useChannelPage = () => {
       }
     } catch (error) {
       console.error("❌ 채널 이전 메시지 조회 실패:", error);
-    } finally {
-      setLoadingOlderMessages(false);
     }
-  }, [currentChannel?.channelPk, messages, messageResponses, loadingOlderMessages, hasMoreMessages]);
+  }, [currentChannel?.channelPk, messages, messageResponses, olderMessagesMutation, hasMoreMessages]);
 
   // 웹소켓 메시지 수신 리스너 등록 (모든 채널의 메시지를 받지만 현재 채널만 표시)
   useEffect(() => {
@@ -433,7 +432,7 @@ export const useChannelPage = () => {
     channels,
     loadingChannels,
     loadingMessages,
-    loadingOlderMessages,
+    loadingOlderMessages: olderMessagesMutation.isPending,
     hasMoreMessages,
 
     // 상태

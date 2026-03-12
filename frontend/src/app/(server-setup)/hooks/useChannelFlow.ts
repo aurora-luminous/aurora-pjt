@@ -5,8 +5,10 @@ import {
   useUnbanChannelMemberMutation,
   useLeaveChannelMutation,
   useDeleteChannelMutation,
+  useUpdateChannelMutation,
 } from "./useServerMutation";
 import { useModal } from "./useModal";
+import { ChannelPayload } from "../types/Payload";
 
 export const useChannelFlow = (
   serverUrl: string,
@@ -40,6 +42,12 @@ export const useChannelFlow = (
   const deleteChannelMutation = useDeleteChannelMutation(
     serverUrl,
     projectPk,
+  )
+
+  const updateChannelMutation = useUpdateChannelMutation(
+    serverUrl,
+    projectPk,
+    channelPk
   )
 
   const handleKickMember = async (userEmail: string) => {
@@ -110,11 +118,22 @@ export const useChannelFlow = (
     }
   };
 
+  const handleUpdateChannel = async (payload: ChannelPayload) => {
+      try {
+        const response = await updateChannelMutation.mutateAsync(payload);
+        return response;
+      } catch (error) {
+        console.error(error);
+        throw error;
+      }
+    }
+
   return {
     handleKickMember,
     handleBanMember,
     handleUnbanMember,
     handleLeaveChannel,
-    handleDeleteChannel
+    handleDeleteChannel,
+    handleUpdateChannel
   };
 };

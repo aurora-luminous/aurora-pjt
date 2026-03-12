@@ -6,6 +6,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+// Spring -> frontend 발신 dto
 public class ChannelMemberBroadcast {
     private String eventType;
     private String userName;

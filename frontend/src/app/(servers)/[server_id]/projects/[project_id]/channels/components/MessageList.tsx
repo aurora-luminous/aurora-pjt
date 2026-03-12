@@ -3,7 +3,7 @@ import { Message } from "../../../../../types";
 import { MessageItem } from "./MessageItem";
 import { WelcomeMessage } from "./WelcomeMessage";
 import { useResponsive } from "../../../../../../lib/useResponsive";
-import { MessageListSkeleton } from "./MessageSkeleton";
+import { MessageListSkeleton } from "./MessageListSkeleton";
 
 interface MessageListProps {
   messages: Message[];

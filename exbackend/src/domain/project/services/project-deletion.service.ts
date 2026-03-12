@@ -6,6 +6,7 @@ import { ProjectMember } from '../entities/project-member.entity';
 import { Channel } from '../../text-channel/entities/channel.entity';
 import { ChannelMember } from '../../text-channel/entities/channel-member.entity';
 import { ProjectNotificationService } from './project-notification.service';
+import { Server }from '../../server/entities/server.entity'
 
 @Injectable()
 export class ProjectDeletionService {
@@ -19,6 +20,8 @@ export class ProjectDeletionService {
     @InjectRepository(ChannelMember)
     private readonly channelMemberRepository: Repository<ChannelMember>,
     private readonly projectNotificationService: ProjectNotificationService,
+    @InjectRepository(Server)
+    private readonly serverRepository: Repository<Server>,
   ) {}
 
   async deleteProject(projectPk: number, deleterUserPk: number): Promise<void> {
@@ -28,6 +31,14 @@ export class ProjectDeletionService {
     });
     if (!project) {
       throw new NotFoundException(`프로젝트 ID ${projectPk}를 찾을 수 없거나 이미 삭제되었습니다.`);
+    }
+
+    // 프로젝트가 속한 서버 찾기
+    const server = await this.serverRepository.findOne({
+      where: { serverPk: project.serverPk}
+    });
+    if (!server) {
+      throw new NotFoundException(`프로젝트가 속한 서버를 찾을 수 없습니다.`);
     }
 
     // 2. 권한 확인 (삭제하려는 사용자가 프로젝트의 admin인지 확인)
@@ -68,6 +79,6 @@ export class ProjectDeletionService {
     }
 
     // 알림 전송 (비동기)
-    this.projectNotificationService.notifyProjectRemoved(project.projectPk, project.projectName);
+    this.projectNotificationService.notifyProjectRemoved(project.projectPk, project.projectName, server.serverUrl);
   }
 }

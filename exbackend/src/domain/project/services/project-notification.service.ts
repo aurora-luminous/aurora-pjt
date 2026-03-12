@@ -38,27 +38,30 @@ export class ProjectNotificationService {
     }
   }
 
-  async notifyProjectAdded(projectPk: number, projectName: string): Promise<void> {
+  async notifyProjectAdded(projectPk: number, projectName: string, serverUrl: string): Promise<void> {
     await this.notifyProjectChange({
       eventType: 'PROJECT_ADDED',
       projectPk,
       projectName,
+      serverUrl,
     });
   }
 
-  async notifyProjectRemoved(projectPk: number, projectName: string): Promise<void> {
+  async notifyProjectRemoved(projectPk: number, projectName: string, serverUrl: string): Promise<void> {
     await this.notifyProjectChange({
       eventType: 'PROJECT_REMOVED',
       projectPk,
       projectName,
+      serverUrl,
     });
   }
 
-  async notifyProjectUpdated(projectPk: number, projectName: string): Promise<void> {
+  async notifyProjectUpdated(projectPk: number, projectName: string, serverUrl: string): Promise<void> {
     await this.notifyProjectChange({
       eventType: 'PROJECT_UPDATE',
       projectPk,
       projectName,
+      serverUrl,
     });
   }
 }

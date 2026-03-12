@@ -106,7 +106,7 @@ export class ProjectCreationService {
         await this.channelMemberRepository.save(channelMember);
 
         // 알림 전송 (비동기)
-        this.projectNotificationService.notifyProjectAdded(savedProject.projectPk, savedProject.projectName);
+        this.projectNotificationService.notifyProjectAdded(savedProject.projectPk, savedProject.projectName, server.serverUrl);
 
         return {
         projectPk: savedProject.projectPk,

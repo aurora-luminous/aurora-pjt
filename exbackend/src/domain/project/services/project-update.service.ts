@@ -50,7 +50,7 @@ export class ProjectUpdateService {
         await this.projectRepository.save(project);
 
         // 알림 전송 (비동기)
-        this.projectNotificationService.notifyProjectUpdated(project.projectPk, project.projectName);
+        this.projectNotificationService.notifyProjectUpdated(project.projectPk, project.projectName, server.serverUrl);
 
         return project;
     }

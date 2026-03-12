@@ -4,4 +4,5 @@ export interface ProjectNotificationDto {
   eventType: ProjectEventType;
   projectPk: number;
   projectName: string;
+  serverUrl: string;
 }

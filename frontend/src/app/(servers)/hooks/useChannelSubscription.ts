@@ -1,24 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { expressClient } from "@/app/lib/axiosClient";
-import { ChannelInfo } from "../types/websocket";
 import { useWebSocket } from "@/app/lib/useWebSocket";
 import { useEffect } from "react";
 import { ChatMessage } from "../types/websocket";
-
-/**
- * 내가 속한 모든 채널 목록 조회
- */
-export const useMyChannelsQuery = () => {
-  return useQuery<ChannelInfo[]>({
-    queryKey: ["myChannels"],
-    queryFn: async () => {
-      const response = await expressClient.get("/ex/my-channels");
-      return response.data;
-    },
-    staleTime: 5 * 60 * 1000, // 5분
-    retry: 2,
-  });
-};
+import { useMyChannelsQuery } from "@/app/(server-setup)/hooks/useServerApi";
 
 /**
  * 웹소켓 연결 및 채널 구독을 관리하는 훅

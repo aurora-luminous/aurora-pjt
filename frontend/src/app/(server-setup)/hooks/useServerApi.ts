@@ -1,4 +1,5 @@
 import { useApi } from "react-easy-api";
+import { useQuery } from "@tanstack/react-query";
 import {
   ServerRequest,
   ServerResponse,
@@ -18,6 +19,7 @@ import { expressClient } from "@/app/lib/axiosClient";
 import { Project } from "../types/Projcets";
 import { Channel } from "../types/Channel";
 import { ServerAccess, ServerStatus } from "@/app/(servers)/types/ServerAccess";
+import { ChannelInfo } from "@/app/(servers)/types/websocket";
 
 // 서버 생성
 export const useAddServerApi = () => {
@@ -251,5 +253,18 @@ export const usePatchServerPermessionApi = (serverUrl: string) => {
     endpoint: `/ex/servers/${serverUrl}/permissions/roles`,
     method: "PATCH",
     axiosInstance: expressClient,
+  });
+};
+
+// 내가 속한 모든 채널 목록 조회
+export const useMyChannelsQuery = () => {
+  return useQuery<ChannelInfo[]>({
+    queryKey: ["myChannels"],
+    queryFn: async () => {
+      const response = await expressClient.get("/ex/my-channels");
+      return response.data;
+    },
+    staleTime: 5 * 60 * 1000, // 5분
+    retry: 2,
   });
 };

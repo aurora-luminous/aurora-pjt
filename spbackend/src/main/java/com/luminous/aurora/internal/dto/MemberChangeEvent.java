@@ -11,6 +11,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+// Express -> Spring 수신 dto
 public class MemberChangeEvent {
     private String eventType; // "MEMBER_ADDED", "MEMBER_REMOVED", "MEMBER_UPDATED"
     private List<Integer> channelPks; // 변경 대상 채널 pk 리스트

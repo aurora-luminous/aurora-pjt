@@ -9,6 +9,7 @@ import { AuthCheckbox } from "../components/AuthCheckbox";
 import { AuthButton } from "../components/AuthButton";
 import { AuthInputWithButton } from "../components/AuthInputWithButton";
 import { useResponsive } from "../../lib/useResponsive";
+import { parseApiError } from "../../lib/parseApiError";
 
 const pageVariants = {
   initial: {
@@ -41,6 +42,13 @@ const RegisterPage = () => {
     e.preventDefault();
     handleSubmit("register");
   };
+
+  // mutation 에러 메시지 추출
+  const serverError = signUpMutation.error
+    ? parseApiError(signUpMutation.error, "회원가입에 실패했습니다.")
+    : loginMutation.error
+    ? parseApiError(loginMutation.error, "자동 로그인에 실패했습니다. 직접 로그인해 주세요.")
+    : null;
 
   return (
     <motion.div
@@ -137,6 +145,24 @@ const RegisterPage = () => {
           </Link>
           에 동의합니다.
         </AuthCheckbox>
+
+        {/* 서버 에러 배너 */}
+        {serverError && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-start gap-2.5 bg-red-500/15 border border-red-500/40 rounded-lg px-4 py-3"
+          >
+            <span className="mt-0.5 shrink-0 text-red-400 text-sm">⚠</span>
+            <p
+              className={`flex-1 text-red-300 font-medium ${
+                isMobile ? "text-xs" : "text-sm"
+              }`}
+            >
+              {serverError}
+            </p>
+          </motion.div>
+        )}
 
         <div className={`text-center ${isMobile ? "mt-4" : "mt-8"}`}>
           <p

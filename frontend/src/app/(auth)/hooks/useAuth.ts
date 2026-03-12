@@ -17,12 +17,12 @@ export const useAuth = (type: "login" | "register" = "register") => {
   const loginMutation = useLoginMutation();
   const logoutMutation = useLogoutMutation();
   const queryClient = useQueryClient();
-  const {data: lastChannel} = useGetLastChannelQuery();
+  const { data: lastChannel } = useGetLastChannelQuery();
+
   // 회원가입 처리 함수
   const handleRegister = async (data: AuthFormData) => {
     console.log("회원가입 프로세스 시작 - 폼 데이터:", data);
     try {
-      // 1. 회원가입 먼저 진행
       const signUpResponse = await signUpMutation.mutateAsync({
         userEmail: data.userEmail,
         userName: data.userName || "",
@@ -30,19 +30,14 @@ export const useAuth = (type: "login" | "register" = "register") => {
       });
       console.log("✅ 회원가입 성공:", signUpResponse);
 
-      // 2. 회원가입 성공 후 바로 로그인
       console.log("🔄 자동 로그인 시작...");
       const loginResponse = await loginMutation.mutateAsync({
         userEmail: data.userEmail,
         password: data.password,
       });
       console.log("✅ 자동 로그인 성공:", loginResponse);
-      console.log(lastChannel)
 
-      // 3. 로그인 성공 후 서버 연결 페이지로 이동
-     
-        router.push(redirectPath ? decodeURIComponent(redirectPath) : "/server-connect");
-      
+      router.push(redirectPath ? decodeURIComponent(redirectPath) : "/server-connect");
     } catch (error) {
       console.error("❌ 회원가입 또는 로그인 에러:", error);
       throw error;
@@ -50,30 +45,28 @@ export const useAuth = (type: "login" | "register" = "register") => {
   };
 
   // 로그인 처리 함수
+  // mutateAsync가 throw하면 TanStack Query가 loginMutation.error에 자동으로 저장됨
   const handleLogin = async (data: AuthFormData) => {
     console.log("로그인 프로세스 시작 - 폼 데이터:", data);
-    try {
-      const response = await loginMutation.mutateAsync({
-        userEmail: data.userEmail,
-        password: data.password,
-        rememberMe: data.rememberMe || false,
-      });
+    const response = await loginMutation.mutateAsync({
+      userEmail: data.userEmail,
+      password: data.password,
+      rememberMe: data.rememberMe || false,
+    });
 
-      console.log("🎉 로그인 성공:", response);
-      console.log(
-        `💾 로그인 상태 유지: ${data.rememberMe ? "활성화" : "비활성화"}`
+    console.log("🎉 로그인 성공:", response);
+    queryClient.invalidateQueries({ queryKey: ["userInfo"] });
+
+    if (!lastChannel) {
+      router.push(redirectPath ? decodeURIComponent(redirectPath) : "/server-connect");
+    } else {
+      router.push(
+        lastChannel.serverUrl +
+          "/projects/" +
+          lastChannel.projectPk +
+          "/channels/" +
+          lastChannel.channelPk
       );
-      queryClient.invalidateQueries({ queryKey: ["userInfo"] });
-      // redirect 파라미터가 있으면 해당 경로로, 없으면 기본 페이지로 이동
-
-      if (!lastChannel) {
-        router.push(redirectPath ? decodeURIComponent(redirectPath) : "/server-connect");
-      }else {
-        router.push(lastChannel?.serverUrl + "/projects/" + lastChannel?.projectPk + "/channels/" + lastChannel?.channelPk);
-      }
-    } catch (error) {
-      console.error("❌ 로그인 에러:", error);
-      throw error;
     }
   };
 
@@ -92,7 +85,6 @@ export const useAuth = (type: "login" | "register" = "register") => {
     });
   };
 
-  // 타입에 따른 초기 데이터 설정
   const getInitialData = () => {
     if (type === "register") {
       return {
@@ -104,7 +96,6 @@ export const useAuth = (type: "login" | "register" = "register") => {
     return {};
   };
 
-  // 타입에 따른 onSubmit 함수 선택
   const getOnSubmitHandler = () => {
     return type === "register" ? handleRegister : handleLogin;
   };

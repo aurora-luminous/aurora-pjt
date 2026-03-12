@@ -43,6 +43,6 @@ export class ChannelDeletionService {
     await this.channelRepository.update(channelPk, { isDeletedChannel: true });
 
     // 알림 전송 (비동기)
-    this.channelNotificationService.notifyChannelRemoved(channel.channelPk, channel.channelName);
+    this.channelNotificationService.notifyChannelRemoved(channel.channelPk, channel.channelName, channel.projectPk);
   }
 }

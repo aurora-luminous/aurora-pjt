@@ -4,4 +4,5 @@ export interface ChannelNotificationDto {
   eventType: ChannelEventType;
   channelPk: number;
   channelName: string;
+  projectPk: number;
 }

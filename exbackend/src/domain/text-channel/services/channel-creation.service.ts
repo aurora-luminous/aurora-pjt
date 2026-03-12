@@ -175,7 +175,7 @@ export class ChannelCreationService {
     }
 
     // 알림 전송 (비동기)
-    this.channelNotificationService.notifyChannelAdded(savedChannel.channelPk, savedChannel.channelName);
+    this.channelNotificationService.notifyChannelAdded(savedChannel.channelPk, savedChannel.channelName, savedChannel.projectPk);
 
     return {
       channelPk: savedChannel.channelPk,

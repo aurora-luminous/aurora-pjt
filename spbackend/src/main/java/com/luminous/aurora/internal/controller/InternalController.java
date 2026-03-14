@@ -2,10 +2,7 @@ package com.luminous.aurora.internal.controller;
 
 
 import com.luminous.aurora.common.error.exception.BadRequestException;
-import com.luminous.aurora.internal.dto.ChannelChangeBroadCast;
-import com.luminous.aurora.internal.dto.ChannelChangeEvent;
-import com.luminous.aurora.internal.dto.ChannelMemberBroadcast;
-import com.luminous.aurora.internal.dto.MemberChangeEvent;
+import com.luminous.aurora.internal.dto.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -80,6 +77,36 @@ public class InternalController {
 
         log.info("채널 정보 변경 알림 전송 : eventType = {}, channelPk = {}, channelName = {}",
                 event.getEventType(), event.getChannelPk(), event.getChannelName());
+
+        return ResponseEntity.ok("알림 전송 완료");
+    }
+
+    /**
+     * Express에서 프로젝트 정보 변경 시 호출하는 API
+     * Express에서 프로젝트 정보 변경 시 호출, ServerUrl 제외하고 프론트에 브로드캐스트
+     */
+    @PostMapping("/project/notify")
+    public ResponseEntity<String> notifyProjectChange(@RequestBody ProjectChangeEvent event) {
+
+        if (event.getProjectPk() == null) {
+            throw new BadRequestException("프로젝트 정보가 필요합니다.");
+        }
+
+        if (event.getServerUrl() == null) {
+            throw new BadRequestException("서버 정보가 필요합니다.");
+        }
+
+        ProjectChangeBroadCast broadCast = ProjectChangeBroadCast.builder()
+                .eventType(event.getEventType())
+                .projectPk(event.getProjectPk())
+                .projectName(event.getProjectName())
+                .build();
+
+        String destination = "/topic/server/" + event.getServerUrl() + "/notify";
+        messagingTemplate.convertAndSend(destination, broadCast);
+
+        log.info("프로젝트 정보 변경 알림 전송 : eventType = {}, projectPk = {}, projectName = {}",
+                event.getEventType(), event.getProjectPk(), event.getProjectName());
 
         return ResponseEntity.ok("알림 전송 완료");
     }

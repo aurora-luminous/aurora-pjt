@@ -8,10 +8,13 @@ import {
   Patch,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
-import { CurrentUser } from '../../auth/current-user.decorator';
-import { User } from '../../user/entities/user.entity';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+import { JwtAuthGuard, CurrentUser, User } from '../../auth';
 import { ChannelCreationService } from '../services/channel-creation.service';
 import { ChannelInvitationService } from '../services/channel-invitation.service';
 import { ChannelDeletionService } from '../services/channel-deletion.service'; // Import the new service
@@ -49,14 +52,17 @@ export class ChannelController {
   async createChannel(
     @Param('serverUrl') serverUrl: string, // RouterModule에서 자동 제공
     @Param('projectPk', ParseIntPipe) projectPk: number,
-    @Body()
-    // "프론트엔드에서 전송한 데이터"와 "인증 컨텍스트의 데이터"를 명시적으로 분리
+    @Body() // "프론트엔드에서 전송한 데이터"와 "인증 컨텍스트의 데이터"를 명시적으로 분리
     createChannelDto: CreateChannelDto, // creatorUserPk를 Body에서 제외
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<ChannelCreateDto> {
     const creatorUserPk = user.userPk;
 
-    return await this.channelCreationService.createChannel(createChannelDto, projectPk, creatorUserPk);
+    return await this.channelCreationService.createChannel(
+      createChannelDto,
+      projectPk,
+      creatorUserPk,
+    );
   }
 
   @Get()
@@ -71,7 +77,7 @@ export class ChannelController {
   async getChannelsByProject(
     @Param('serverUrl') serverUrl: string, // RouterModule에서 자동 제공
     @Param('projectPk', ParseIntPipe) projectPk: number,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<ChannelListDto[]> {
     const requestUserPk = user.userPk;
     // 서버와 프로젝트 컴텍스트 정보 전달
@@ -92,7 +98,7 @@ export class ChannelController {
   async inviteUsersToChannel(
     @Param('channelPk', ParseIntPipe) channelPk: number,
     @Body() users: Array<{ userEmail: string }>,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<{ message: string }> {
     const inviterUserPk = user.userPk;
 
@@ -117,7 +123,7 @@ export class ChannelController {
   })
   async getChannelMembers(
     @Param('channelPk', ParseIntPipe) channelPk: number,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<ChannelMemberDto[]> {
     const requestUserPk = user.userPk;
 
@@ -135,7 +141,7 @@ export class ChannelController {
   async removeUserFromChannel(
     @Param('channelPk', ParseIntPipe) channelPk: number,
     @Body() manageMemberDto: ManageMemberDto,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<{ message: string }> {
     const adminUserPk = user.userPk;
 
@@ -144,7 +150,7 @@ export class ChannelController {
       manageMemberDto.userEmail,
       adminUserPk,
     );
-    return { message: "사용자 퇴장 성공" };
+    return { message: '사용자 퇴장 성공' };
   }
 
   @Patch(':channelPk/members/ban')
@@ -155,7 +161,7 @@ export class ChannelController {
   async banUserFromChannel(
     @Param('channelPk', ParseIntPipe) channelPk: number,
     @Body() manageMemberDto: ManageMemberDto,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<{ message: string }> {
     const adminUserPk = user.userPk;
 
@@ -174,7 +180,7 @@ export class ChannelController {
   async unbanUserFromChannel(
     @Param('channelPk', ParseIntPipe) channelPk: number,
     @Body() manageMemberDto: ManageMemberDto,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<{ message: string }> {
     const ownerUserPk = user.userPk;
 
@@ -213,10 +219,13 @@ export class ChannelController {
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '현재 유저가 채널 나가기' })
   @ApiResponse({ status: 200, description: '채널 나가기 성공' })
-  @ApiResponse({ status: 404, description: '채널 또는 활성 멤버를 찾을 수 없음' })
+  @ApiResponse({
+    status: 404,
+    description: '채널 또는 활성 멤버를 찾을 수 없음',
+  })
   async leaveChannel(
     @Param('channelPk', ParseIntPipe) channelPk: number,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<{ message: string }> {
     return await this.channelInvitationService.leaveChannel(
       channelPk,
@@ -230,7 +239,10 @@ export class ChannelController {
   @ApiOperation({ summary: '채널 삭제 (Admin만 가능, 삭제)' })
   @ApiResponse({ status: 200, description: '채널 삭제 성공' })
   @ApiResponse({ status: 401, description: '채널을 삭제할 권한 없음' })
-  @ApiResponse({ status: 400, description: '사용자가 존재하여 채널을 삭제할 수 없음' })
+  @ApiResponse({
+    status: 400,
+    description: '사용자가 존재하여 채널을 삭제할 수 없음',
+  })
   @ApiResponse({ status: 404, description: '채널을 찾을 수 없음' })
   async deleteChannel(
     @Param('channelPk', ParseIntPipe) channelPk: number,
@@ -262,6 +274,6 @@ export class ChannelController {
       updateChannelDto.channelName,
       modifierUserPk,
     );
-    return { message: '채널이 성공적으로 업데이트 되었습니다.' }
+    return { message: '채널이 성공적으로 업데이트 되었습니다.' };
   }
 }

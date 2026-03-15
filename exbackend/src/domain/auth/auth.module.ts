@@ -6,11 +6,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 // 엔티티, 컨트롤러, 서비스 임포트
 import { User } from './entities/user.entity';
-import { UserOption } from './entities/user-option.entity';
-import { UserController } from './controllers/user.controller';
 import { UserService } from './services/user.service';
 import { UserRepository } from './repositories/user.repository';
-import { TypeOrmUserRepository } from './repositories/implementations/typeorm-user.repository';
+import { TypeOrmUserRepository } from './repositories/repositoryImpl/typeorm-user.repository';
+import { UserServiceImpl } from './services/serviceImpl/user.service.impl';
 
 // 인증 관련
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -35,11 +34,15 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
     // User 엔티티 import
     TypeOrmModule.forFeature([User]),
   ],
-  controllers: [UserController],
+  controllers: [],
   providers: [
     JwtStrategy,
     JwtAuthGuard,
-    UserService, // JWT Strategy에서 사용
+    {
+      provide: UserService,
+      useClass: UserServiceImpl,
+    }
+    ,
     {
       provide: UserRepository,
       useClass: TypeOrmUserRepository,

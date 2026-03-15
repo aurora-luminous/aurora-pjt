@@ -1,1 +1,0 @@
-export * from './last-channel-info.dto';

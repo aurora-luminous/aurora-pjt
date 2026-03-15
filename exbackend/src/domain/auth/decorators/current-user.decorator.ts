@@ -1,9 +1,9 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { User } from '../user/entities/user.entity';
+import { User } from '../entities/user.entity';
 
 export const CurrentUser = createParamDecorator(
-(data: unknown, ctx: ExecutionContext): User => {
+  (data: unknown, ctx: ExecutionContext): User => {
     const request = ctx.switchToHttp().getRequest();
     return request.user; // JWT Strategy에서 return한 user 객체
-},
+  },
 );

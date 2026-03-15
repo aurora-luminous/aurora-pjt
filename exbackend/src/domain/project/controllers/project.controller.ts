@@ -8,10 +8,13 @@ import {
   Patch,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
-import { CurrentUser } from '../../auth/current-user.decorator';
-import { User } from '../../user/entities/user.entity';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+import { JwtAuthGuard, CurrentUser, User } from '../../auth';
 import { Project } from '../entities/project.entity';
 import { ProjectCreationService } from '../services/project-creation.service';
 import { ProjectInvitationService } from '../services/project-invitation.service';
@@ -53,7 +56,7 @@ export class ProjectController {
       CreateProjectDto,
       'serverUrl' | 'serverPk' | 'creatorUserPk'
     >,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<ProjectListDto> {
     const creatorUserPk = user.userPk;
 
@@ -81,7 +84,7 @@ export class ProjectController {
   })
   async getProjectsByServer(
     @Param('serverUrl') serverUrl: string,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<ProjectListDto[]> {
     const requestUserPk = user.userPk;
 
@@ -101,7 +104,7 @@ export class ProjectController {
   async inviteUsersToProject(
     @Param('projectPk', ParseIntPipe) projectPk: number,
     @Body() users: UserEmailDto[],
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<{ message: string }> {
     const inviterUserPk = user.userPk;
 
@@ -126,7 +129,7 @@ export class ProjectController {
   })
   async getProjectMembers(
     @Param('projectPk', ParseIntPipe) projectPk: number,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<ProjectMemberDto[]> {
     const requestUserPk = user.userPk;
 
@@ -144,7 +147,7 @@ export class ProjectController {
   async removeUserFromProject(
     @Param('projectPk', ParseIntPipe) projectPk: number,
     @Body() manageMemberDto: ManageMemberDto,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<{ message: string }> {
     const adminUserPk = user.userPk;
 
@@ -153,7 +156,7 @@ export class ProjectController {
       manageMemberDto.userEmail,
       adminUserPk,
     );
-    return { message: "사용자 퇴장 성공" };
+    return { message: '사용자 퇴장 성공' };
   }
 
   @Patch(':projectPk/members/ban')
@@ -164,7 +167,7 @@ export class ProjectController {
   async banUserFromProject(
     @Param('projectPk', ParseIntPipe) projectPk: number,
     @Body() manageMemberDto: ManageMemberDto,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<{ message: string }> {
     const adminUserPk = user.userPk;
 
@@ -183,7 +186,7 @@ export class ProjectController {
   async unbanUserFromProject(
     @Param('projectPk', ParseIntPipe) projectPk: number,
     @Body() manageMemberDto: ManageMemberDto,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<{ message: string }> {
     const ownerUserPk = user.userPk;
 
@@ -202,14 +205,14 @@ export class ProjectController {
   @ApiResponse({ status: 200, description: '프로젝트 나가기 성공' })
   async leaveProject(
     @Param('projectPk', ParseIntPipe) projectPk: number,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<{ message: string }> {
     const userPk = user.userPk;
 
     // 프로젝트 나가기 로직 실행 (PM 검증 포함)
     const result = await this.projectInvitationService.leaveProject(
       projectPk,
-      userPk
+      userPk,
     );
 
     return result;
@@ -221,7 +224,10 @@ export class ProjectController {
   @ApiOperation({ summary: '프로젝트 삭제 (Admin만 가능)' })
   @ApiResponse({ status: 200, description: '프로젝트 삭제 성공' })
   @ApiResponse({ status: 401, description: '프로젝트를 삭제할 권한 없음' })
-  @ApiResponse({ status: 400, description: '사용자가 존재하여 프로젝트를 삭제할 수 없음' })
+  @ApiResponse({
+    status: 400,
+    description: '사용자가 존재하여 프로젝트를 삭제할 수 없음',
+  })
   @ApiResponse({ status: 404, description: '프로젝트를 찾을 수 없음' })
   async deleteProject(
     @Param('projectPk', ParseIntPipe) projectPk: number,
@@ -235,14 +241,18 @@ export class ProjectController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: '프로젝트 이름 변경 (Admin만 가능)' })
-  @ApiResponse({ status: 200, description: '프로젝트 이름 변경 성공', type: Project })
+  @ApiResponse({
+    status: 200,
+    description: '프로젝트 이름 변경 성공',
+    type: Project,
+  })
   @ApiResponse({ status: 403, description: '프로젝트 이름을 변경할 권한 없음' })
   @ApiResponse({ status: 404, description: '프로젝트를 찾을 수 없음' })
   async updateProjectName(
     @Param('serverUrl') serverUrl: string,
     @Param('projectPk', ParseIntPipe) projectPk: number,
     @Body() updateProjectDto: UpdateProjectDto,
-    @CurrentUser() user: User
+    @CurrentUser() user: User,
   ): Promise<{ message: string }> {
     const modifierUserPk = user.userPk;
     await this.projectUpdateService.updateProjectName(

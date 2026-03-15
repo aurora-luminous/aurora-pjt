@@ -13,9 +13,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
-import { CurrentUser } from '../../auth/current-user.decorator';
-import { User } from '../../user/entities/user.entity';
+import { JwtAuthGuard, CurrentUser, User } from '../../auth';
 import { ServerRolePermissionService } from '../services/server-role-permission.service';
 import {
   UpdateRolePermissionDto,

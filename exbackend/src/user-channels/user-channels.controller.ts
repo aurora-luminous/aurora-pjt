@@ -1,8 +1,11 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../domain/auth/jwt-auth.guard';
-import { CurrentUser } from '../domain/auth/current-user.decorator';
-import { User } from '../domain/user/entities/user.entity';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+import { JwtAuthGuard, CurrentUser, User } from '../domain/auth';
 import { ChannelCreationService } from '../domain/text-channel/services/channel-creation.service';
 import { ChannelUserListDto } from '../domain/text-channel/dto/channel-user-list.dto';
 

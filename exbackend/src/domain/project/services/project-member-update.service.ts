@@ -9,7 +9,7 @@ import { ProjectMember } from '../entities/project-member.entity';
 import { Channel } from '../../text-channel/entities/channel.entity';
 import { Project } from '../entities/project.entity';
 import { Server } from '../../server/entities/server.entity';
-import { LastChannelInfoDto } from '../../../member-status/dto/last-channel-info.dto';
+import { LastChannelInfoDto } from '../../auth/user-activity/last-channel-info.dto';
 
 @Injectable()
 export class ProjectMemberUpdateService {
@@ -24,7 +24,9 @@ export class ProjectMemberUpdateService {
     private readonly serverRepository: Repository<Server>,
   ) {}
 
-  async getLastConnectedChannelInfo(userPk: number): Promise<LastChannelInfoDto | null> {
+  async getLastConnectedChannelInfo(
+    userPk: number,
+  ): Promise<LastChannelInfoDto | null> {
     const lastConnected = await this.projectMemberRepository
       .createQueryBuilder('pm')
       .leftJoinAndSelect('pm.project', 'project')
@@ -35,7 +37,11 @@ export class ProjectMemberUpdateService {
       .take(1)
       .getOne();
 
-    if (!lastConnected || !lastConnected.project || !lastConnected.project.server) {
+    if (
+      !lastConnected ||
+      !lastConnected.project ||
+      !lastConnected.project.server
+    ) {
       return null;
     }
 
@@ -75,7 +81,9 @@ export class ProjectMemberUpdateService {
       projectMember.lastConnectedTime = new Date();
       await this.projectMemberRepository.save(projectMember);
     } catch (error) {
-      throw new InternalServerErrorException('마지막 채널 갱신에 실패했습니다.');
+      throw new InternalServerErrorException(
+        '마지막 채널 갱신에 실패했습니다.',
+      );
     }
   }
 }

@@ -20,7 +20,7 @@ import { ProjectModule } from './domain/project/project.module';
 import { TextChannelModule } from './domain/text-channel/text-channel.module';
 import { AuthModule } from './domain/auth/auth.module';
 import { UserModule } from './domain/user/user.module';
-import { UserActivityModule } from './domain/auth/user-activity/user-activity.module';
+import { UserActivityModule } from './domain/user/user-activity/user-activity.module';
 import { RedisModule } from './common/redis/redis.module';
 
 @Module({

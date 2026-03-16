@@ -9,7 +9,7 @@ import { ProjectMember } from '../entities/project-member.entity';
 import { Channel } from '../../text-channel/entities/channel.entity';
 import { Project } from '../entities/project.entity';
 import { Server } from '../../server/entities/server.entity';
-import { LastChannelInfoDto } from '../../auth/user-activity/last-channel-info.dto';
+import { LastChannelInfoDto } from '../../user/user-activity/last-channel-info.dto';
 
 @Injectable()
 export class ProjectMemberUpdateService {

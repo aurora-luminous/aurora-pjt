@@ -2,8 +2,6 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { UserService } from '../services/user.service';
-import { User } from '../entities/user.entity';
 
 // JWT payload의 타입 정의
 export interface JwtPayload {
@@ -16,7 +14,6 @@ export interface JwtPayload {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly configService: ConfigService,
-    private readonly userService: UserService,
   ) {
     super({
       // Authorization: Bearer <token>에서 토큰 추출
@@ -27,17 +24,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  // 토큰 검증 후 호출되는 메서드
-  async validate(payload: JwtPayload): Promise<User> {
+  async validate(payload: JwtPayload) {
     const userEmail = payload.sub;
-
-    // 이메일로 사용자 조회
-    const user = await this.userService.getUserByEmail(userEmail);
-
-    if (!user || user.isDeleted) {
-      throw new UnauthorizedException('유효하지 않은 사용자입니다');
-    }
-
-    return user; // 이게 @CurrentUser()로 전달됨
+    // 유저 이메일만 뽑아서 바로 반환
+    return userEmail;
   }
 }

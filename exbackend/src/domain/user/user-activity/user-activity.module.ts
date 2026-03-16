@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { AuthModule } from "../auth.module";
+import { AuthModule } from "../../auth/auth.module";
 import { ProjectModule } from "../../project/project.module";
 import { TextChannelModule } from "../../text-channel/text-channel.module";
 import { UserActivityController } from "./user-activity.controller";

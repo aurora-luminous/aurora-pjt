@@ -375,7 +375,7 @@ export class ServerInvitationService {
     adminUserPk: number
   ): Promise<PendingMemberDto> {
     // 1. userEmail로 사용자 찾기
-    const user = await this.userService.findByEmailOrThrow(userEmail);
+    const user = await this.userService.getUserByEmail(userEmail);
 
     // 2. 서버 멤버 찾기
     const serverMember = await this.serverMemberRepository.findOne({

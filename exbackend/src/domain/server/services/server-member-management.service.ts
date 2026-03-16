@@ -56,7 +56,7 @@ export class ServerMemberManagementService {
         for (const change of changes) {
             try {
                 // 사용자 찾기
-                const user = await this.userService.findByEmailOrThrow(change.userEmail);
+                const user = await this.userService.getUserByEmail(change.userEmail);
 
                 // 서버 멤버 찾기
                 const serverMember = await this.serverMemberRepository.findOne({
@@ -149,7 +149,7 @@ export class ServerMemberManagementService {
         for (const userEmail of userEmails) {
             try {
                 // 사용자 찾기
-                const user = await this.userService.findByEmailOrThrow(userEmail);
+                const user = await this.userService.getUserByEmail(userEmail);
 
                 // 대상 멤버 찾기
                 const targetMember = await this.serverMemberRepository.findOne({

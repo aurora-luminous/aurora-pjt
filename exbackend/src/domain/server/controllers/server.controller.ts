@@ -25,7 +25,8 @@ import {
   ServerMemberInfoDto,
   ServerMemberDetailDto,
 } from '../dto';
-import { JwtAuthGuard, CurrentUser, User } from '../../auth';
+import { JwtAuthGuard } from '../../auth';
+import { CurrentUser, User } from '../../user'
 
 @ApiTags('servers')
 @Controller()

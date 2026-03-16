@@ -20,8 +20,7 @@ import { ProjectModule } from './domain/project/project.module';
 import { TextChannelModule } from './domain/text-channel/text-channel.module';
 import { AuthModule } from './domain/auth/auth.module';
 import { UserModule } from './domain/user/user.module';
-import { MemberStatusModule } from './member-status/member-status.module';
-import { UserChannelsModule } from './user-channels/user-channels.module';
+import { UserActivityModule } from './domain/user/user-activity/user-activity.module';
 import { RedisModule } from './common/redis/redis.module';
 
 @Module({
@@ -52,8 +51,7 @@ import { RedisModule } from './common/redis/redis.module';
     AuthModule,
     UserModule,
     SfuValidationModule,
-    MemberStatusModule,
-    UserChannelsModule,
+    UserActivityModule,
     RedisModule,
 
     // Workspace 도메인 라우터 설정

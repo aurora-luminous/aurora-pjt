@@ -14,7 +14,8 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { JwtAuthGuard, CurrentUser, User } from '../../auth';
+import { JwtAuthGuard } from '../../auth';
+import { CurrentUser, User } from '../../user'
 import { ChannelCreationService } from '../services/channel-creation.service';
 import { ChannelInvitationService } from '../services/channel-invitation.service';
 import { ChannelDeletionService } from '../services/channel-deletion.service'; // Import the new service

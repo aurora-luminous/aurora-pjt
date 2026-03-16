@@ -74,7 +74,7 @@ export class ProjectInvitationService {
     }
 
     // 2. 초대하려는 사용자 존재 확인 (이메일로)
-    const targetUser = await this.userService.findByEmailOrThrow(inviteDto.userEmail);
+    const targetUser = await this.userService.getUserByEmail(inviteDto.userEmail);
 
     // 3. 초대자 권한 확인 (계층적 권한 시스템)
     const hasPermission = await this.hasProjectManagePermission(
@@ -427,7 +427,7 @@ export class ProjectInvitationService {
     adminUserPk: number
   ): Promise<void> {
     // 이메일로 사용자 찾기
-    const targetUser = await this.userService.findByEmailOrThrow(targetUserEmail);
+    const targetUser = await this.userService.getUserByEmail(targetUserEmail);
 
     const removeDto: RemoveFromProjectDto = {
       projectPk,
@@ -444,7 +444,7 @@ export class ProjectInvitationService {
     adminUserPk: number
   ): Promise<{ message: string }> {
     // 이메일로 사용자 찾기
-    const targetUser = await this.userService.findByEmailOrThrow(targetUserEmail);
+    const targetUser = await this.userService.getUserByEmail(targetUserEmail);
 
     await this.banUserFromProject(projectPk, targetUser.userPk, adminUserPk);
     return { message: '사용자가 차단되었습니다.' };
@@ -456,7 +456,7 @@ export class ProjectInvitationService {
     adminUserPk: number
   ): Promise<void> {
     // 이메일로 사용자 찾기
-    const targetUser = await this.userService.findByEmailOrThrow(targetUserEmail);
+    const targetUser = await this.userService.getUserByEmail(targetUserEmail);
 
     await this.unbanUserFromProject(projectPk, targetUser.userPk, adminUserPk);
   }

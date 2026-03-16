@@ -76,7 +76,7 @@ export class ChannelInvitationService {
     }
 
     // 2. 초대하려는 사용자 존재 확인 (이메일로)
-    const targetUser = await this.userService.findByEmailOrThrow(inviteDto.userEmail);
+    const targetUser = await this.userService.getUserByEmail(inviteDto.userEmail);
 
     // 3. 초대하는 사용자가 해당 채널에 다른 사용자를 초대할 권한이 있는지 확인
     // Private 채널: 채널 관리자만 초대 가능
@@ -404,7 +404,7 @@ export class ChannelInvitationService {
     // 6. 상태를 Inactive로 변경 (soft delete)
     await this._updateChannelMemberStatus(targetMember.channelMemberPk, 'Inactive');
 
-    const removedUser = await this.userService.findByPk(targetMember.userPk);
+    const removedUser = await this.userService.getUserByPk(targetMember.userPk);
     if (removedUser) {
       await this.channelNotificationService.notifyMemberRemoved(
         [removeDto.channelPk],
@@ -456,7 +456,7 @@ export class ChannelInvitationService {
     // 6. 상태를 Banned로 변경
     await this._updateChannelMemberStatus(targetMember.channelMemberPk, 'Banned');
 
-    const bannedUser = await this.userService.findByPk(targetMember.userPk);
+    const bannedUser = await this.userService.getUserByPk(targetMember.userPk);
     if (bannedUser) {
       await this.channelNotificationService.notifyMemberRemoved(
         [channelPk],
@@ -602,7 +602,7 @@ export class ChannelInvitationService {
     adminUserPk: number
   ): Promise<void> {
     // 이메일로 사용자 찾기
-    const targetUser = await this.userService.findByEmailOrThrow(targetUserEmail);
+    const targetUser = await this.userService.getUserByEmail(targetUserEmail);
 
     const removeDto: RemoveFromChannelDto = {
       channelPk,
@@ -619,7 +619,7 @@ export class ChannelInvitationService {
     adminUserPk: number
   ): Promise<{ message: string }> {
     // 이메일로 사용자 찾기
-    const targetUser = await this.userService.findByEmailOrThrow(targetUserEmail);
+    const targetUser = await this.userService.getUserByEmail(targetUserEmail);
 
     await this.banUserFromChannel(channelPk, targetUser.userPk, adminUserPk);
     return { message: '사용자가 차단되었습니다.' };
@@ -631,7 +631,7 @@ export class ChannelInvitationService {
     ownerUserPk: number
   ): Promise<void> {
     // 이메일로 사용자 찾기
-    const targetUser = await this.userService.findByEmailOrThrow(userEmail);
+    const targetUser = await this.userService.getUserByEmail(userEmail);
 
     await this.unbanUserFromChannel(channelPk, targetUser.userPk, ownerUserPk);
   }

@@ -187,20 +187,6 @@ export const useChannelPage = () => {
     data: messageResponses,
     isLoading: loadingMessages,
   } = useChannelMessagesQuery(currentChannel?.channelPk ?? null);
-      // 정확한 매칭이 아닌 경우 안내 메시지 추가
-      if (!wasExactMatch && channelId !== channel.channelName && channelPk !== channel.channelPk) {
-        welcomeMessages.splice(1, 0, {
-          id: 1.5,
-          user: "시스템",
-          content: `"${channelId}" 채널을 찾지 못해 "${channel.channelName}" 채널로 연결되었습니다.`,
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          }),
-          isSystem: true,
-        });
-      }
 
   // API로 받은 메시지를 Message 형식으로 변환하고 순서 반전 (최신 메시지가 아래로)
   useEffect(() => {

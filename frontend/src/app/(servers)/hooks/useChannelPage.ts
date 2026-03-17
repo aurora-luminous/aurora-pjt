@@ -1,9 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Message } from "../types";
 import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
 import { Channel } from "@/app/(server-setup)/types/Channel";
 import { useChannels } from "./useChannels";
+import { useWebSocket } from "@/app/lib/useWebSocket";
+import { ChatMessage } from "../types/websocket";
+import { useChannelMessagesQuery, useOlderChannelMessagesMutation } from "./useChatApi";
 
 export const useChannelPage = () => {
   const params = useParams();
@@ -37,10 +40,17 @@ export const useChannelPage = () => {
     findChannelByPk,
   } = useChannels(serverInfo?.serverUrl, urlProjectPk);
 
+  // 웹소켓 훅 사용 (전역 인스턴스 사용)
+  const { sendMessage, isConnected, addMessageListener } = useWebSocket();
+
   // 상태 관리
   const [newMessage, setNewMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentChannel, setCurrentChannel] = useState<Channel | null>(null);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+
+  // 이전 메시지 조회 Mutation
+  const olderMessagesMutation = useOlderChannelMessagesMutation();
 
   // 채널 목록 로딩 (Redux 사용)
   useEffect(() => {
@@ -141,63 +151,6 @@ export const useChannelPage = () => {
         `✅ 채널 찾음: "${channel.channelName}", 정확한 매칭: ${wasExactMatch}`
       );
       setCurrentChannel(channel);
-
-      // 채널별 환영 메시지 설정
-      const welcomeMessages: Message[] = [
-        {
-          id: 1,
-          user: "시스템",
-          content: `${channel.channelName} 채널에 오신 것을 환영합니다!`,
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          }),
-          isSystem: true,
-        },
-        {
-          id: 2,
-          user: "시스템",
-          content: `이 채널은 ${getChannelTypeText(channel.channelKind)} ${
-            channel.accessType === "private" ? "비공개" : "공개"
-          } 채널입니다.`,
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          }),
-          isSystem: true,
-        },
-      ];
-
-      // 정확한 매칭이 아닌 경우 안내 메시지 추가
-      if (!wasExactMatch && channelId !== channel.channelName && channelPk !== channel.channelPk) {
-        welcomeMessages.splice(1, 0, {
-          id: 1.5,
-          user: "시스템",
-          content: `"${channelId}" 채널을 찾지 못해 "${channel.channelName}" 채널로 연결되었습니다.`,
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          }),
-          isSystem: true,
-        });
-      }
-
-      welcomeMessages.push({
-        id: 3,
-        user: "시스템",
-        content: "실제 메시지 API 연동 전이므로 임시 메시지입니다.",
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        }),
-        isSystem: true,
-      });
-
-      setMessages(welcomeMessages);
     } else if (!loadingChannels) {
       // 채널 목록이 비어있고 로딩 중이 아닐 때
       setCurrentChannel(null);
@@ -227,21 +180,193 @@ export const useChannelPage = () => {
       ];
       setMessages(noChannelMessages);
     }
-  }, [channelId, channels, findChannel, findChannelByPk, loadingChannels, channelIdRaw]);
+  }, [channelId, channels, findChannel, loadingChannels, channelIdRaw]);
 
-  // 채널 타입 텍스트 변환
-  const getChannelTypeText = (channelKind: string) => {
-    switch (channelKind) {
-      case "text":
-        return "텍스트";
-      case "voice":
-        return "음성";
-      case "notice":
-        return "공지";
-      default:
-        return "일반";
+  // 채널 최신 메시지 조회
+  const {
+    data: messageResponses,
+    isLoading: loadingMessages,
+  } = useChannelMessagesQuery(currentChannel?.channelPk ?? null);
+      // 정확한 매칭이 아닌 경우 안내 메시지 추가
+      if (!wasExactMatch && channelId !== channel.channelName && channelPk !== channel.channelPk) {
+        welcomeMessages.splice(1, 0, {
+          id: 1.5,
+          user: "시스템",
+          content: `"${channelId}" 채널을 찾지 못해 "${channel.channelName}" 채널로 연결되었습니다.`,
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          }),
+          isSystem: true,
+        });
+      }
+
+  // API로 받은 메시지를 Message 형식으로 변환하고 순서 반전 (최신 메시지가 아래로)
+  useEffect(() => {
+    if (!messageResponses) {
+      setMessages([]);
+      return;
     }
-  };
+
+    console.log(`✅ 채널 ${currentChannel?.channelPk} 최신 메시지 조회 성공:`, messageResponses.length, "개");
+
+    // MessageResponse를 Message 형식으로 변환
+    // 백엔드에서 오래된 순서로 오므로 reverse()로 최신 메시지가 아래에 오도록 함
+    const loadedMessages: Message[] = [...messageResponses]
+      .reverse()
+      .map((msg) => ({
+        id: msg.messagePk,
+        user: msg.userName,
+        content: msg.content,
+        timestamp: new Date(msg.createdAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        }),
+        isSystem: false,
+      }));
+
+    // 초기 로드 시에는 기존 메시지를 완전히 교체
+    // (웹소켓 메시지는 이후에 추가됨)
+    setMessages(loadedMessages);
+    // 채널 변경 시 이전 메시지 로딩 상태 초기화
+    setHasMoreMessages(true);
+  }, [messageResponses, currentChannel?.channelPk]);
+
+  // 이전 메시지 로드 함수
+  const loadOlderMessages = useCallback(async () => {
+    if (!currentChannel?.channelPk || olderMessagesMutation.isPending || !hasMoreMessages) {
+      return;
+    }
+
+    // 가장 오래된 메시지 찾기 (첫 번째 메시지)
+    const oldestMessage = messages[0];
+    if (!oldestMessage) {
+      return;
+    }
+
+    // messageResponses에서 createdAt을 찾기
+    let oldestMessageTime: string | null = null;
+    
+    // 먼저 messageResponses에서 찾기
+    const oldestMessageResponse = messageResponses?.find(
+      (msg) => msg.messagePk === oldestMessage.id
+    );
+    
+    if (oldestMessageResponse) {
+      oldestMessageTime = oldestMessageResponse.createdAt;
+    } else {
+      // messageResponses에 없으면 (이전 메시지로 추가된 경우) 
+      // messages에서 직접 시간을 추출할 수 없으므로 messageResponses의 가장 오래된 메시지 사용
+      if (messageResponses && messageResponses.length > 0) {
+        // messageResponses는 오래된 순서로 정렬되어 있으므로 첫 번째가 가장 오래된 것
+        oldestMessageTime = messageResponses[0].createdAt;
+      } else {
+        console.warn("⚠️ 이전 메시지의 시간을 찾을 수 없습니다.");
+        return;
+      }
+    }
+
+    try {
+      console.log(`📥 채널 ${currentChannel.channelPk} 이전 메시지 조회 시작 (기준 시간: ${oldestMessageTime})`);
+      
+      const olderMessages = await olderMessagesMutation.mutateAsync({
+        channelPk: currentChannel.channelPk,
+        lastMessageTime: oldestMessageTime,
+      });
+
+      console.log(`✅ 채널 ${currentChannel.channelPk} 이전 메시지 조회 성공:`, olderMessages.length, "개");
+
+      if (olderMessages.length === 0) {
+        setHasMoreMessages(false);
+        return;
+      }
+
+      // MessageResponse를 Message 형식으로 변환하고 reverse
+      const loadedOlderMessages: Message[] = [...olderMessages]
+        .reverse()
+        .map((msg) => ({
+          id: msg.messagePk,
+          user: msg.userName,
+          content: msg.content,
+          timestamp: new Date(msg.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          }),
+          isSystem: false,
+        }));
+
+      // 기존 메시지 앞에 추가 (중복 제거)
+      setMessages((prev) => {
+        const existingIds = new Set(prev.map((msg) => msg.id));
+        const newMessages = loadedOlderMessages.filter(
+          (msg) => !existingIds.has(msg.id)
+        );
+        
+        if (newMessages.length === 0) {
+          console.log("⚠️ 이전 메시지가 모두 중복되어 추가하지 않음");
+          setHasMoreMessages(false);
+          return prev;
+        }
+        
+        console.log(`✅ ${newMessages.length}개의 새로운 이전 메시지 추가 (중복 ${loadedOlderMessages.length - newMessages.length}개 제거)`);
+        return [...newMessages, ...prev];
+      });
+
+      // 40개 미만이면 더 이상 메시지가 없음
+      if (olderMessages.length < 40) {
+        setHasMoreMessages(false);
+      }
+    } catch (error) {
+      console.error("❌ 채널 이전 메시지 조회 실패:", error);
+    }
+  }, [currentChannel?.channelPk, messages, messageResponses, olderMessagesMutation, hasMoreMessages]);
+
+  // 웹소켓 메시지 수신 리스너 등록 (모든 채널의 메시지를 받지만 현재 채널만 표시)
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const channelPk = currentChannel?.channelPk;
+    
+    // 전역 메시지 리스너 등록 (레이아웃에서 구독한 모든 채널의 메시지를 받음)
+    const unsubscribe = addMessageListener((chatMessage: ChatMessage) => {
+      // 현재 채널의 메시지만 처리
+      if (channelPk && chatMessage.channelPk === channelPk) {
+        // ChatMessage를 Message 형식으로 변환
+        const newMessage: Message = {
+          id: chatMessage.messagePk,
+          user: chatMessage.userName,
+          content: chatMessage.content,
+          timestamp: new Date(chatMessage.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          }),
+          isSystem: false,
+        };
+
+        console.log(`📨 채널 ${channelPk} 메시지 수신 및 추가:`, newMessage);
+        
+        // 메시지 추가 (중복 방지)
+        setMessages((prev) => {
+          // 이미 존재하는 메시지인지 확인 (messagePk로)
+          const exists = prev.some((msg) => msg.id === chatMessage.messagePk);
+          if (exists) {
+            console.log(`⚠️ 메시지 ${chatMessage.messagePk}는 이미 존재합니다.`);
+            return prev;
+          }
+          return [...prev, newMessage];
+        });
+      }
+      // 다른 채널의 메시지는 무시 (나중에 알람 기능에서 사용 가능)
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [currentChannel?.channelPk, isConnected, addMessageListener]);
 
   // 실제 채널 이름 가져오기 (디코딩된 이름 사용)
   const getChannelName = (id: string) => {
@@ -290,31 +415,36 @@ export const useChannelPage = () => {
   // 메시지 전송 처리
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim()) {
-      const newMsg: Message = {
-        id: messages.length + 1,
-        user: "사용자", // TODO: 실제 로그인한 사용자 이름 사용
-        content: newMessage,
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        }),
-        isSystem: false,
-      };
+    if (!newMessage.trim()) return;
 
-      setMessages((prev) => [...prev, newMsg]);
-      setNewMessage("");
-
-      // TODO: 실제 메시지 전송 API 호출
-      console.log("메시지 전송:", {
-        channelId: channelId, // 디코딩된 channelId 사용
-        channelName: getChannelName(channelId),
-        serverUrl: serverInfo?.serverUrl,
-        projectPk: serverInfo?.projectPk,
-        message: newMessage,
-      });
+    // 현재 채널이 없거나 channelPk가 없으면 전송 불가
+    if (!currentChannel || !currentChannel.channelPk) {
+      console.error("❌ 채널 정보가 없어 메시지를 전송할 수 없습니다.");
+      return;
     }
+
+    // 웹소켓이 연결되지 않았으면 전송 불가
+    if (!isConnected) {
+      console.error("❌ 웹소켓이 연결되지 않아 메시지를 전송할 수 없습니다.");
+      return;
+    }
+
+    const messageContent = newMessage.trim();
+    
+    // 웹소켓을 통해 메시지 전송
+    sendMessage(currentChannel.channelPk, messageContent);
+
+    // 입력 필드만 초기화 (실제 메시지는 웹소켓을 통해 수신되어 자동으로 추가됨)
+    setNewMessage("");
+
+    console.log("📤 메시지 전송:", {
+      channelPk: currentChannel.channelPk,
+      channelId: channelId,
+      channelName: getChannelName(channelId),
+      serverUrl: serverInfo?.serverUrl,
+      projectPk: serverInfo?.projectPk,
+      message: messageContent,
+    });
   };
 
   return {
@@ -328,6 +458,9 @@ export const useChannelPage = () => {
     currentChannel,
     channels,
     loadingChannels,
+    loadingMessages,
+    loadingOlderMessages: olderMessagesMutation.isPending,
+    hasMoreMessages,
 
     // 상태
     newMessage,
@@ -337,5 +470,6 @@ export const useChannelPage = () => {
     // 함수들
     getChannelName,
     handleSendMessage,
+    loadOlderMessages,
   };
 };

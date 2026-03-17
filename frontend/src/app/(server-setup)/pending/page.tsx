@@ -85,7 +85,7 @@ const PendingApprovalPage = () => {
                     <div className="flex items-center justify-center space-x-2">
                       <div
                         className={`w-2 h-2 bg-blue-400 rounded-full ${
-                          approvalStatus === "pending" ? "animate-pulse" : ""
+                          approvalStatus === "Pending" ? "animate-pulse" : ""
                         }`}
                       ></div>
                       <span className="text-white text-sm font-medium">
@@ -130,7 +130,7 @@ const PendingApprovalPage = () => {
 
                   {/* 버튼들 */}
                   <div className="space-y-2">
-                    {approvalStatus === "active" && (
+                    {approvalStatus === "Active" && (
                       <button
                         onClick={() =>
                           handleServerConnection(serverUrl, serverName)
@@ -141,8 +141,8 @@ const PendingApprovalPage = () => {
                       </button>
                     )}
 
-                    {(approvalStatus === "pending" ||
-                      approvalStatus === "checking") && (
+                    {(approvalStatus === "Pending" ||
+                      approvalStatus === "Checking") && (
                       <button
                         onClick={handleManualRefresh}
                         disabled={isLoading}
@@ -169,12 +169,12 @@ const PendingApprovalPage = () => {
                   className="text-center mt-3"
                 >
                   <p className="text-slate-500 text-xs">
-                    {approvalStatus === "pending" &&
+                    {approvalStatus === "Pending" &&
                       "현재 승인 상태를 확인 중입니다."}
-                    {approvalStatus === "active" &&
+                    {approvalStatus === "Active" &&
                       "승인이 완료되어 자동으로 입장합니다."}
-                    {approvalStatus === "inactive" && "가입이 거절되었습니다."}
-                    {approvalStatus === "checking" &&
+                    {approvalStatus === "Inactive" && "가입이 거절되었습니다."}
+                    {approvalStatus === "Checking" &&
                       "5초마다 자동으로 상태를 확인합니다."}
                   </p>
                 </motion.div>
@@ -278,7 +278,7 @@ const PendingApprovalPage = () => {
                   <div className="flex items-center justify-center space-x-2">
                     <div
                       className={`w-2 h-2 bg-blue-400 rounded-full ${
-                        approvalStatus === "pending" ? "animate-pulse" : ""
+                        approvalStatus === "Pending" ? "animate-pulse" : ""
                       }`}
                     ></div>
                     <span className="text-white text-sm font-medium">
@@ -330,7 +330,7 @@ const PendingApprovalPage = () => {
 
                 {/* 버튼들 */}
                 <div className="space-y-3">
-                  {approvalStatus === "active" && (
+                  {approvalStatus === "Active" && (
                     <button
                       onClick={() =>
                         handleServerConnection(serverUrl, serverName)
@@ -341,8 +341,8 @@ const PendingApprovalPage = () => {
                     </button>
                   )}
 
-                  {(approvalStatus === "pending" ||
-                    approvalStatus === "checking") && (
+                  {(approvalStatus === "Pending" ||
+                    approvalStatus === "Checking") && (
                     <button
                       onClick={handleManualRefresh}
                       disabled={isLoading}
@@ -369,12 +369,12 @@ const PendingApprovalPage = () => {
                 className="text-center mt-4"
               >
                 <p className="text-slate-500 text-xs">
-                  {approvalStatus === "pending" &&
+                  {approvalStatus === "Pending" &&
                     "현재 승인 상태를 확인 중입니다."}
-                  {approvalStatus === "active" &&
+                  {approvalStatus === "Active" &&
                     "승인이 완료되어 자동으로 입장합니다."}
-                  {approvalStatus === "inactive" && "가입이 거절되었습니다."}
-                  {approvalStatus === "checking" &&
+                  {approvalStatus === "Inactive" && "가입이 거절되었습니다."}
+                  {approvalStatus === "Checking" &&
                     "5초마다 자동으로 상태를 확인합니다."}
                 </p>
               </motion.div>

@@ -179,9 +179,9 @@ export const useChannels = (serverUrl?: string, projectPk?: number) => {
 
   // 채널 제거 (현재 프로젝트에서만)
   const removeChannelFromState = useCallback(
-    (channelName: string) => {
-      console.log(`➖ Redux에서 채널 제거: ${channelName}`);
-      dispatch(removeChannelAction(channelName));
+    (channelPk: number) => {
+      console.log(`➖ Redux에서 채널 제거: ${channelPk}`);
+      dispatch(removeChannelAction(channelPk));
     },
     [dispatch]
   );
@@ -217,7 +217,7 @@ export const useChannels = (serverUrl?: string, projectPk?: number) => {
   );
 
   const noticeChannels = useMemo(
-    () => channelState.channels.filter((c) => c.channelKind === "notice"),
+    () => channelState.channels.filter((c) => c.channelKind === "notification"),
     [channelState.channels]
   );
 
@@ -236,6 +236,13 @@ export const useChannels = (serverUrl?: string, projectPk?: number) => {
   const findChannel = useMemo(
     () => (channelName: string) => {
       return channelState.channels.find((c) => c.channelName === channelName);
+    },
+    [channelState.channels]
+  );
+
+  const findChannelByPk = useMemo(
+    () => (channelPk: number) => {
+      return channelState.channels.find((c) => c.channelPk === channelPk);
     },
     [channelState.channels]
   );
@@ -271,6 +278,7 @@ export const useChannels = (serverUrl?: string, projectPk?: number) => {
     // 유틸리티
     getChannelsByType,
     findChannel,
+    findChannelByPk,
     isCurrentProject,
 
     // 필터링된 채널들 (현재 프로젝트의 채널만)

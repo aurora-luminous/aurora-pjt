@@ -1,6 +1,8 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "../../lib/store";
+import { ChannelKind } from "../types/ChannelKind";
+import { AccessType } from "../types/AccessType";
 
 // 모달 타입 정의
 export type ModalType =
@@ -29,8 +31,8 @@ export interface ChannelData {
   projectPk: number;
   channelPk: number;
   channelName: string;
-  channelKind: "text" | "voice" | "notice";
-  isPrivate: boolean;
+  channelKind: ChannelKind;
+  accessType: AccessType;
 }
 
 // 프로젝트 데이터 타입 정의

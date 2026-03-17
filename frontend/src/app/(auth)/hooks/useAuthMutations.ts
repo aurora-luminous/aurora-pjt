@@ -2,6 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuthApi } from "./useAuthApi";
 import { SignUpRequest } from "../types/SignUp";
 import { LoginRequest } from "../types/Login";
+import { useGetLastChannelApi } from "../../(server-setup)/hooks/useServerApi";
 
 /**
  * 회원가입 mutation 훅
@@ -70,3 +71,15 @@ export const useGetUserInfoQuery = () => {
     },
   });
 };
+
+export const useGetLastChannelQuery = () => {
+  const  {execute: getLastChannel}  = useGetLastChannelApi();
+
+  return useQuery({
+    queryKey: ["lastChannel"],
+    queryFn: async () => {
+      const result = await getLastChannel();
+      return result;
+    }
+  })
+}

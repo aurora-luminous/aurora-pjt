@@ -8,20 +8,12 @@ import { AuthInput } from "../components/AuthInput";
 import { AuthCheckbox } from "../components/AuthCheckbox";
 import { AuthButton } from "../components/AuthButton";
 import { useResponsive } from "../../lib/useResponsive";
+import { parseApiError } from "../../lib/parseApiError";
 
 const pageVariants = {
-  initial: {
-    opacity: 0,
-    y: 50,
-  },
-  in: {
-    opacity: 1,
-    y: 0,
-  },
-  exit: {
-    opacity: 0,
-    y: -50,
-  },
+  initial: { opacity: 0, y: 50 },
+  in: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -50 },
 };
 
 const LoginPage = () => {
@@ -35,6 +27,11 @@ const LoginPage = () => {
     loginMutation,
   } = useAuth("login");
 
+  // loginMutation.error에서 서버 에러 메시지 추출
+  const loginError = loginMutation.error
+    ? parseApiError(loginMutation.error, "로그인에 실패했습니다.")
+    : null;
+
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleSubmit("login");
@@ -47,10 +44,7 @@ const LoginPage = () => {
       initial="initial"
       animate="in"
       exit="exit"
-      transition={{
-        duration: 0.4,
-        ease: "easeInOut",
-      }}
+      transition={{ duration: 0.4, ease: "easeInOut" }}
       className="w-full"
     >
       <div className={`text-center ${isMobile ? "mb-6" : "mb-8"}`}>
@@ -72,10 +66,7 @@ const LoginPage = () => {
         </p>
       </div>
 
-      <form
-        onSubmit={onSubmit}
-        className={`${isMobile ? "space-y-4" : "space-y-6"}`}
-      >
+      <form onSubmit={onSubmit} className={`${isMobile ? "space-y-4" : "space-y-6"}`}>
         <AuthInput
           label="이메일"
           type="email"
@@ -125,6 +116,24 @@ const LoginPage = () => {
             비밀번호 찾기
           </Link>
         </div>
+
+        {/* API 에러 배너 — loginMutation.error가 있을 때 자동 표시 */}
+        {loginError && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-start gap-2.5 bg-red-500/15 border border-red-500/40 rounded-lg px-4 py-3"
+          >
+            <span className="mt-0.5 shrink-0 text-red-400 text-sm">⚠</span>
+            <p
+              className={`flex-1 text-red-300 font-medium ${
+                isMobile ? "text-xs" : "text-sm"
+              }`}
+            >
+              {loginError}
+            </p>
+          </motion.div>
+        )}
 
         <AuthButton
           type="button"

@@ -1,3 +1,5 @@
+"use client";
+
 import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
 import { useModal } from "@/app/(server-setup)/hooks/useModal";
 

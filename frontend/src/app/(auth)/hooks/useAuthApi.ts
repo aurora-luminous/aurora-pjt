@@ -26,15 +26,6 @@ export const useAuthApi = () => {
     axiosInstance: springClient,
   });
 
-  const {
-    execute: loginApi,
-    loading: isLoggingIn,
-    error: loginError,
-  } = useApi<LoginResponse, LoginRequest>({
-    endpoint: "/login",
-    method: "POST",
-    axiosInstance: springClient,
-  });
 
   const {
     execute: refreshTokenApi,
@@ -96,26 +87,30 @@ export const useAuthApi = () => {
   const login = async (
     data: LoginRequest & { rememberMe?: boolean }
   ): Promise<LoginResponse> => {
-    try {
-      const response = await loginApi({
-        userEmail: data.userEmail,
-        password: data.password,
-      });
+    // react-easy-api(loginApi)는 에러를 내부에서 삼키고 null을 반환하기 때문에
+    // 서버의 실제 에러 메시지를 잃게 됨.
+    // springClient를 직접 호출하면 axios 인터셉터가 AxiosError를 그대로 throw하여
+    // parseApiError에서 response.data.message를 읽을 수 있음.
+    const axiosResponse = await springClient.post<LoginResponse>("/login", {
+      userEmail: data.userEmail,
+      password: data.password,
+    });
 
-      // 로그인 성공 시 토큰 저장 (rememberMe 옵션 적용)
-      if (response) {
-        setTokens(
-          response.accessToken,
-          response.refreshToken,
-          data.rememberMe || false
-        );
-      }
+    const response = axiosResponse.data;
 
-      return response || { accessToken: "", refreshToken: "" };
-    } catch (error) {
-      console.error("로그인 중 오류 발생:", error);
-      throw error;
+    // 성공했지만 토큰이 없는 경우 (비정상 응답)
+    if (!response?.accessToken) {
+      throw new Error("서버 응답에 토큰이 없습니다. 관리자에게 문의하세요.");
     }
+
+    // 로그인 성공 시 토큰 저장 (rememberMe 옵션 적용)
+    setTokens(
+      response.accessToken,
+      response.refreshToken,
+      data.rememberMe || false
+    );
+
+    return response;
   };
 
   /**
@@ -180,10 +175,8 @@ export const useAuthApi = () => {
     login,
     refreshAccessToken,
     isSigningUp,
-    isLoggingIn,
     isRefreshing,
     signUpError,
-    loginError,
     refreshError,
     logout,
     isLoggingOut,

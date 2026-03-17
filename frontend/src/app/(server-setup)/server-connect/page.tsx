@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import axios from "axios";
 import { motion } from "framer-motion";
 import { useModal } from "../hooks/useModal";
 import { useServerFlow } from "../hooks/useServerFlow";
@@ -16,14 +17,11 @@ const ServerConnectPage = () => {
     isLoadingProjects,
     isLoadingChannels,
     isCreatingChannel,
-    validationError,
-    projectError,
-    channelError,
-    createChannelError,
   } = useServerFlow();
 
   const [serverUrl, setServerUrl] = useState("");
   const [serverName, setServerName] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleServerAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,34 +31,30 @@ const ServerConnectPage = () => {
   const handleServerJoin = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // 이전 에러 초기화
+    setErrorMessage(null);
+
     // 폼 데이터 검증
     if (!serverUrl || !serverName) {
-      alert("서버 URL과 서버 이름을 모두 입력해주세요.");
+      setErrorMessage("서버 URL과 서버 이름을 모두 입력해주세요.");
       return;
     }
 
     try {
       console.log("서버 연결 시도:", { serverUrl, serverName });
-
-      // useServerFlow의 handleServerConnection 사용
-      await handleServerConnection(serverUrl, serverName);
+      const data = await handleServerConnection(serverUrl, serverName);
+      console.log("서버 연결 성공:", data);
     } catch (error) {
       console.error("서버 연결 실패:", error);
 
-      // 구체적인 에러 메시지 표시
-      let errorMessage = "서버 연결에 실패했습니다.";
-
-      if (validationError) {
-        errorMessage = "서버 목록을 가져올 수 없습니다.";
-      } else if (projectError) {
-        errorMessage = "프로젝트 목록을 가져올 수 없습니다.";
-      } else if (channelError) {
-        errorMessage = "채널 목록을 가져올 수 없습니다.";
-      } else if (createChannelError) {
-        errorMessage = "채널 생성에 실패했습니다.";
+      // Axios 에러에서 서버 응답 message 추출 (예: 400 Bad Request)
+      if (axios.isAxiosError(error) && error.response?.data?.message) {
+        setErrorMessage(error.response.data.message);
+      } else if (error instanceof Error) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("서버 연결에 실패했습니다.");
       }
-
-      alert(`${errorMessage} 다시 시도해주세요.`);
     }
   };
 
@@ -93,6 +87,20 @@ const ServerConnectPage = () => {
               </h1>
               <hr className="w-full border-white/20" />
             </div>
+
+            {/* 에러 메시지 배너 */}
+            {errorMessage && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25 }}
+                className="flex items-start gap-3 bg-red-500/20 border border-red-400/40 text-red-200 rounded-lg px-4 py-3 text-sm"
+              >
+                <span className="mt-0.5 shrink-0">⚠️</span>
+                <span>{errorMessage}</span>
+              </motion.div>
+            )}
 
             <form
               onSubmit={handleServerJoin}

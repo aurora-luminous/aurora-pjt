@@ -53,19 +53,19 @@ const channelSlice = createSlice({
       state.channels.push(action.payload);
       state.lastUpdated = Date.now();
     },
-    removeChannel: (state, action: PayloadAction<string>) => {
+    removeChannel: (state, action: PayloadAction<number>) => {
       console.log(
         `➖ [Redux] 채널 제거 (프로젝트 ${state.currentProjectPk}):`,
         action.payload
       );
       state.channels = state.channels.filter(
-        (channel) => channel.channelName !== action.payload
+        (channel) => channel.channelPk !== action.payload
       );
       state.lastUpdated = Date.now();
     },
     updateChannel: (state, action: PayloadAction<Channel>) => {
       const index = state.channels.findIndex(
-        (channel) => channel.channelName === action.payload.channelName
+        (channel) => channel.channelPk === action.payload.channelPk
       );
       if (index !== -1) {
         console.log(

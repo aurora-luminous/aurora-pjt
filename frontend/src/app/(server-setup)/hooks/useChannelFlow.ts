@@ -3,7 +3,12 @@ import {
   useKickChannelMemberMutation,
   useBanChannelMemberMutation,
   useUnbanChannelMemberMutation,
+  useLeaveChannelMutation,
+  useDeleteChannelMutation,
+  useUpdateChannelMutation,
 } from "./useServerMutation";
+import { useModal } from "./useModal";
+import { ChannelPayload } from "../types/Payload";
 
 export const useChannelFlow = (
   serverUrl: string,
@@ -11,6 +16,7 @@ export const useChannelFlow = (
   channelPk: number
 ) => {
   const queryClient = useQueryClient();
+  const { close } = useModal();
   const kickChannelMemberMutation = useKickChannelMemberMutation(
     serverUrl,
     projectPk,
@@ -26,6 +32,23 @@ export const useChannelFlow = (
     projectPk,
     channelPk
   );
+
+  const leaveChannelMutation = useLeaveChannelMutation(
+    serverUrl,
+    projectPk,
+    channelPk
+  );
+
+  const deleteChannelMutation = useDeleteChannelMutation(
+    serverUrl,
+    projectPk,
+  )
+
+  const updateChannelMutation = useUpdateChannelMutation(
+    serverUrl,
+    projectPk,
+    channelPk
+  )
 
   const handleKickMember = async (userEmail: string) => {
     try {
@@ -66,9 +89,51 @@ export const useChannelFlow = (
     }
   };
 
+  const handleLeaveChannel = async (userEmail: string) => {
+    try {
+      const response = await leaveChannelMutation.mutateAsync(userEmail);
+      queryClient.invalidateQueries({
+        queryKey: ["channelList", serverUrl, projectPk],
+      });
+      return response;
+    } catch (error) {
+      console.error("❌ 채널 퇴장 실패:", error);
+      throw error;
+    }
+  };
+
+  const handleDeleteChannel = async (channelPk: number) => {
+    const isConfirm = confirm("채널을 삭제하시겠습니까?");
+    if (!isConfirm) return;
+    try {
+      const response = await deleteChannelMutation.mutateAsync(channelPk);
+      queryClient.invalidateQueries({
+        queryKey: ["channelList", serverUrl, projectPk],
+      });
+      close();
+      return response;
+    } catch (error) {
+      console.error("❌ 채널 삭제 실패:", error);
+      throw error;
+    }
+  };
+
+  const handleUpdateChannel = async (payload: ChannelPayload) => {
+      try {
+        const response = await updateChannelMutation.mutateAsync(payload);
+        return response;
+      } catch (error) {
+        console.error(error);
+        throw error;
+      }
+    }
+
   return {
     handleKickMember,
     handleBanMember,
     handleUnbanMember,
+    handleLeaveChannel,
+    handleDeleteChannel,
+    handleUpdateChannel
   };
 };

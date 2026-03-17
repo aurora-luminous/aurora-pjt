@@ -14,7 +14,7 @@ export interface ServerListItem {
 }
 
 export interface InviteCode {
-  inviteLink: string;
+  inviteHash: string;
 }
 
 export interface MemberInfo {

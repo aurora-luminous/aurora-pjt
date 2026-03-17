@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import { ProjectManageData, useModal } from "../hooks/useModal";
 import { useProjectFlow } from "../hooks/useProjectFlow";
-import { useProjectMemberListQuery } from "../hooks/useServerMutation";
+import { useProjectListQuery, useProjectMemberListQuery } from "../hooks/useServerMutation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useResponsive } from "../../lib/useResponsive";
+import { ProjectPayload } from "../types/Payload";
 
 export const ProjectManageModal = () => {
   const { isMobile, isTablet } = useResponsive();
@@ -15,7 +16,10 @@ export const ProjectManageModal = () => {
   const projectData = data as ProjectManageData;
   const queryClient = useQueryClient();
 
-  const { handleBanMember, handleUnbanMember } = useProjectFlow(
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState("");
+
+  const { handleBanMember, handleUnbanMember, handleUpdateProject } = useProjectFlow(
     projectData?.serverUrl || "",
     projectData?.projectPk || 0
   );
@@ -29,6 +33,44 @@ export const ProjectManageModal = () => {
     isLoading: isProjectMemberListLoading,
     error: projectMemberListError,
   } = ProjectMemberList;
+
+ const projectList = useProjectListQuery(projectData?.serverUrl || "");
+ console.log(projectList)
+
+ const projectName = projectList.data?.filter((proejct) => proejct.projectPk === projectData?.projectPk)[0]?.projectName;
+
+  // projectName이 로드되면 editedName 동기화
+  useEffect(() => {
+    if (projectName) {
+      setEditedName(projectName);
+    }
+  }, [projectName]);
+
+  const handleEditStart = () => {
+    setEditedName(projectName || "");
+    setIsEditing(true);
+  };
+
+  const handleEditCancel = () => {
+    setEditedName(projectName || "");
+    setIsEditing(false);
+  };
+
+  const handleEditSave = async () => {
+    if (!editedName.trim() || editedName === projectName) {
+      setIsEditing(false);
+      return;
+    }
+    try {
+      await updateProject({projectName: editedName.trim()});
+      await queryClient.invalidateQueries({
+        queryKey: ["projectList", projectData?.serverUrl],
+      });
+      setIsEditing(false);
+    } catch (error) {
+      console.error("❌ 프로젝트 이름 변경 실패:", error);
+    }
+  };
 
   if (isProjectMemberListLoading) {
     return <div>Loading...</div>;
@@ -82,6 +124,16 @@ export const ProjectManageModal = () => {
     }
   };
 
+  const updateProject = async (payload: ProjectPayload) => {
+    try {
+      const response = await handleUpdateProject(payload);
+      console.log(response)
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
   const modalContent = (
     <AnimatePresence>
       {isOpen && isProjectManageModal && (
@@ -111,7 +163,7 @@ export const ProjectManageModal = () => {
               <div className="flex justify-between items-center px-4 pb-4">
                 <h2 className="text-lg font-semibold text-white flex items-center">
                   <span className="mr-3 text-base">👥</span>
-                  프로젝트 멤버 관리
+                  프로젝트 관리
                 </h2>
                 <button
                   onClick={handleClose}
@@ -119,6 +171,43 @@ export const ProjectManageModal = () => {
                 >
                   ✕
                 </button>
+              </div>
+              {/* 프로젝트 이름 수정 영역 (모바일) */}
+              <div className="flex items-center gap-2 px-4 pb-3">
+                <input
+                  type="text"
+                  value={editedName}
+                  readOnly={!isEditing}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  className={`flex-1 text-white text-sm rounded-lg px-3 py-2 outline-none transition-all ${
+                    isEditing
+                      ? "bg-gray-600 border border-blue-500 focus:ring-2 focus:ring-blue-500/40"
+                      : "bg-transparent border border-transparent cursor-default select-none"
+                  }`}
+                />
+                {isEditing ? (
+                  <div className="flex gap-1">
+                    <button
+                      onClick={handleEditSave}
+                      className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg transition-colors font-medium"
+                    >
+                      저장
+                    </button>
+                    <button
+                      onClick={handleEditCancel}
+                      className="text-xs bg-gray-500 hover:bg-gray-400 text-white px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      취소
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleEditStart}
+                    className="text-xs bg-gray-500 hover:bg-gray-400 text-white px-3 py-1.5 rounded-lg transition-colors font-medium whitespace-nowrap"
+                  >
+                    수정
+                  </button>
+                )}
               </div>
 
               {/* 스크롤 가능한 콘텐츠 */}
@@ -205,7 +294,7 @@ export const ProjectManageModal = () => {
                     👥
                   </span>
                   <span className={isMobile ? "text-sm" : "text-xl"}>
-                    프로젝트 멤버 관리
+                    프로젝트 관리
                   </span>
                 </h2>
                 <button
@@ -216,6 +305,52 @@ export const ProjectManageModal = () => {
                 >
                   ✕
                 </button>
+              </div>
+
+              {/* 프로젝트 이름 수정 영역 (데스크톱/태블릿) */}
+              <div className="flex items-center gap-2 mb-5">
+                <input
+                  type="text"
+                  value={editedName}
+                  readOnly={!isEditing}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  className={`flex-1 text-white rounded-lg px-3 py-2 outline-none transition-all ${
+                    isTablet ? "text-sm" : "text-base"
+                  } ${
+                    isEditing
+                      ? "bg-gray-600 border border-blue-500 focus:ring-2 focus:ring-blue-500/40"
+                      : "bg-transparent border border-transparent cursor-default select-none"
+                  }`}
+                />
+                {isEditing ? (
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={handleEditSave}
+                      className={`bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors ${
+                        isTablet ? "text-xs px-3 py-1.5" : "text-sm px-4 py-2"
+                      }`}
+                    >
+                      저장
+                    </button>
+                    <button
+                      onClick={handleEditCancel}
+                      className={`bg-gray-500 hover:bg-gray-400 text-white rounded-lg transition-colors ${
+                        isTablet ? "text-xs px-3 py-1.5" : "text-sm px-4 py-2"
+                      }`}
+                    >
+                      취소
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleEditStart}
+                    className={`bg-gray-500 hover:bg-gray-400 text-white font-medium rounded-lg transition-colors whitespace-nowrap ${
+                      isTablet ? "text-xs px-3 py-1.5" : "text-sm px-4 py-2"
+                    }`}
+                  >
+                    수정
+                  </button>
+                )}
               </div>
 
               <div className={`${isMobile ? "space-y-3" : "space-y-4"}`}>

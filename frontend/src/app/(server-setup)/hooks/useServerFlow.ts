@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { ServerInfo } from "./useServer";
 import { useMutation } from "@tanstack/react-query";
 import { expressClient } from "@/app/lib/axiosClient";
+import axios from "axios";
 import {
   checkServerAccess,
   createPendingPageUrl,
@@ -57,7 +58,24 @@ export const useServerFlow = () => {
       const hasAccess = checkServerAccess(serverList, serverUrl, serverName);
 
       if (!hasAccess) {
-        console.log("❌ 서버 접근 권한 없음, 승인 대기 페이지로 이동");
+        console.log("❌ 서버 접근 권한 없음. 서버 존재 여부 확인 중...");
+
+        // 서버가 실제로 존재하는지 /join으로 확인
+        // 400이면 삭제된 서버 → throw → page.tsx catch에서 에러 메시지 표시
+        try {
+          await expressClient.post(`/ex/servers/${serverUrl}/join`);
+        } catch (joinError) {
+          if (
+            axios.isAxiosError(joinError) &&
+            joinError.response?.status === 400
+          ) {
+            console.error("❌ 서버가 존재하지 않거나 삭제됨:", joinError.response.data);
+            throw joinError; // page.tsx의 catch에서 메시지 추출
+          }
+          // 400 외 에러(이미 가입 신청 중 등)는 pending으로 이동
+          console.warn("⚠️ join 중 기타 에러, pending으로 이동:", joinError);
+        }
+
         const pendingUrl = createPendingPageUrl(serverUrl, serverName);
         router.push(pendingUrl);
         return;
@@ -73,7 +91,8 @@ export const useServerFlow = () => {
       const projects = projectResponse.data;
 
       if (!projects || projects.length === 0) {
-        throw new Error("프로젝트가 존재하지 않습니다.");
+        const pendingUrl = createPendingPageUrl(serverUrl, serverName);
+        router.push(pendingUrl);
       }
 
       const firstProject = projects[0];
@@ -133,7 +152,7 @@ export const useServerFlow = () => {
       const targetUrl = createChannelUrl(
         serverUrl,
         firstProject.projectPk,
-        targetChannel.channelName,
+        targetChannel.channelPk,
         targetChannel.channelKind
       );
 
@@ -154,7 +173,8 @@ export const useServerFlow = () => {
     serverUrl: string,
     serverName: string
   ) => {
-    await serverConnectionMutation.mutateAsync({ serverUrl, serverName });
+    const data = await serverConnectionMutation.mutateAsync({ serverUrl, serverName });
+    return data;
   };
 
   return {

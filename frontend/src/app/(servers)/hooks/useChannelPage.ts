@@ -37,6 +37,7 @@ export const useChannelPage = () => {
     loading: loadingChannels,
     loadChannels,
     findChannel,
+    findChannelByPk,
   } = useChannels(serverInfo?.serverUrl, urlProjectPk);
 
   // 웹소켓 훅 사용 (전역 인스턴스 사용)
@@ -87,10 +88,14 @@ export const useChannelPage = () => {
       "📋 사용 가능한 채널 목록:",
       channels.map((ch) => ch.channelName)
     );
-    console.log("🔍 찾는 채널명:", channelId, "타입:", typeof channelId);
+    console.log("🔍 찾는 채널명/PK:", channelId, "타입:", typeof channelId);
 
-    // Redux에서 현재 채널 찾기 (디코딩된 이름으로)
-    let channel = findChannel(channelId);
+    // URL의 channel_id를 숫자로 변환
+    const channelPk = parseInt(channelId, 10);
+    console.log(`🔍 찾는 채널 PK: ${channelPk}, 타입: ${typeof channelPk}`);
+
+    // Redux에서 현재 채널 찾기 (PK 또는 이름으로)
+    let channel = !isNaN(channelPk) ? findChannelByPk(channelPk) : findChannel(channelId);
 
     // 정확히 매칭되지 않으면 fallback 매칭 시도
     if (!channel && channels.length > 0) {
@@ -141,7 +146,7 @@ export const useChannelPage = () => {
     }
 
     if (channel) {
-      const wasExactMatch = findChannel(channelId) === channel;
+      const wasExactMatch = channel.channelPk === channelPk || channel.channelName === channelId;
       console.log(
         `✅ 채널 찾음: "${channel.channelName}", 정확한 매칭: ${wasExactMatch}`
       );
@@ -182,6 +187,20 @@ export const useChannelPage = () => {
     data: messageResponses,
     isLoading: loadingMessages,
   } = useChannelMessagesQuery(currentChannel?.channelPk ?? null);
+      // 정확한 매칭이 아닌 경우 안내 메시지 추가
+      if (!wasExactMatch && channelId !== channel.channelName && channelPk !== channel.channelPk) {
+        welcomeMessages.splice(1, 0, {
+          id: 1.5,
+          user: "시스템",
+          content: `"${channelId}" 채널을 찾지 못해 "${channel.channelName}" 채널로 연결되었습니다.`,
+          timestamp: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          }),
+          isSystem: true,
+        });
+      }
 
   // API로 받은 메시지를 Message 형식으로 변환하고 순서 반전 (최신 메시지가 아래로)
   useEffect(() => {
@@ -360,28 +379,36 @@ export const useChannelPage = () => {
       }
     })();
 
-    // 1순위: Redux에서 디코딩된 채널명으로 찾기
-    const foundChannel = findChannel(decodedId);
-    if (foundChannel) {
-      return foundChannel.channelName;
+    const decodedPk = parseInt(decodedId, 10);
+
+    // 1순위: Redux에서 PK로 찾기
+    if (!isNaN(decodedPk)) {
+      const foundChannelByPk = findChannelByPk(decodedPk);
+      if (foundChannelByPk) return foundChannelByPk.channelName;
     }
 
-    // 2순위: currentChannel 사용
-    if (currentChannel && currentChannel.channelName === decodedId) {
+    // 2순위: Redux에서 디코딩된 채널명으로 찾기
+    const foundChannelByName = findChannel(decodedId);
+    if (foundChannelByName) {
+      return foundChannelByName.channelName;
+    }
+
+    // 3순위: currentChannel 사용
+    if (currentChannel && (currentChannel.channelName === decodedId || currentChannel.channelPk === decodedPk)) {
       return currentChannel.channelName;
     }
 
-    // 3순위: 디코딩된 channelId 그대로 사용
-    if (decodedId && decodedId !== "") {
+    // 4순위: 디코딩된 channelId 그대로 사용 (숫자가 아니면)
+    if (decodedId && decodedId !== "" && isNaN(decodedPk)) {
       return decodedId;
     }
 
-    // 4순위: currentChannel이 있으면 그것 사용
+    // 5순위: currentChannel이 있으면 그것 사용
     if (currentChannel) {
       return currentChannel.channelName;
     }
 
-    // 5순위: 서버 정보의 채널명
+    // 6순위: 서버 정보의 채널명
     return serverInfo?.channelName || "채널";
   };
 

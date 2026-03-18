@@ -17,7 +17,7 @@ import { SfuValidationModule } from './sfu-validation/sfu-validation.module'; //
 // 도메인 모듈들 import
 import { ServerModule } from './domain/server/server.module';
 import { ProjectModule } from './domain/project/project.module';
-import { TextChannelModule } from './domain/text-channel/text-channel.module';
+import { TextChannelModule } from './domain/channel/channel.module';
 import { AuthModule } from './domain/auth/auth.module';
 import { UserModule } from './domain/user/user.module';
 import { UserActivityModule } from './domain/user/user-activity/user-activity.module';
@@ -70,10 +70,7 @@ import { RedisModule } from './common/redis/redis.module';
       },
     ]),
   ],
-  controllers: [
-    AppController,
-  ],
+  controllers: [AppController],
   providers: [],
 })
-
 export class AppModule {}

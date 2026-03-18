@@ -9,7 +9,7 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from '../../user/entities/user.entity';
 import { Project } from './project.entity';
-import { Channel } from '../../text-channel/entities/channel.entity';
+import { Channel } from '../../channel/entities/channel.entity';
 
 @Entity('project_member')
 @Unique(['projectPk', 'userPk']) // 복합 유니크 제약
@@ -26,28 +26,28 @@ export class ProjectMember {
   @Column()
   userPk: number;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: '프로젝트 상태',
     enum: ['Active', 'Inactive', 'Banned'],
-    default: 'Active'
+    default: 'Active',
   })
-  @Column({ 
-    type: 'varchar', 
-    length: 20, 
+  @Column({
+    type: 'varchar',
+    length: 20,
     name: 'p_status',
-    default: 'Active'
+    default: 'Active',
   })
   pStatus: 'Active' | 'Inactive' | 'Banned';
 
-  @ApiProperty({ 
-    description: '프로젝트 역할', 
-    enum: ['member', 'admin'], 
-    default: 'member' 
+  @ApiProperty({
+    description: '프로젝트 역할',
+    enum: ['member', 'admin'],
+    default: 'member',
   })
-  @Column({ 
-    type: 'varchar', 
-    length: 20, 
-    default: 'member'
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: 'member',
   })
   projectRole: 'member' | 'admin';
 
@@ -60,11 +60,11 @@ export class ProjectMember {
   lastConnectedTime: Date;
 
   // 관계 설정
-  @ManyToOne(() => Project, project => project.projectMembers)
+  @ManyToOne(() => Project, (project) => project.projectMembers)
   @JoinColumn({ name: 'project_pk' })
   project: Project;
 
-  @ManyToOne(() => User, user => user.projectMembers)
+  @ManyToOne(() => User, (user) => user.projectMembers)
   @JoinColumn({ name: 'user_pk' })
   user: User;
 

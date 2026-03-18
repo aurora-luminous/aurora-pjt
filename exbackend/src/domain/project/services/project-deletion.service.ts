@@ -1,12 +1,17 @@
-import { Injectable, NotFoundException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Project } from '../entities/project.entity';
 import { ProjectMember } from '../entities/project-member.entity';
-import { Channel } from '../../text-channel/entities/channel.entity';
-import { ChannelMember } from '../../text-channel/entities/channel-member.entity';
+import { Channel } from '../../channel/entities/channel.entity';
+import { ChannelMember } from '../../channel/entities/channel-member.entity';
 import { ProjectNotificationService } from './project-notification.service';
-import { Server }from '../../server/entities/server.entity'
+import { Server } from '../../server/entities/server.entity';
 
 @Injectable()
 export class ProjectDeletionService {
@@ -30,12 +35,14 @@ export class ProjectDeletionService {
       where: { projectPk, isDeletedProject: false },
     });
     if (!project) {
-      throw new NotFoundException(`프로젝트 ID ${projectPk}를 찾을 수 없거나 이미 삭제되었습니다.`);
+      throw new NotFoundException(
+        `프로젝트 ID ${projectPk}를 찾을 수 없거나 이미 삭제되었습니다.`,
+      );
     }
 
     // 프로젝트가 속한 서버 찾기
     const server = await this.serverRepository.findOne({
-      where: { serverPk: project.serverPk}
+      where: { serverPk: project.serverPk },
     });
     if (!server) {
       throw new NotFoundException(`프로젝트가 속한 서버를 찾을 수 없습니다.`);
@@ -47,14 +54,16 @@ export class ProjectDeletionService {
     });
 
     if (!deleterMember) {
-      throw new UnauthorizedException('프로젝트를 삭제할 권한이 없습니다. 프로젝트 admin만 삭제할 수 있습니다.');
+      throw new UnauthorizedException(
+        '프로젝트를 삭제할 권한이 없습니다. 프로젝트 admin만 삭제할 수 있습니다.',
+      );
     }
 
     // 3. 활성 멤버 있으면 비활성으로 변경
     await this.projectMemberRepository.update(
       { projectPk, pStatus: 'Active' },
       { pStatus: 'Inactive' },
-    )
+    );
 
     // 4. 프로젝트 소프트 삭제
     await this.projectRepository.update(projectPk, { isDeletedProject: true });
@@ -66,7 +75,7 @@ export class ProjectDeletionService {
     });
 
     if (channelsToDelete.length > 0) {
-      const channelPks = channelsToDelete.map(c => c.channelPk);
+      const channelPks = channelsToDelete.map((c) => c.channelPk);
       await this.channelRepository.update(
         { channelPk: In(channelPks) },
         { isDeletedChannel: true },
@@ -75,10 +84,14 @@ export class ProjectDeletionService {
       await this.channelMemberRepository.update(
         { channelPk: In(channelPks), cStatus: 'Active' },
         { cStatus: 'Inactive' },
-      )
+      );
     }
 
     // 알림 전송 (비동기)
-    this.projectNotificationService.notifyProjectRemoved(project.projectPk, project.projectName, server.serverUrl);
+    this.projectNotificationService.notifyProjectRemoved(
+      project.projectPk,
+      project.projectName,
+      server.serverUrl,
+    );
   }
 }

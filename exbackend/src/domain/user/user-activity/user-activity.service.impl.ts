@@ -1,7 +1,7 @@
-import { Injectable } from "@nestjs/common";
-import { UserActivityService } from "./user-activity.service";
-import { ProjectMemberUpdateService } from "../../project/services/project-member-update.service";
-import { ChannelCreationService } from '../../text-channel/services/channel-creation.service';
+import { Injectable } from '@nestjs/common';
+import { UserActivityService } from './user-activity.service';
+import { ProjectMemberUpdateService } from '../../project/services/project-member-update.service';
+import { ChannelCreationService } from '../../channel/services/channel-creation.service';
 
 @Injectable()
 export class UserActivityServiceImpl implements UserActivityService {
@@ -9,13 +9,18 @@ export class UserActivityServiceImpl implements UserActivityService {
     private readonly projectMemberUpdateService: ProjectMemberUpdateService,
     private readonly channelCreationService: ChannelCreationService,
   ) {}
- 
+
   async getLastConnectedChannel(userPk: number) {
-    return await this.projectMemberUpdateService.getLastConnectedChannelInfo(userPk);
+    return await this.projectMemberUpdateService.getLastConnectedChannelInfo(
+      userPk,
+    );
   }
 
   async updateLastConnectedChannel(userPk: number, channelPk: number) {
-    await this.projectMemberUpdateService.updateLastConnectedChannel(userPk, channelPk);
+    await this.projectMemberUpdateService.updateLastConnectedChannel(
+      userPk,
+      channelPk,
+    );
   }
 
   async getAllChannelsForCurrentUser(userPk: number) {

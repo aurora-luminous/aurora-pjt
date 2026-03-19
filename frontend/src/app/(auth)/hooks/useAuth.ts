@@ -17,7 +17,7 @@ export const useAuth = (type: "login" | "register" = "register") => {
   const loginMutation = useLoginMutation();
   const logoutMutation = useLogoutMutation();
   const queryClient = useQueryClient();
-  const { data: lastChannel } = useGetLastChannelQuery();
+  const { refetch: refetchLastChannel } = useGetLastChannelQuery();
 
   // 회원가입 처리 함수
   const handleRegister = async (data: AuthFormData) => {
@@ -56,16 +56,16 @@ export const useAuth = (type: "login" | "register" = "register") => {
 
     console.log("🎉 로그인 성공:", response);
     queryClient.invalidateQueries({ queryKey: ["userInfo"] });
-
-    if (!lastChannel) {
+    const { data :freshLastChannel } = await refetchLastChannel();
+    if (!freshLastChannel) {
       router.push(redirectPath ? decodeURIComponent(redirectPath) : "/server-connect");
     } else {
       router.push(
-        lastChannel.serverUrl +
+        freshLastChannel.serverUrl +
           "/projects/" +
-          lastChannel.projectPk +
+          freshLastChannel.projectPk +
           "/channels/" +
-          lastChannel.channelPk
+          freshLastChannel.channelPk
       );
     }
   };

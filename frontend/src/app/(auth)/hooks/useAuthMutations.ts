@@ -3,11 +3,13 @@ import { useAuthApi } from "./useAuthApi";
 import { SignUpRequest } from "../types/SignUp";
 import { LoginRequest } from "../types/Login";
 import { useGetLastChannelApi } from "../../(server-setup)/hooks/useServerApi";
+import { getAccessToken } from "@/app/lib/tokenStorage";
 
 /**
  * 회원가입 mutation 훅
  * TanStack Query를 사용하여 회원가입을 처리합니다.
  */
+const accessToken = getAccessToken();
 export const useSignUpMutation = () => {
   const { signUp } = useAuthApi();
 
@@ -80,6 +82,7 @@ export const useGetLastChannelQuery = () => {
     queryFn: async () => {
       const result = await getLastChannel();
       return result;
-    }
+    },
+    enabled: !!accessToken,
   })
 }

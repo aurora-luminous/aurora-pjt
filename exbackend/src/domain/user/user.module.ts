@@ -7,6 +7,10 @@ import { UserServiceImpl } from './services/serviceImpl/user.service.impl';
 import { UserRepository } from './repositories/user.repository';
 import { TypeOrmUserRepository } from './repositories/repositoryImpl/typeorm-user.repository'
 
+// interceptor
+ import { UserPopulationInterceptor } from './interceptors/user-population.interceptor';
+ import { APP_INTERCEPTOR } from '@nestjs/core';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, UserOption]),
@@ -21,6 +25,10 @@ import { TypeOrmUserRepository } from './repositories/repositoryImpl/typeorm-use
       provide: UserRepository,
       useClass: TypeOrmUserRepository,
     },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: UserPopulationInterceptor,
+    }
   ],
   exports: [UserService], 
 })

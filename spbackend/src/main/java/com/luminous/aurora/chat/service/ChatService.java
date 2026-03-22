@@ -25,10 +25,15 @@ public interface ChatService {
     // DM 방별 이전 메시지 조회 (스크롤 시)
     List<MessageResponse> getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, String jwtToken);
 
+    // 채널 안읽은 메시지 표시용
+    void markChannelAsRead(Integer channelPk, Long messagePk, String jwtToken);
+
+    // DM 안읽은 메시지 표시
+    void markDmAsRead(Integer dmRoomPk, Long messagePk, String jwtToken);
+
     // Message 엔티티를 ChatMessage로 변환 (WebSocket용)
     ChatMessage convertToChatMessage(Message message);
 
     MessageResponse convertToMessageResponse(Message message);
 
-    void markChannelAsRead(Integer channelPk, Long messagePk, String jwtToken);
 }

@@ -17,7 +17,9 @@ import com.luminous.aurora.dmroom.entity.DmRoom;
 import com.luminous.aurora.dmroom.repository.DmRoomRepository;
 import com.luminous.aurora.jwt.JwtTokenProvider;
 import com.luminous.aurora.member.entity.ChannelMember;
+import com.luminous.aurora.member.entity.DmMember;
 import com.luminous.aurora.member.repository.ChannelMemberRepository;
+import com.luminous.aurora.member.repository.DmMemberRepository;
 import com.luminous.aurora.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +42,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChannelRepository channelRepository;
     private final DmRoomRepository dmRoomRepository;
     private final ChannelMemberRepository channelMemberRepository;
+    private final DmMemberRepository dmMemberRepository;
 
     /**
      * 메시지를 DB에 저장
@@ -227,6 +230,13 @@ public class ChatServiceImpl implements ChatService {
         }
     }
 
+
+    /**
+     * -------------------------------------------------------------------------------------
+     * 안읽음 메시지 처리용 함수
+     * -------------------------------------------------------------------------------------
+     */
+
     /**
      * 채널 메시지 읽음 처리
      *
@@ -276,6 +286,60 @@ public class ChatServiceImpl implements ChatService {
         }
     }
 
+    /**
+     * DM 메시지 읽음 처리
+     *
+     * @param dmRoomPk - 읽음 처리할 DM방 PK
+     * @param messagePk - 마지막으로 읽은 메시지 PK
+     * @param jwtToken - 사용자 인증 토큰
+     * <p>
+     * 호출되는 곳:
+     * - ChatWebSocketController → /app/chat/dm/{dmRoomPk}/read
+     * <p>
+     * 처리 순서:
+     * 1. JWT에서 userPk 추출
+     * 2. DM방 접근 권한 검증
+     * 3. DmMember 엔티티 조회 (dmRoomPk + userPk)
+     * 4. 해당 messagePk의 Message 엔티티 조회
+     * 5. DmMember.lastReadMessage 업데이트 및 저장
+     * <p>
+     * 용도: 프론트에서 사용자가 DM 메시지를 읽었을 때,
+     * 마지막으로 읽은 메시지 PK를 전송하여 읽음 위치를 기록
+     * <p>
+     * 연관 기능:
+     * - DM 목록 조회 시 unreadCount 계산에 사용
+     * (UserStateServiceImpl.getDmRoomsWithStatus → countUnreadMessages)
+     */
+    @Override
+    @Transactional
+    public void markDmAsRead(Integer dmRoomPk, Long messagePk, String jwtToken) {
+        try {
+            Integer userPk = getUserPkFromToken(jwtToken);
+            validateDmRoomAccess(dmRoomPk, userPk);
+
+            DmMember dmMember = dmMemberRepository
+                    .findByDmRoom_DmRoomPkAndUser_UserPk(dmRoomPk, userPk)
+                    .orElseThrow(() -> new NotFoundException("DM 멤버를 찾을 수 없습니다."));
+
+            Message message = messageRepository.findById(messagePk)
+                    .orElseThrow(() -> new NotFoundException("메시지를 찾을 수 없습니다."));
+
+            dmMember.setLastReadMessage(message);
+            dmMemberRepository.save(dmMember);
+
+            log.info("DM 읽음 처리 : dmRoomPK ={}, userPk={}, messagePk={}", dmRoomPk, userPk, messagePk);
+        } catch (ForbiddenException | NotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new InternalServerErrorException("DM 읽음 처리 중 서버 오류가 발생했습니다: " + e.getMessage());
+        }
+    }
+
+    /**
+     * ------------------------------------------------------------------------------------------------
+     * DTO 변환용 함수
+     * ------------------------------------------------------------------------------------------------
+     */
 
     /**
      * Message 엔티티 → ChatMessage DTO 변환 (WebSocket 응답용)

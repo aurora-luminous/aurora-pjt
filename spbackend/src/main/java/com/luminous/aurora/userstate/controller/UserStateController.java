@@ -4,9 +4,9 @@ import com.luminous.aurora.auth.repository.UserRepository;
 import com.luminous.aurora.common.error.exception.*;
 import com.luminous.aurora.common.error.exception.ForbiddenException;
 import com.luminous.aurora.jwt.JwtTokenProvider;
+import com.luminous.aurora.member.dto.ChannelMemberResponse;
 import com.luminous.aurora.member.dto.DmRoomResponse;
 import com.luminous.aurora.member.service.MemberService;
-import com.luminous.aurora.project.entity.ProjectMember;
 import com.luminous.aurora.userstate.dto.*;
 import com.luminous.aurora.userstate.entity.UserStatus;
 import com.luminous.aurora.userstate.service.UserStateService;
@@ -64,26 +64,26 @@ public class UserStateController {
         return ResponseEntity.ok(response);
     }
 
-    // ========== 프로젝트 멤버 조회 ==========
+    // ========== 채널 멤버 조회 ==========
 
     /**
-     * 프로젝트 멤버 조회 (권한별 + 상태별 + 가나다순)
-     * - IDOR 방지 : 프로젝트 멤버인지 검증 후 조회
+     * 채널 멤버 조회 (권한별 + 상태별 + 가나다순)
+     * - IDOR 방지 : 채널 멤버인지 검증 후 조회
      * - 미멤버 요청 시 403 Forbidden
      */
-    @GetMapping("/project/{projectPk}/members")
-    public ResponseEntity<List<ProjectMember>> getProjectMembers(
-            @PathVariable Integer projectPk,
+    @GetMapping("/channel/{channelPk}/members")
+    public ResponseEntity<List<ChannelMemberResponse>> getChannelMembers(
+            @PathVariable Integer channelPk,
             HttpServletRequest request) {
         try {
             // JWT에서 현재 사용자 PK 추출
             Integer userPk = extractUserPkFromRequest(request);
 
-            // 프로젝트 멤버가 아니면 403
-            if (!memberService.hasProjectAccess(projectPk, userPk)) {
-                throw new ForbiddenException("해당 프로젝트에 접근할 권한이 없습니다.");
+            // 채널 멤버가 아니면 403
+            if (!memberService.hasChannelAccess(channelPk, userPk)) {
+                throw new ForbiddenException("해당 채널에 접근할 권한이 없습니다.");
             }
-            List<ProjectMember> members = userStateService.getProjectMembersWithStatus(projectPk);
+            List<ChannelMemberResponse> members = userStateService.getChannelMemberWithStatus(channelPk);
 
             return ResponseEntity.ok(members);
         } catch (ForbiddenException e) {

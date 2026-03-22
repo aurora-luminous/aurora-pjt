@@ -3,6 +3,7 @@ package com.luminous.aurora.chat.controller;
 import com.luminous.aurora.auth.repository.UserRepository;
 import com.luminous.aurora.chat.dto.ChatMessage;
 import com.luminous.aurora.chat.dto.MessageRequest;
+import com.luminous.aurora.chat.dto.ReadRequest;
 import com.luminous.aurora.chat.entity.Message;
 import com.luminous.aurora.chat.service.ChatService;
 import com.luminous.aurora.jwt.JwtTokenProvider;
@@ -18,8 +19,6 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
-
-import java.time.LocalDateTime;
 
 @Slf4j
 @Controller
@@ -93,6 +92,33 @@ public class ChatWebSocketController {
         } catch (Exception e) {
             log.error("DM 메시지 전송 실패 : {}", e.getMessage());
             throw new RuntimeException("메시지 전송에 실패했습니다:" + e.getMessage());
+        }
+    }
+
+    /**
+     * 채널 메시지 읽음 처리
+     * <p>
+     * 프론트에서 호출하는 시점:
+     * - 채팅방 입장 시 (현재 마지막 메시지 PK 전송)
+     * - 채팅방에 포커스된 상태에서 새 메시지 수신 시 (debounce 적용 권장)
+     * - 채팅방 퇴장 시 (마지막으로 본 메시지 PK 전송)
+     * <p>
+     * 요청: /app/chat/channel/{channelPk}/read
+     * Payload: { "messagePk": 123 }
+     */
+    @MessageMapping("chat/channel/{channelPk}/read")
+    public void markChannelAsRead(@Payload ReadRequest readRequest,
+                                  @DestinationVariable Integer channelPk,
+                                  SimpMessageHeaderAccessor headerAccessor) {
+        try {
+            String jwtToken = extractJwtFromSession(headerAccessor);
+            if (jwtToken == null) {
+                throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
+            }
+
+            chatService.markChannelAsRead(channelPk, readRequest.getMessagePk(), jwtToken);
+        } catch (Exception e) {
+            log.error("채널 읽음 처리 실패: channelPk={}, {}", channelPk, e.getMessage());
         }
     }
 

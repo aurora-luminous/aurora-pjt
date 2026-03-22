@@ -29,4 +29,6 @@ public interface ChatService {
     ChatMessage convertToChatMessage(Message message);
 
     MessageResponse convertToMessageResponse(Message message);
+
+    void markChannelAsRead(Integer channelPk, Long messagePk, String jwtToken);
 }

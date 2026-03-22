@@ -16,6 +16,8 @@ import com.luminous.aurora.common.error.exception.NotFoundException;
 import com.luminous.aurora.dmroom.entity.DmRoom;
 import com.luminous.aurora.dmroom.repository.DmRoomRepository;
 import com.luminous.aurora.jwt.JwtTokenProvider;
+import com.luminous.aurora.member.entity.ChannelMember;
+import com.luminous.aurora.member.repository.ChannelMemberRepository;
 import com.luminous.aurora.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +39,7 @@ public class ChatServiceImpl implements ChatService {
     private final MemberService memberService;
     private final ChannelRepository channelRepository;
     private final DmRoomRepository dmRoomRepository;
+    private final ChannelMemberRepository channelMemberRepository;
 
     /**
      * 메시지를 DB에 저장
@@ -223,6 +226,56 @@ public class ChatServiceImpl implements ChatService {
             throw new InternalServerErrorException("이전 DM 메시지 조회 중 서버 오류가 발생했습니다: " + e.getMessage());
         }
     }
+
+    /**
+     * 채널 메시지 읽음 처리
+     *
+     * @param channelPk - 읽음 처리할 채널 PK
+     * @param messagePk - 마지막으로 읽은 메시지 PK
+     * @param jwtToken - 사용자 인증 토큰
+     * <p>
+     * 호출되는 곳:
+     * - ChatWebSocketController → /app/chat/channel/{channelPk}/read
+     * <p>
+     * 처리 순서:
+     * 1. JWT에서 userPk 추출
+     * 2. 채널 접근 권한 검증
+     * 3. ChannelMember 엔티티 조회 (channelPk + userPk)
+     * 4. 해당 messagePk의 Message 엔티티 조회
+     * 5. ChannelMember.lastReadMessage 업데이트 및 저장
+     * <p>
+     * 용도: 프론트에서 사용자가 채널 메시지를 읽었을 때,
+     * 마지막으로 읽은 메시지 PK를 전송하여 읽음 위치를 기록
+     * <p>
+     * 연관 기능:
+     * - 채널 목록에서 안 읽은 메시지 존재 여부(hasUnread) 판단 시 사용
+     */
+    @Override
+    @Transactional
+    public void markChannelAsRead(Integer channelPk, Long messagePk, String jwtToken) {
+        try {
+            Integer userPk = getUserPkFromToken(jwtToken);
+            validateChannelAccess(channelPk, userPk);
+
+            ChannelMember channelMember = channelMemberRepository
+                    .findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk)
+                    .orElseThrow(() -> new NotFoundException("채널 멤버를 찾을 수 없습니다."));
+
+            Message message = messageRepository.findById(messagePk)
+                    .orElseThrow(() -> new NotFoundException("메시지를 찾을 수 없습니다."));
+
+            channelMember.setLastReadMessage(message);
+            channelMemberRepository.save(channelMember);
+
+            log.info("채널 읽음 처리: channelPk={}, userPk={}, messagePk={}", channelPk, userPk, messagePk);
+        } catch (ForbiddenException | NotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("채널 읽음 처리 실패: {}", e.getMessage());
+            throw new InternalServerErrorException("채널 읽음 처리 중 서버 오류가 발생했습니다: " + e.getMessage());
+        }
+    }
+
 
     /**
      * Message 엔티티 → ChatMessage DTO 변환 (WebSocket 응답용)

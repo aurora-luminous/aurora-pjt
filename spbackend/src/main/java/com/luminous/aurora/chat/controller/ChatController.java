@@ -20,20 +20,6 @@ public class ChatController {
 
     private final ChatService chatService;
 
-    // 채널 메시지 저장
-    @PostMapping("/channel")
-    public ResponseEntity<String> saveChannelMessage(
-            @RequestBody MessageRequest request,
-            @CookieValue("access_token") String jwtToken) {
-        // 저장
-        chatService.saveMessage(request, jwtToken);
-
-        log.info("채널 메시지 저장 성공 : channelPk ={}, dmRoomPk = {}",
-                request.getChannelPk(), request.getDmRoomPk());
-        return ResponseEntity.ok("메시지가 성공적으로 저장되었습니다.");
-
-    }
-
     // 채널 최신 메시지 조회 (최초 로드)
     @GetMapping("/channel/{channelPk}/messages")
     public ResponseEntity<List<MessageResponse>> getLatestChannelMessages(

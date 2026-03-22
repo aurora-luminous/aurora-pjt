@@ -17,7 +17,6 @@ public interface ChannelMemberRepository extends JpaRepository<ChannelMember, In
     // 채널 멤버 존재 여부 확인
     boolean existsByChannel_ChannelPkAndUser_UserPk(Integer channelPk, Integer userPk);
 
-    // 채널별 멤버 조회
-    List<ChannelMember> findByChannel_ChannelPk(Integer channelPk);
-
+    // Active 상태인 채널 멤버만 조회
+    List<ChannelMember> findByChannel_ChannelPkAndCStatus(Integer channelPk, String cStatus);
 }

@@ -131,8 +131,8 @@ public class UserStateServiceImpl implements UserStateService {
     @Override
     public List<ChannelMemberResponse> getChannelMemberWithStatus(Integer channelPk) {
         try {
-            // 1. 채널 멤버 조회
-            List<ChannelMember> members = channelMemberRepository.findByChannel_ChannelPk(channelPk);
+            // 1. 채널 Active 멤버 조회
+            List<ChannelMember> members = channelMemberRepository.findByChannel_ChannelPkAndCStatus(channelPk,"Active");
 
             // 2. 상태별로 그룹화
             Map<UserStatus, List<ChannelMember>> statusGroups = new HashMap<>();

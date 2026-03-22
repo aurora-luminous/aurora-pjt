@@ -6,11 +6,12 @@ import com.luminous.aurora.common.error.exception.BadRequestException;
 import com.luminous.aurora.common.error.exception.ForbiddenException;
 import com.luminous.aurora.common.error.exception.InternalServerErrorException;
 import com.luminous.aurora.common.error.exception.NotFoundException;
+import com.luminous.aurora.member.dto.ChannelMemberResponse;
 import com.luminous.aurora.member.dto.DmRoomResponse;
+import com.luminous.aurora.member.entity.ChannelMember;
 import com.luminous.aurora.member.entity.DmMember;
+import com.luminous.aurora.member.repository.ChannelMemberRepository;
 import com.luminous.aurora.member.repository.DmMemberRepository;
-import com.luminous.aurora.project.entity.ProjectMember;
-import com.luminous.aurora.project.repository.ProjectMemberRepository;
 import com.luminous.aurora.userstate.entity.UserState;
 import com.luminous.aurora.userstate.entity.UserStatus;
 import com.luminous.aurora.userstate.repository.UserStateRedisRepository;
@@ -32,7 +33,7 @@ public class UserStateServiceImpl implements UserStateService {
 
     private final UserStateRepository userStateRepository;
     private final UserStateRedisRepository redisRepository;
-    private final ProjectMemberRepository projectMemberRepository;
+    private final ChannelMemberRepository channelMemberRepository;
     private final DmMemberRepository dmMemberRepository;
     private final MessageRepository messageRepository;
 
@@ -125,36 +126,39 @@ public class UserStateServiceImpl implements UserStateService {
         }
     }
 
-    // ========== 프로젝트 멤버 조회 ==========
+    // ========== 채널 멤버 조회 ==========
 
     @Override
-    public List<ProjectMember> getProjectMembersWithStatus(Integer projectPk) {
+    public List<ChannelMemberResponse> getChannelMemberWithStatus(Integer channelPk) {
         try {
-            // 1. 프로젝트 멤버 조회
-            List<ProjectMember> members = projectMemberRepository.findByProject_ProjectPk(projectPk);
+            // 1. 채널 멤버 조회
+            List<ChannelMember> members = channelMemberRepository.findByChannel_ChannelPk(channelPk);
 
             // 2. 상태별로 그룹화
-            Map<UserStatus, List<ProjectMember>> statusGroups = new HashMap<>();
+            Map<UserStatus, List<ChannelMember>> statusGroups = new HashMap<>();
+            Map<Integer, UserStatus> statusCache = new HashMap<>();
 
-            for (ProjectMember member : members) {
-                UserStatus status = getUserStatus(member.getUser().getUserPk());
+            for (ChannelMember member : members) {
+                Integer userPk = member.getUser().getUserPk();
+                UserStatus status = getUserStatus(userPk);
+                statusCache.put(userPk, status);
                 statusGroups.computeIfAbsent(status, k -> new ArrayList<>()).add(member);
             }
 
             // 3. 정렬 및 조합
-            List<ProjectMember> result = new ArrayList<>();
+            List<ChannelMember> result = new ArrayList<>();
 
             // 온라인/자리비움/방해금지: 권한별로 나누고 가나다순
             for (UserStatus status : Arrays.asList(UserStatus.ONLINE, UserStatus.AWAY, UserStatus.DND)) {
-                List<ProjectMember> statusMembers = statusGroups.getOrDefault(status, new ArrayList<>());
+                List<ChannelMember> statusMembers = statusGroups.getOrDefault(status, new ArrayList<>());
 
                 // 권한별로 그룹화
-                Map<String, List<ProjectMember>> roleGroups = statusMembers.stream()
-                        .collect(Collectors.groupingBy(ProjectMember::getProjectRole));
+                Map<String, List<ChannelMember>> roleGroups = statusMembers.stream()
+                        .collect(Collectors.groupingBy(ChannelMember::getChannelRole));
 
                 // admin 먼저, member 나중에
                 for (String role : Arrays.asList("admin", "member")) {
-                    List<ProjectMember> roleMembers = roleGroups.getOrDefault(role, new ArrayList<>());
+                    List<ChannelMember> roleMembers = roleGroups.getOrDefault(role, new ArrayList<>());
 
                     // 가나다순 정렬
                     roleMembers.sort(Comparator.comparing(m -> m.getUser().getUserName()));
@@ -163,16 +167,27 @@ public class UserStateServiceImpl implements UserStateService {
             }
 
             // 오프라인: 권한 구분 없이 가나다순
-            List<ProjectMember> offlineMembers = statusGroups.getOrDefault(UserStatus.OFFLINE, new ArrayList<>());
+            List<ChannelMember> offlineMembers = statusGroups.getOrDefault(UserStatus.OFFLINE, new ArrayList<>());
             offlineMembers.sort(Comparator.comparing(m -> m.getUser().getUserName()));
             result.addAll(offlineMembers);
 
-            return result;
+            // 4. DTO 변환
+            return result.stream()
+                    .map(member -> {
+                        return ChannelMemberResponse.builder()
+                                .userName(member.getUser().getUserName())
+                                .userEmail(member.getUser().getUserEmail())
+                                .profileImage(member.getUser().getProfileImagePath())
+                                .channelRole(member.getChannelRole())
+                                .userStatus(statusCache.get(member.getUser().getUserPk()))
+                                .build();
+                    })
+                    .collect(Collectors.toList());
         } catch (NotFoundException | BadRequestException | ForbiddenException e) {
             throw e;
         } catch (Exception e) {
-            log.error("프로젝트 멤버 조회 실패 : {}", e.getMessage());
-            throw new InternalServerErrorException("프로젝트 멤버 조회 중 서버 오류가 발생했습니다: " + e.getMessage());
+            log.error("채널 멤버 조회 실패 : {}", e.getMessage());
+            throw new InternalServerErrorException("채널 멤버 조회 중 서버 오류가 발생했습니다: " + e.getMessage());
         }
     }
 
@@ -234,11 +249,11 @@ public class UserStateServiceImpl implements UserStateService {
                                 .unreadCount(unreadCount)
                                 .build();
                     })
-                    .filter(response -> response!= null)
+                    .filter(response -> response != null)
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.error("DM 목록 조회 실패 : {}", e.getMessage());
-            throw new InternalServerErrorException("DM 목록 조회 중 오류 발생 : " +e.getMessage());
+            throw new InternalServerErrorException("DM 목록 조회 중 오류 발생 : " + e.getMessage());
         }
     }
 }

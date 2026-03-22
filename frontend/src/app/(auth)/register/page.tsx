@@ -4,10 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
-import { AuthInput } from "../components/AuthInput";
-import { AuthCheckbox } from "../components/AuthCheckbox";
-import { AuthButton } from "../components/AuthButton";
-import { AuthInputWithButton } from "../components/AuthInputWithButton";
+import { AuthInput, AuthCheckbox, AuthButton, AuthInputWithButton } from "../components";
 import { useResponsive } from "../../lib/useResponsive";
 import { parseApiError } from "../../lib/parseApiError";
 

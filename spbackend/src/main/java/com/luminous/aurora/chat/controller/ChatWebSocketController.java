@@ -106,7 +106,7 @@ public class ChatWebSocketController {
      * 요청: /app/chat/channel/{channelPk}/read
      * Payload: { "messagePk": 123 }
      */
-    @MessageMapping("chat/channel/{channelPk}/read")
+    @MessageMapping("/chat/channel/{channelPk}/read")
     public void markChannelAsRead(@Payload ReadRequest readRequest,
                                   @DestinationVariable Integer channelPk,
                                   SimpMessageHeaderAccessor headerAccessor) {

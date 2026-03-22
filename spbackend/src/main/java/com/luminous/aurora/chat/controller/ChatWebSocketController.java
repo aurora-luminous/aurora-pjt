@@ -122,6 +122,38 @@ public class ChatWebSocketController {
         }
     }
 
+    /**
+     * DM 메시지 읽음 처리
+     * <p>
+     * 프론트에서 호출하는 시점:
+     * - DM방 입장 시 (현재 마지막 메시지 PK 전송)
+     * - DM방에 포커스된 상태에서 새 메시지 수신 시 (debounce 적용 권장)
+     * - DM방 퇴장 시 (마지막으로 본 메시지 PK 전송)
+     * <p>
+     * 요청: /app/chat/dm/{dmRoomPk}/read
+     * Payload: { "messagePk": 123 }
+     * <p>
+     * 연관 기능:
+     * - DM 목록 조회 시 unreadCount 계산에 반영
+     * (UserStateServiceImpl.getDmRoomsWithStatus → countUnreadMessages)
+     */
+    @MessageMapping("/chat/dm/{dmRoomPk}/read")
+    public void markDmAsRead(@Payload ReadRequest readRequest,
+                             @DestinationVariable Integer dmRoomPk,
+                             SimpMessageHeaderAccessor headerAccessor) {
+        try {
+            String jwtToken = extractJwtFromSession(headerAccessor);
+            if (jwtToken == null) {
+                throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
+            }
+
+            chatService.markDmAsRead(dmRoomPk, readRequest.getMessagePk(), jwtToken);
+
+        } catch (Exception e) {
+            log.error("DM 읽음 처리 실패: dmRoomPk={}, {}", dmRoomPk, e.getMessage());
+        }
+    }
+
     // 세션에서 JWT 토큰 추출
     private String extractJwtFromSession(SimpMessageHeaderAccessor headerAccessor) {
         return (String) headerAccessor.getSessionAttributes().get("jwt_token");

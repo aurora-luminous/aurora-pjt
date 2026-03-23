@@ -38,13 +38,24 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
             "ORDER BY m.createdAt DESC LIMIT 1")
     Optional<Message> findLatestMessageInDmRoom(@Param("dmRoomPk") Integer dmRoomPk);
 
-    // 읽지 않은 메시지 개수 (내가 보낸것 제외)
+    // DM용 읽지 않은 메시지 개수 (내가 보낸것 제외)
     @Query("SELECT COUNT(m) FROM Message m " +
             "WHERE m.dmRoomPk.dmRoomPk = :dmRoomPk " +
             "AND m.messagePk > :lastReadMessagePk " +
             "AND m.userPk.userPk != :myUserPk")
     Long countUnreadMessages(
             @Param("dmRoomPk") Integer DmRoomPk,
+            @Param("lastReadMessagePk") Long lastReadMessagePk,
+            @Param("myUserPk") Integer myUserPk
+    );
+
+    // 채널용 채널에서 안 읽은 메시지 존재 여부 확인(내가 보낸 것 제외)
+    @Query("SELECT CASE WHEN COUNT(m) > 0 THEN true ELSE false END FROM Message m " +
+            "WHERE m.channelPk.channelPk = :channelPk " +
+            "AND m.messagePk > :lastReadMessagePk " +
+            "AND m.userPk.userPk != :myUserPk")
+    boolean existsUnreadMessages(
+            @Param("channelPk") Integer channelPk,
             @Param("lastReadMessagePk") Long lastReadMessagePk,
             @Param("myUserPk") Integer myUserPk
     );

@@ -4,6 +4,7 @@ import com.luminous.aurora.auth.entity.Users;
 import com.luminous.aurora.auth.repository.UserRepository;
 import com.luminous.aurora.channel.entity.Channel;
 import com.luminous.aurora.channel.repository.ChannelRepository;
+import com.luminous.aurora.chat.dto.ChannelUnreadResponse;
 import com.luminous.aurora.chat.dto.ChatMessage;
 import com.luminous.aurora.chat.dto.MessageRequest;
 import com.luminous.aurora.chat.dto.MessageResponse;
@@ -230,6 +231,57 @@ public class ChatServiceImpl implements ChatService {
         }
     }
 
+    /**
+     * 채널 안 읽은 메시지 존재 여부 조회
+     *
+     * @param channelPk - 조회할 채널 PK
+     * @param jwtToken - 사용자 인증 토큰
+     * @return ChannelUnreadResponse - channelPk, hasUnread(boolean)
+     * <p>
+     * 호출되는 곳:
+     * - ChatController (REST API) → GET /api/jv/chat/channel/{channelPk}/unread
+     * <p>
+     * 처리 순서:
+     * 1. JWT에서 userPk 추출
+     * 2. 채널 접근 권한 검증
+     * 3. ChannelMember에서 lastReadMessage 조회
+     * 4. lastReadMessage가 null이면 → hasUnread = true (한 번도 읽지 않음)
+     * 5. lastReadMessage가 있으면 → 이후 메시지 존재 여부 확인
+     * <p>
+     * 용도: 프론트에서 채널 목록 렌더링 시 안 읽은 표시(빨간 점 등) 판단용
+     */
+    @Override
+    public ChannelUnreadResponse getChannelUnreadStatus(Integer channelPk, String jwtToken) {
+        try {
+            Integer userPk = getUserPkFromToken(jwtToken);
+            validateChannelAccess(channelPk, userPk);
+
+            ChannelMember channelMember = channelMemberRepository
+                    .findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk)
+                    .orElseThrow(() -> new NotFoundException("채널 멤버를 찾을 수 없습니다."));
+
+            boolean hasUnread;
+
+            if (channelMember.getLastReadMessage() == null) {
+                hasUnread = true;
+            } else {
+                hasUnread = messageRepository.existsUnreadMessages(
+                        channelPk,
+                        channelMember.getLastReadMessage().getMessagePk(),
+                        userPk
+                );
+            }
+            return ChannelUnreadResponse.builder()
+                    .channelPk(channelPk)
+                    .hasUnread(hasUnread)
+                    .build();
+        } catch (ForbiddenException | NotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("채널 안읽음 상태 조회 실패: {}", e.getMessage());
+            throw new InternalServerErrorException("채널 안 읽음 상태 조회 중 서버 오류가 발생했습니다: " +e.getMessage());
+        }
+    }
 
     /**
      * -------------------------------------------------------------------------------------

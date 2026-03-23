@@ -1,6 +1,7 @@
 package com.luminous.aurora.internal.controller;
 
 
+import com.luminous.aurora.chat.service.ChatService;
 import com.luminous.aurora.common.error.exception.BadRequestException;
 import com.luminous.aurora.internal.dto.*;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @Slf4j
 @RestController
 @RequestMapping("api/jv/internal")
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class InternalController {
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final ChatService chatService;
 
     /**
      * Express에서 멤버 변경 시 호출하는 API
@@ -109,5 +113,40 @@ public class InternalController {
                 event.getEventType(), event.getProjectPk(), event.getProjectName());
 
         return ResponseEntity.ok("알림 전송 완료");
+    }
+
+    /**
+     * Express에서 채널 목록 조회 시 unread 상태 일괄 조회
+     * <p>
+     * 호출되는 곳:
+     * - Express 서버 → 채널 목록 API에서 Spring에 일괄 요청
+     * <p>
+     * 처리 순서:
+     * 1. Express에서 채널 PK 목록 + userPk 전달
+     * 2. ChatService.getChannelsUnreadStatus로 각 채널별 hasUnread 계산
+     * 3. 결과를 Express에 반환 → Express가 채널 목록과 합쳐서 프론트에 내려줌
+     * <p>
+     * 요청 예시:
+     * { "channelPks": [1, 3, 5], "userPk": 7 }
+     * <p>
+     * 응답 예시:
+     * [
+     * { "channelPk": 1, "hasUnread": true },
+     * { "channelPk": 3, "hasUnread": false },
+     * { "channelPk": 5, "hasUnread": true }
+     * ]
+     */
+    @PostMapping("/channels/unread")
+    public ResponseEntity<List<ChannelUnreadResponse>> getChannelsUnreadStatus(
+            @RequestBody ChannelUnreadRequest request) {
+
+        if (request.getChannelPks() == null || request.getUserPk() == null) {
+            throw new BadRequestException("채널 목록과 사용자 정보가 필요합니다.");
+        }
+
+        List<ChannelUnreadResponse> response = chatService.getChannelsUnreadStatus(
+                request.getChannelPks(), request.getUserPk());
+
+        return ResponseEntity.ok(response);
     }
 }

@@ -4,6 +4,7 @@ import com.luminous.aurora.auth.repository.UserRepository;
 import com.luminous.aurora.chat.dto.ChatMessage;
 import com.luminous.aurora.chat.dto.MessageRequest;
 import com.luminous.aurora.chat.dto.ReadRequest;
+import com.luminous.aurora.chat.dto.UnreadNotification;
 import com.luminous.aurora.chat.entity.Message;
 import com.luminous.aurora.chat.service.ChatService;
 import com.luminous.aurora.jwt.JwtTokenProvider;
@@ -52,6 +53,15 @@ public class ChatWebSocketController {
             Message savedMessage = chatService.saveMessage(messageRequest, jwtToken);
 
             ChatMessage chatMessage = chatService.convertToChatMessage(savedMessage);
+
+            // 프로젝트 unread 알림 브로드캐스트
+            Integer projectPk = savedMessage.getChannelPk().getProject().getProjectPk();
+            UnreadNotification notification = UnreadNotification.builder()
+                    .channelPk(channelPk)
+                    .sendUserEmail(savedMessage.getUserPk().getUserEmail())
+                    .build();
+
+            messagingTemplate.convertAndSend("/topic/project/" + projectPk + "/unread", notification);
 
             log.info("채널 메시지 전송 : channelPk = {}, userPk ={}", messageRequest.getChannelPk(), chatMessage.getUserPk());
 

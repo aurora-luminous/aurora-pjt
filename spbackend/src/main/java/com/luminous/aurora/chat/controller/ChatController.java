@@ -1,7 +1,5 @@
 package com.luminous.aurora.chat.controller;
 
-import com.luminous.aurora.chat.dto.ChannelUnreadResponse;
-import com.luminous.aurora.chat.dto.MessageRequest;
 import com.luminous.aurora.chat.dto.MessageResponse;
 import com.luminous.aurora.chat.service.ChatService;
 import lombok.RequiredArgsConstructor;
@@ -20,15 +18,6 @@ import java.util.List;
 public class ChatController {
 
     private final ChatService chatService;
-
-    // 채널 안읽은 메시지 존재 여부 조회
-    @GetMapping("/channel/{channelPk}/unread")
-    public ResponseEntity<ChannelUnreadResponse> getChannelUnreadStatus(
-            @PathVariable Integer channelPk,
-            @CookieValue("access_token") String jwtToken) {
-        ChannelUnreadResponse response = chatService.getChannelUnreadStatus(channelPk,jwtToken);
-        return ResponseEntity.ok(response);
-    }
 
     // 채널 최신 메시지 조회 (최초 로드)
     @GetMapping("/channel/{channelPk}/messages")

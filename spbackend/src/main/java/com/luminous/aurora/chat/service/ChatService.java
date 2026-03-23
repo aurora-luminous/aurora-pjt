@@ -1,6 +1,5 @@
 package com.luminous.aurora.chat.service;
 
-import com.luminous.aurora.chat.dto.ChannelUnreadResponse;
 import com.luminous.aurora.chat.dto.ChatMessage;
 import com.luminous.aurora.chat.dto.MessageRequest;
 import com.luminous.aurora.chat.dto.MessageResponse;
@@ -31,9 +30,6 @@ public interface ChatService {
 
     // DM 안읽은 메시지 표시
     void markDmAsRead(Integer dmRoomPk, Long messagePk, String jwtToken);
-
-    // 채널 안 읽은 메시지 존재 여부 조회
-    ChannelUnreadResponse getChannelUnreadStatus(Integer channelPk, String jwtToken);
 
     // Message 엔티티를 ChatMessage로 변환 (WebSocket용)
     ChatMessage convertToChatMessage(Message message);

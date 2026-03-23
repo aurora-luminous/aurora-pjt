@@ -1,4 +1,4 @@
-package com.luminous.aurora.chat.dto;
+package com.luminous.aurora.internal.dto;
 
 import lombok.*;
 

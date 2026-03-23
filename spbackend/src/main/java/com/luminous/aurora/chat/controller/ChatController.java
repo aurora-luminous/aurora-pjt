@@ -1,6 +1,5 @@
 package com.luminous.aurora.chat.controller;
 
-import com.luminous.aurora.chat.dto.MessageRequest;
 import com.luminous.aurora.chat.dto.MessageResponse;
 import com.luminous.aurora.chat.service.ChatService;
 import lombok.RequiredArgsConstructor;
@@ -25,10 +24,10 @@ public class ChatController {
     public ResponseEntity<List<MessageResponse>> getLatestChannelMessages(
             @PathVariable Integer channelPk,
             @CookieValue("access_token") String jwtToken) {
-            List<MessageResponse> messages = chatService.getLatestMessage(channelPk, jwtToken);
-            log.info("채널 최신 메시지 조회 성공: channelPk={}, messageCount={}",
-                    channelPk, messages.size());
-            return ResponseEntity.ok(messages);
+        List<MessageResponse> messages = chatService.getLatestMessage(channelPk, jwtToken);
+        log.info("채널 최신 메시지 조회 성공: channelPk={}, messageCount={}",
+                channelPk, messages.size());
+        return ResponseEntity.ok(messages);
     }
 
     // 채널 이전 메시지 조회 (무한스크롤)
@@ -37,10 +36,10 @@ public class ChatController {
             @PathVariable Integer channelPk,
             @RequestParam LocalDateTime lastMessageTime,
             @CookieValue("access_token") String jwtToken) {
-            List<MessageResponse> messages = chatService.getOlderMessage(channelPk, lastMessageTime, jwtToken);
-            log.info("채널 이전 메시지 조회 성공: channelPk={}, messageCount={}, lastMessageTime={}",
-                    channelPk, messages.size(), lastMessageTime);
-            return ResponseEntity.ok(messages);
+        List<MessageResponse> messages = chatService.getOlderMessage(channelPk, lastMessageTime, jwtToken);
+        log.info("채널 이전 메시지 조회 성공: channelPk={}, messageCount={}, lastMessageTime={}",
+                channelPk, messages.size(), lastMessageTime);
+        return ResponseEntity.ok(messages);
     }
 
     // DM방 최신 메시지 조회
@@ -48,10 +47,10 @@ public class ChatController {
     public ResponseEntity<List<MessageResponse>> getLatestDmMessages(
             @PathVariable Integer dmRoomPk,
             @CookieValue("access_token") String jwtToken) {
-            List<MessageResponse> messages = chatService.getLatestDmMessage(dmRoomPk, jwtToken);
-            log.info("DM방 최신 메시지 조회 성공: dmRoomPk={}, messageCount={}",
-                    dmRoomPk, messages.size());
-            return ResponseEntity.ok(messages);
+        List<MessageResponse> messages = chatService.getLatestDmMessage(dmRoomPk, jwtToken);
+        log.info("DM방 최신 메시지 조회 성공: dmRoomPk={}, messageCount={}",
+                dmRoomPk, messages.size());
+        return ResponseEntity.ok(messages);
     }
 
     // DM방 이전 메시지 조회 (무한스크롤)
@@ -60,9 +59,9 @@ public class ChatController {
             @PathVariable Integer dmRoomPk,
             @RequestParam LocalDateTime lastMessageTime,
             @CookieValue("access_token") String jwtToken) {
-            List<MessageResponse> messages = chatService.getOlderDmMessage(dmRoomPk, lastMessageTime, jwtToken);
-            log.info("DM방 이전 메시지 조회 성공: dmRoomPk={}, messageCount={}, lastMessageTime={}",
-                    dmRoomPk, messages.size(), lastMessageTime);
-            return ResponseEntity.ok(messages);
+        List<MessageResponse> messages = chatService.getOlderDmMessage(dmRoomPk, lastMessageTime, jwtToken);
+        log.info("DM방 이전 메시지 조회 성공: dmRoomPk={}, messageCount={}, lastMessageTime={}",
+                dmRoomPk, messages.size(), lastMessageTime);
+        return ResponseEntity.ok(messages);
     }
 }

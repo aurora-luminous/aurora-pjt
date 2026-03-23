@@ -3,9 +3,13 @@ package com.luminous.aurora.chat.controller;
 import com.luminous.aurora.auth.repository.UserRepository;
 import com.luminous.aurora.chat.dto.ChatMessage;
 import com.luminous.aurora.chat.dto.MessageRequest;
+import com.luminous.aurora.chat.dto.ReadRequest;
+import com.luminous.aurora.chat.dto.UnreadNotification;
 import com.luminous.aurora.chat.entity.Message;
 import com.luminous.aurora.chat.service.ChatService;
 import com.luminous.aurora.jwt.JwtTokenProvider;
+import com.luminous.aurora.member.entity.DmMember;
+import com.luminous.aurora.member.repository.DmMemberRepository;
 import com.luminous.aurora.userstate.dto.UserStatusChangeRequest;
 import com.luminous.aurora.userstate.dto.UserStatusChangeResponse;
 import com.luminous.aurora.userstate.service.UserStateService;
@@ -19,7 +23,7 @@ import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
-import java.time.LocalDateTime;
+import java.util.List;
 
 @Slf4j
 @Controller
@@ -31,6 +35,7 @@ public class ChatWebSocketController {
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserStateService userStateService;
+    private final DmMemberRepository dmMemberRepository;
 
     // 채널 메시지 전송
     @MessageMapping("/chat/channel/{channelPk}")
@@ -53,6 +58,15 @@ public class ChatWebSocketController {
             Message savedMessage = chatService.saveMessage(messageRequest, jwtToken);
 
             ChatMessage chatMessage = chatService.convertToChatMessage(savedMessage);
+
+            // 프로젝트 unread 알림 브로드캐스트
+            Integer projectPk = savedMessage.getChannelPk().getProject().getProjectPk();
+            UnreadNotification notification = UnreadNotification.builder()
+                    .channelPk(channelPk)
+                    .sendUserEmail(savedMessage.getUserPk().getUserEmail())
+                    .build();
+
+            messagingTemplate.convertAndSend("/topic/project/" + projectPk + "/unread", notification);
 
             log.info("채널 메시지 전송 : channelPk = {}, userPk ={}", messageRequest.getChannelPk(), chatMessage.getUserPk());
 
@@ -88,11 +102,86 @@ public class ChatWebSocketController {
             String destination = "/topic/dm/" + messageRequest.getDmRoomPk();
             messagingTemplate.convertAndSend(destination, chatMessage);
 
+            // 상대방에게 DM unread 알림 브로드 캐스트
+            String sendEmail = savedMessage.getUserPk().getUserEmail();
+            List<DmMember> dmMembers = dmMemberRepository.findByDmRoom_DmRoomPk(dmRoomPk);
+            dmMembers.stream()
+                    .filter(m -> !m.getUser().getUserEmail().equals(sendEmail))
+                    .forEach(m -> {
+                        UnreadNotification notification = UnreadNotification.builder()
+                                .dmRoomPk(dmRoomPk)
+                                .sendUserEmail(sendEmail)
+                                .build();
+                        messagingTemplate.convertAndSend(
+                                "/topic/user/" + m.getUser().getUserEmail() + "/dm/unread",
+                                notification
+                        );
+                    });
+
             log.info("DM 메시지 전송: DmRoomPk = {}, userPk ={}", messageRequest.getDmRoomPk(), chatMessage.getUserPk());
 
         } catch (Exception e) {
             log.error("DM 메시지 전송 실패 : {}", e.getMessage());
             throw new RuntimeException("메시지 전송에 실패했습니다:" + e.getMessage());
+        }
+    }
+
+    /**
+     * 채널 메시지 읽음 처리
+     * <p>
+     * 프론트에서 호출하는 시점:
+     * - 채팅방 입장 시 (현재 마지막 메시지 PK 전송)
+     * - 채팅방에 포커스된 상태에서 새 메시지 수신 시 (debounce 적용 권장)
+     * - 채팅방 퇴장 시 (마지막으로 본 메시지 PK 전송)
+     * <p>
+     * 요청: /app/chat/channel/{channelPk}/read
+     * Payload: { "messagePk": 123 }
+     */
+    @MessageMapping("/chat/channel/{channelPk}/read")
+    public void markChannelAsRead(@Payload ReadRequest readRequest,
+                                  @DestinationVariable Integer channelPk,
+                                  SimpMessageHeaderAccessor headerAccessor) {
+        try {
+            String jwtToken = extractJwtFromSession(headerAccessor);
+            if (jwtToken == null) {
+                throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
+            }
+
+            chatService.markChannelAsRead(channelPk, readRequest.getMessagePk(), jwtToken);
+        } catch (Exception e) {
+            log.error("채널 읽음 처리 실패: channelPk={}, {}", channelPk, e.getMessage());
+        }
+    }
+
+    /**
+     * DM 메시지 읽음 처리
+     * <p>
+     * 프론트에서 호출하는 시점:
+     * - DM방 입장 시 (현재 마지막 메시지 PK 전송)
+     * - DM방에 포커스된 상태에서 새 메시지 수신 시 (debounce 적용 권장)
+     * - DM방 퇴장 시 (마지막으로 본 메시지 PK 전송)
+     * <p>
+     * 요청: /app/chat/dm/{dmRoomPk}/read
+     * Payload: { "messagePk": 123 }
+     * <p>
+     * 연관 기능:
+     * - DM 목록 조회 시 unreadCount 계산에 반영
+     * (UserStateServiceImpl.getDmRoomsWithStatus → countUnreadMessages)
+     */
+    @MessageMapping("/chat/dm/{dmRoomPk}/read")
+    public void markDmAsRead(@Payload ReadRequest readRequest,
+                             @DestinationVariable Integer dmRoomPk,
+                             SimpMessageHeaderAccessor headerAccessor) {
+        try {
+            String jwtToken = extractJwtFromSession(headerAccessor);
+            if (jwtToken == null) {
+                throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
+            }
+
+            chatService.markDmAsRead(dmRoomPk, readRequest.getMessagePk(), jwtToken);
+
+        } catch (Exception e) {
+            log.error("DM 읽음 처리 실패: dmRoomPk={}, {}", dmRoomPk, e.getMessage());
         }
     }
 

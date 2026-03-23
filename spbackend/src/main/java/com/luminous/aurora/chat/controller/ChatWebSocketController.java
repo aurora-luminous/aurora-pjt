@@ -8,6 +8,8 @@ import com.luminous.aurora.chat.dto.UnreadNotification;
 import com.luminous.aurora.chat.entity.Message;
 import com.luminous.aurora.chat.service.ChatService;
 import com.luminous.aurora.jwt.JwtTokenProvider;
+import com.luminous.aurora.member.entity.DmMember;
+import com.luminous.aurora.member.repository.DmMemberRepository;
 import com.luminous.aurora.userstate.dto.UserStatusChangeRequest;
 import com.luminous.aurora.userstate.dto.UserStatusChangeResponse;
 import com.luminous.aurora.userstate.service.UserStateService;
@@ -21,6 +23,8 @@ import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
+import java.util.List;
+
 @Slf4j
 @Controller
 @RequiredArgsConstructor
@@ -31,6 +35,7 @@ public class ChatWebSocketController {
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserStateService userStateService;
+    private final DmMemberRepository dmMemberRepository;
 
     // 채널 메시지 전송
     @MessageMapping("/chat/channel/{channelPk}")
@@ -96,6 +101,22 @@ public class ChatWebSocketController {
             // DM 방의 멤버에게 메시지 전송
             String destination = "/topic/dm/" + messageRequest.getDmRoomPk();
             messagingTemplate.convertAndSend(destination, chatMessage);
+
+            // 상대방에게 DM unread 알림 브로드 캐스트
+            String sendEmail = savedMessage.getUserPk().getUserEmail();
+            List<DmMember> dmMembers = dmMemberRepository.findByDmRoom_DmRoomPk(dmRoomPk);
+            dmMembers.stream()
+                    .filter(m -> !m.getUser().getUserEmail().equals(sendEmail))
+                    .forEach(m -> {
+                        UnreadNotification notification = UnreadNotification.builder()
+                                .dmRoomPk(dmRoomPk)
+                                .sendUserEmail(sendEmail)
+                                .build();
+                        messagingTemplate.convertAndSend(
+                                "/topic/user/" + m.getUser().getUserEmail() + "/dm/unread",
+                                notification
+                        );
+                    });
 
             log.info("DM 메시지 전송: DmRoomPk = {}, userPk ={}", messageRequest.getDmRoomPk(), chatMessage.getUserPk());
 

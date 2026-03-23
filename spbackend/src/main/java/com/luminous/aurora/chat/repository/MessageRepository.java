@@ -32,6 +32,9 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     // 사용자가 쓴 메시지 조회
     List<Message> findByUserPk_UserPkOrderByCreatedAtDesc(Integer userPk);
 
+    // 채널에 메시지가 1개라도 있는지 확인 (안읽은 메시지 확인용 - lastReadMessage = null 이면 아직 하나도 안읽은건지, 진짜 메시지가 없는건지 체크)
+    boolean existsByChannelPk_ChannelPk(Integer channelPk);
+
     // DM방의 가장 최신 메시지 1개 조회(마지막 메시지 미리보기용)
     @Query("SELECT m FROM Message m " +
             "WHERE m.dmRoomPk.dmRoomPk = :dmRoomPk " +

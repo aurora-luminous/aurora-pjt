@@ -15,6 +15,7 @@ import com.luminous.aurora.common.error.exception.InternalServerErrorException;
 import com.luminous.aurora.common.error.exception.NotFoundException;
 import com.luminous.aurora.dmroom.entity.DmRoom;
 import com.luminous.aurora.dmroom.repository.DmRoomRepository;
+import com.luminous.aurora.internal.dto.ChannelUnreadResponse;
 import com.luminous.aurora.jwt.JwtTokenProvider;
 import com.luminous.aurora.member.entity.ChannelMember;
 import com.luminous.aurora.member.entity.DmMember;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -230,6 +232,71 @@ public class ChatServiceImpl implements ChatService {
         }
     }
 
+    /**
+     * 여러 채널의 안 읽은 메시지 존재 여부 일괄 조회
+     *
+     * @param channelPks - 조회할 채널 PK 목록
+     * @param userPk - 조회 대상 사용자 PK
+     * @return List<ChannelUnreadResponse> - 채널별 hasUnread 목록
+     * <p>
+     * 호출되는 곳:
+     * - InternalController → POST /api/jv/internal/channels/unread
+     * <p>
+     * 처리 순서 (채널별 반복):
+     * 1. ChannelMember 조회 (channelPk + userPk)
+     * 2. 멤버가 아니면 → hasUnread = false
+     * 3. lastReadMessage가 null (한 번도 읽지 않음)
+     * → 채널에 메시지가 1개라도 있으면 true, 없으면 false
+     * 4. lastReadMessage가 있으면 → 이후 메시지 존재 여부 확인 (내가 보낸 것 제외)
+     * <p>
+     * 용도: Express에서 채널 목록 조회 시
+     * Spring에 일괄 요청하여 unread 상태를 합쳐서 프론트에 내려주기 위함
+     * <p>
+     * 응답 예시:
+     * [
+     * { "channelPk": 1, "hasUnread": true },
+     * { "channelPk": 3, "hasUnread": false }
+     * ]
+     */
+    @Override
+    public List<ChannelUnreadResponse> getChannelsUnreadStatus(List<Integer> channelPks, Integer userPk) {
+        try {
+            return channelPks.stream()
+                    .map(channelPk -> {
+                        Optional<ChannelMember> memberOpt = channelMemberRepository
+                                .findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk);
+
+                        if (memberOpt.isEmpty()) {
+                            return ChannelUnreadResponse.builder()
+                                    .channelPk(channelPk)
+                                    .hasUnread(false)
+                                    .build();
+                        }
+
+                        ChannelMember member = memberOpt.get();
+                        boolean hasUnread;
+
+                        if (member.getLastReadMessage() == null) {
+                            hasUnread = messageRepository.existsByChannelPk_ChannelPk(channelPk);
+                        } else {
+                            hasUnread = messageRepository.existsUnreadMessages(
+                                    channelPk,
+                                    member.getLastReadMessage().getMessagePk(),
+                                    userPk
+                            );
+                        }
+
+                        return ChannelUnreadResponse.builder()
+                                .channelPk(channelPk)
+                                .hasUnread(hasUnread)
+                                .build();
+                    })
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("채널 일괄 안 읽음 상태 조회 실패: {}", e.getMessage());
+            throw new InternalServerErrorException("채널 안 읽음 상태 조회 중 서버 오류가 발생했습니다: " + e.getMessage());
+        }
+    }
 
     /**
      * -------------------------------------------------------------------------------------

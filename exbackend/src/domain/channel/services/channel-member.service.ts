@@ -15,7 +15,7 @@ export abstract class ChannelMemberService{
   abstract removeUserFromChannel(removeDto: RemoveFromChannelDto): Promise<void>;
 
   // 채널 나가기
-  abstract leavChannel(channelPk: number, userPk: number): Promise<{ message: string }>;
+  abstract leaveChannel(channelPk: number, userPk: number): Promise<{ message: string }>;
 
   //멤버 차단 및 해제
   abstract banUserFromChannel(channelPk: number, targetUserPk: number, adminUserPk: number): Promise<void>;

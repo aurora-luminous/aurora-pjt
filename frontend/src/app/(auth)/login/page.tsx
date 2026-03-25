@@ -4,9 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
-import { AuthInput } from "../components/AuthInput";
-import { AuthCheckbox } from "../components/AuthCheckbox";
-import { AuthButton } from "../components/AuthButton";
+import { AuthInput, AuthCheckbox, AuthButton } from "../components";
 import { useResponsive } from "../../lib/useResponsive";
 import { parseApiError } from "../../lib/parseApiError";
 
@@ -35,6 +33,12 @@ const LoginPage = () => {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleSubmit("login");
+  };
+
+  const keyDownEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSubmit("login");
+    }
   };
 
   return (
@@ -66,7 +70,10 @@ const LoginPage = () => {
         </p>
       </div>
 
-      <form onSubmit={onSubmit} className={`${isMobile ? "space-y-4" : "space-y-6"}`}>
+      <form
+        onSubmit={onSubmit}
+        className={`${isMobile ? "space-y-4" : "space-y-6"}`}
+      >
         <AuthInput
           label="이메일"
           type="email"
@@ -88,6 +95,7 @@ const LoginPage = () => {
           placeholder="비밀번호를 입력하세요"
           error={errors.password}
           onChange={(value) => updateField("password", value)}
+          onKeyDown={keyDownEnter}
           required
         />
 

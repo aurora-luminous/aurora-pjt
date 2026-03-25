@@ -12,6 +12,7 @@ interface AuthInputProps {
   placeholder: string;
   error?: string;
   onChange: (value: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   required?: boolean;
 }
 
@@ -24,6 +25,7 @@ export const AuthInput: React.FC<AuthInputProps> = ({
   placeholder,
   error,
   onChange,
+  onKeyDown,
   required = false,
 }) => {
   const { isMobile } = useResponsive();
@@ -46,6 +48,7 @@ export const AuthInput: React.FC<AuthInputProps> = ({
         name={name}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
         className={`
           w-full bg-white/10 border rounded-lg text-white placeholder-white/50 
           focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent 

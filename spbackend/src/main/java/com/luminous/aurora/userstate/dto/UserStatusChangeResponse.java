@@ -8,7 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserStatusChangeResponse {
-    private Integer userPk;
+    private String userEmail;
     private UserStatus status;
     private Long timestamp;
 }

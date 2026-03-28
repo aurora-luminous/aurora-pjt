@@ -52,11 +52,15 @@ public class UserStateController {
     public ResponseEntity<UserStatusChangeResponse> setCurrentUserStatus(
             @RequestBody UserStatusChangeRequestForRest request,
             HttpServletRequest httpRequest) {
-        Integer userPk = extractUserPkFromRequest(httpRequest);
+        String token = extractTokenFromCookie(httpRequest);
+        String userEmail = jwtTokenProvider.getUserEmailFromToken(token);
+        Integer userPk = userRepository.findUserPkByUserEmail(userEmail)
+                .orElseThrow(() -> new UnauthorizedException("사용자를 찾을 수 없습니다"));
+
         userStateService.setUserStatus(userPk, request.getStatus());
 
         UserStatusChangeResponse response = UserStatusChangeResponse.builder()
-                .userPk(userPk)
+                .userEmail(userEmail)
                 .status(request.getStatus())
                 .timestamp(System.currentTimeMillis())
                 .build();
@@ -104,7 +108,6 @@ public class UserStateController {
         List<DmRoomResponse> dmRooms = userStateService.getDmRoomsWithStatus(userPk);
         return ResponseEntity.ok(dmRooms);
     }
-
 
 
     /**

@@ -204,7 +204,7 @@ public class ChatWebSocketController {
     @MessageMapping("/userstate/change")
     public void changeUserStatus(@Payload UserStatusChangeRequest request,
                                  SimpMessageHeaderAccessor headerAccessor) {
-        Integer userPk = null;
+        String userEmail = null;
         try {
             // JWT 토큰 검증 및 userPk 추출
             String jwtToken = extractJwtFromSession(headerAccessor);
@@ -212,14 +212,15 @@ public class ChatWebSocketController {
                 throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
             }
 
-            userPk = extractUserPkFromToken(jwtToken);
+            userEmail = jwtTokenProvider.getUserEmailFromToken(jwtToken);
+            Integer userPk = extractUserPkFromToken(jwtToken);
 
             // 상태 변경
             userStateService.setUserStatus(userPk, request.getStatus());
 
             // 상태 변경 응답 생성
             UserStatusChangeResponse response = UserStatusChangeResponse.builder()
-                    .userPk(userPk)
+                    .userEmail(userEmail)
                     .status(request.getStatus())
                     .timestamp(System.currentTimeMillis())
                     .build();
@@ -228,20 +229,20 @@ public class ChatWebSocketController {
             if (request.getProjectPk() != null) {
                 String projectDestination = "/topic/project/" + request.getProjectPk() + "/userstate";
                 messagingTemplate.convertAndSend(projectDestination, response);
-                log.info("프로젝트 상태 변경 브로드캐스트: projectPk={}, userPk={}, status={}",
-                        request.getProjectPk(), userPk, request.getStatus());
+                log.info("프로젝트 상태 변경 브로드캐스트: projectPk={}, userEmail={}, status={}",
+                        request.getProjectPk(), userEmail, request.getStatus());
             }
 
             if (request.getDmRoomPk() != null) {
                 String dmDestination = "/topic/dm/" + request.getDmRoomPk() + "/userstate";
                 messagingTemplate.convertAndSend(dmDestination, response);
-                log.info("DM 상태 변경 브로드캐스트: dmRoomPk={}, userPk={}, status={}",
-                        request.getDmRoomPk(), userPk, request.getStatus());
+                log.info("DM 상태 변경 브로드캐스트: dmRoomPk={}, userEmail={}, status={}",
+                        request.getDmRoomPk(), userEmail, request.getStatus());
             }
 
         } catch (Exception e) {
-            log.error("사용자 상태 변경 실패: userPk={}, status={}",
-                    userPk, request.getStatus(), e);
+            log.error("사용자 상태 변경 실패: userEmail={}, status={}",
+                    userEmail, request.getStatus(), e);
         }
     }
 

@@ -9,7 +9,7 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { Server } from '../../server/entities/server.entity';
 import { ProjectMember } from './project-member.entity';
-import { Channel } from '../../text-channel/entities/channel.entity';
+import { Channel } from '../../channel/entities/channel.entity';
 import { Event } from './event.entity';
 
 @Entity('project')

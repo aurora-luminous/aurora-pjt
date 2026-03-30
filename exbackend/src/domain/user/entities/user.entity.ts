@@ -11,7 +11,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { UserOption } from './user-option.entity';
 import { ServerMember } from '../../server/entities/server-member.entity';
 import { ProjectMember } from '../../project/entities/project-member.entity';
-import { ChannelMember } from '../../text-channel/entities/channel-member.entity';
+import { ChannelMember } from '../../channel/entities/channel-member.entity';
 
 @Entity('users')
 export class User {
@@ -59,5 +59,4 @@ export class User {
 
   @OneToMany(() => ChannelMember, (channelMember) => channelMember.user)
   channelMembers: ChannelMember[];
-
 }

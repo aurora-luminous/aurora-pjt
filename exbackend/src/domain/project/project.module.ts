@@ -6,8 +6,8 @@ import { Server } from '../server/entities/server.entity';
 import { ServerMember } from '../server/entities/server-member.entity';
 import { User } from '../user/entities/user.entity';
 import { UserModule } from '../user/user.module';
-import { Channel } from '../text-channel/entities/channel.entity';
-import { ChannelMember } from '../text-channel/entities/channel-member.entity';
+import { Channel } from '../channel/entities/channel.entity';
+import { ChannelMember } from '../channel/entities/channel-member.entity';
 import { ProjectCreationService } from './services/project-creation.service';
 import { ProjectInvitationService } from './services/project-invitation.service';
 import { ProjectController } from './controllers/project.controller';
@@ -29,16 +29,14 @@ import { ProjectMemberUpdateService } from './services/project-member-update.ser
     ]),
     UserModule,
   ],
-  controllers: [
-    ProjectController,
-  ],
+  controllers: [ProjectController],
   providers: [
     ProjectCreationService,
     ProjectInvitationService,
     ProjectDeletionService,
     ProjectUpdateService,
     ProjectNotificationService,
-    ProjectMemberUpdateService
+    ProjectMemberUpdateService,
   ],
   exports: [
     ProjectCreationService,

@@ -5,8 +5,8 @@ import { Server } from '../entities/server.entity';
 import { ServerMember } from '../entities/server-member.entity';
 import { Project } from '../../project/entities/project.entity';
 import { ProjectMember } from '../../project/entities/project-member.entity';
-import { Channel } from '../../text-channel/entities/channel.entity';
-import { ChannelMember } from '../../text-channel/entities/channel-member.entity';
+import { Channel } from '../../channel/entities/channel.entity';
+import { ChannelMember } from '../../channel/entities/channel-member.entity';
 import { findActiveEntityById } from '../../../common/utils/entity-status.util';
 
 @Injectable()
@@ -42,7 +42,9 @@ export class ServerDeletionService {
     });
 
     if (!deleterMember) {
-      throw new UnauthorizedException('서버를 삭제할 권한이 없습니다. 서버 owner만 삭제할 수 있습니다.');
+      throw new UnauthorizedException(
+        '서버를 삭제할 권한이 없습니다. 서버 owner만 삭제할 수 있습니다.',
+      );
     }
 
     // 3. 활성 멤버가 있으면 비활성으로 변경
@@ -61,7 +63,7 @@ export class ServerDeletionService {
     });
 
     if (projectsToDelete.length > 0) {
-      const projectPks = projectsToDelete.map(p => p.projectPk);
+      const projectPks = projectsToDelete.map((p) => p.projectPk);
       await this.projectRepository.update(
         { projectPk: In(projectPks) },
         { isDeletedProject: true },
@@ -79,7 +81,7 @@ export class ServerDeletionService {
       });
 
       if (channelsToDelete.length > 0) {
-        const channelPks = channelsToDelete.map(c => c.channelPk);
+        const channelPks = channelsToDelete.map((c) => c.channelPk);
         await this.channelRepository.update(
           { channelPk: In(channelPks) },
           { isDeletedChannel: true },

@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -7,20 +12,33 @@ import { Server } from '../entities/server.entity';
 import { ServerMember } from '../entities/server-member.entity';
 import { User } from '../../user/entities/user.entity';
 import { UserService } from '../../user/services/user.service';
-import { ServerRoleUtils, ServerRoleType } from '../../../common/enums/member-role.enum';
-import { MemberStatus, ServerMemberStatus, MemberStatusUtils } from '../../../common/enums/member-status.enum';
+import {
+  ServerRoleUtils,
+  ServerRoleType,
+} from '../../../common/enums/member-role.enum';
+import {
+  MemberStatus,
+  ServerMemberStatus,
+  MemberStatusUtils,
+} from '../../../common/enums/member-status.enum';
 import { Project } from '../../project/entities/project.entity';
 import { ProjectMember } from '../../project/entities/project-member.entity';
-import { Channel } from '../../text-channel/entities/channel.entity';
-import { ChannelMember } from '../../text-channel/entities/channel-member.entity';
+import { Channel } from '../../channel/entities/channel.entity';
+import { ChannelMember } from '../../channel/entities/channel-member.entity';
 import { ServerRolePermissionService } from './server-role-permission.service';
-import { PendingMemberDto, ServerMemberInfoDto, ServerMemberDetailDto, UpdateMemberStatusDto, JoinServerDto, ServerInviteDto } from '../dto';
+import {
+  PendingMemberDto,
+  ServerMemberInfoDto,
+  ServerMemberDetailDto,
+  UpdateMemberStatusDto,
+  JoinServerDto,
+  ServerInviteDto,
+} from '../dto';
 import { RedisService } from '../../../common/redis/redis.service'; // RedisService 추가
 import { findActiveEntityById } from '../../../common/utils/entity-status.util'; // findActiveEntityById import
 
 @Injectable()
 export class ServerInvitationService {
-
   constructor(
     @InjectRepository(Server)
     private readonly serverRepository: Repository<Server>,
@@ -43,7 +61,10 @@ export class ServerInvitationService {
   ) {}
 
   // 서버 초대 링크 생성
-  async generateInviteHash(serverPk: number, requestUserPk: number): Promise<{ inviteHash: string }> {
+  async generateInviteHash(
+    serverPk: number,
+    requestUserPk: number,
+  ): Promise<{ inviteHash: string }> {
     // 1. 서버 존재 확인
     await findActiveEntityById(
       this.serverRepository,
@@ -54,7 +75,7 @@ export class ServerInvitationService {
     );
 
     const server = await this.serverRepository.findOne({
-        where: { serverPk, isDeletedServer: false }
+      where: { serverPk, isDeletedServer: false },
     });
 
     if (!server) {
@@ -66,12 +87,17 @@ export class ServerInvitationService {
       where: {
         serverPk,
         userPk: requestUserPk,
-        sStatus: 'Active'
-      }
+        sStatus: 'Active',
+      },
     });
 
-    if (!serverMember || !ServerRoleUtils.hasAdminPermission(serverMember.serverRole)) {
-      throw new ForbiddenException('서버 관리자 또는 소유자만 초대 링크를 생성할 수 있습니다');
+    if (
+      !serverMember ||
+      !ServerRoleUtils.hasAdminPermission(serverMember.serverRole)
+    ) {
+      throw new ForbiddenException(
+        '서버 관리자 또는 소유자만 초대 링크를 생성할 수 있습니다',
+      );
     }
 
     // 3. 고유 해시 생성 (UUID 사용)
@@ -80,7 +106,11 @@ export class ServerInvitationService {
     // 4. Redis에 초대 해시와 serverPk 저장 (7일 TTL)
     // Redis의 TTL은 초 단위이므로 7일 * 24시간 * 60분 * 60초 = 604800초
     const TTL = 7 * 24 * 60 * 60;
-    await this.redisService.set(`server_invite_hash:${newInviteHash}`, server.serverPk.toString(), TTL);
+    await this.redisService.set(
+      `server_invite_hash:${newInviteHash}`,
+      server.serverPk.toString(),
+      TTL,
+    );
 
     return {
       inviteHash: newInviteHash,
@@ -88,7 +118,10 @@ export class ServerInvitationService {
   }
 
   // 직접 서버 가입 신청 (serverUrl로)
-  async joinServerDirect(serverUrl: string, userPk: number): Promise<PendingMemberDto> {
+  async joinServerDirect(
+    serverUrl: string,
+    userPk: number,
+  ): Promise<PendingMemberDto> {
     // 1. 서버 존재 확인
     await findActiveEntityById(
       this.serverRepository,
@@ -99,7 +132,7 @@ export class ServerInvitationService {
     );
 
     const server = await this.serverRepository.findOne({
-        where: { serverUrl, isDeletedServer: false }
+      where: { serverUrl, isDeletedServer: false },
     });
 
     if (!server) {
@@ -108,7 +141,7 @@ export class ServerInvitationService {
 
     // 2. 사용자 존재 확인
     const user = await this.userRepository.findOne({
-      where: { userPk, isDeleted: false }
+      where: { userPk, isDeleted: false },
     });
 
     if (!user) {
@@ -117,7 +150,7 @@ export class ServerInvitationService {
 
     // 3. 이미 서버 멤버인지 확인
     const existingMember = await this.serverMemberRepository.findOne({
-      where: { serverPk: server.serverPk, userPk }
+      where: { serverPk: server.serverPk, userPk },
     });
 
     if (existingMember) {
@@ -129,14 +162,14 @@ export class ServerInvitationService {
           where: {
             serverPk: server.serverPk,
             projectName: '일반',
-            isDeletedProject: false
-          }
+            isDeletedProject: false,
+          },
         });
 
         if (project) {
           defaultProject = {
             projectPk: project.projectPk,
-            projectName: project.projectName
+            projectName: project.projectName,
           };
 
           // 해당 프로젝트의 기본 "일반" 채널 조회
@@ -144,14 +177,14 @@ export class ServerInvitationService {
             where: {
               projectPk: project.projectPk,
               channelName: '일반',
-              isDeletedChannel: false
-            }
+              isDeletedChannel: false,
+            },
           });
 
           if (channel) {
             defaultChannel = {
               channelPk: channel.channelPk,
-              channelName: channel.channelName
+              channelName: channel.channelName,
             };
           }
         }
@@ -189,16 +222,16 @@ export class ServerInvitationService {
   }
 
   // 초대 링크로 서버 정보 조회
-  async getServerInfoByInvite(
-    joinDto: JoinServerDto
-  ): Promise<{
+  async getServerInfoByInvite(joinDto: JoinServerDto): Promise<{
     serverUrl: string;
     serverName: string;
     memberCount: number;
     owner: string;
   }> {
     // 1. 해시로 초대 링크 찾기 (Redis에서)
-    const serverPkString = await this.redisService.get(`server_invite_hash:${joinDto.inviteHash}`);
+    const serverPkString = await this.redisService.get(
+      `server_invite_hash:${joinDto.inviteHash}`,
+    );
 
     if (!serverPkString) {
       throw new NotFoundException('잘못되었거나 만료된 초대 링크입니다');
@@ -216,7 +249,7 @@ export class ServerInvitationService {
     );
 
     const server = await this.serverRepository.findOne({
-        where: { serverPk, isDeletedServer: false }
+      where: { serverPk, isDeletedServer: false },
     });
 
     if (!server) {
@@ -225,11 +258,13 @@ export class ServerInvitationService {
 
     // 4. 사용자 존재 확인 (유효한 사용자인지만 확인)
     const user = await this.userRepository.findOne({
-      where: { userPk: joinDto.userPk, isDeleted: false }
+      where: { userPk: joinDto.userPk, isDeleted: false },
     });
 
     if (!user) {
-      throw new NotFoundException(`사용자 ID ${joinDto.userPk}를 찾을 수 없습니다`);
+      throw new NotFoundException(
+        `사용자 ID ${joinDto.userPk}를 찾을 수 없습니다`,
+      );
     }
 
     // 5. 서버 멤버 수 조회
@@ -253,12 +288,14 @@ export class ServerInvitationService {
       serverName: server.serverName,
       memberCount: memberCount,
       owner: ownerMember.user.userName,
-      
     };
   }
 
   // 서버 승인 대기 목록 조회
-  async getPendingMembers(serverPk: number, requestUserPk: number): Promise<PendingMemberDto[]> {
+  async getPendingMembers(
+    serverPk: number,
+    requestUserPk: number,
+  ): Promise<PendingMemberDto[]> {
     // 1. 서버 존재 확인
     await findActiveEntityById(
       this.serverRepository,
@@ -269,11 +306,11 @@ export class ServerInvitationService {
     );
 
     const server = await this.serverRepository.findOne({
-        where: { serverPk, isDeletedServer: false }
+      where: { serverPk, isDeletedServer: false },
     });
 
     if (!server) {
-        throw new NotFoundException(`서버를 찾을 수 없습니다 (내부 오류).`);
+      throw new NotFoundException(`서버를 찾을 수 없습니다 (내부 오류).`);
     }
 
     // 2. 요청자가 서버 관리자인지 확인
@@ -281,12 +318,17 @@ export class ServerInvitationService {
       where: {
         serverPk,
         userPk: requestUserPk,
-        sStatus: 'Active'
-      }
+        sStatus: 'Active',
+      },
     });
 
-    if (!requestMember || !ServerRoleUtils.hasAdminPermission(requestMember.serverRole)) {
-      throw new ForbiddenException('서버 관리자 또는 소유자만 대기 중인 멤버를 볼 수 있습니다');
+    if (
+      !requestMember ||
+      !ServerRoleUtils.hasAdminPermission(requestMember.serverRole)
+    ) {
+      throw new ForbiddenException(
+        '서버 관리자 또는 소유자만 대기 중인 멤버를 볼 수 있습니다',
+      );
     }
 
     // 3. 대기 중인 멤버 목록 조회
@@ -296,7 +338,7 @@ export class ServerInvitationService {
       order: { serverMemberPk: 'ASC' }, // 신청 순서대로
     });
 
-    return pendingMembers.map(member => ({
+    return pendingMembers.map((member) => ({
       sStatus: member.sStatus,
       userInfo: {
         user_pk: member.user.userPk,
@@ -310,16 +352,18 @@ export class ServerInvitationService {
   // 서버 가입 승인/거절
   async updateMemberStatus(
     serverMemberPk: number,
-    updateDto: UpdateMemberStatusDto
+    updateDto: UpdateMemberStatusDto,
   ): Promise<PendingMemberDto> {
     // 1. 서버 멤버 존재 확인
     const serverMember = await this.serverMemberRepository.findOne({
       where: { serverMemberPk },
-      relations: ['user', 'server']
+      relations: ['user', 'server'],
     });
 
     if (!serverMember) {
-      throw new NotFoundException(`서버 멤버 ID ${serverMemberPk}를 찾을 수 없습니다`);
+      throw new NotFoundException(
+        `서버 멤버 ID ${serverMemberPk}를 찾을 수 없습니다`,
+      );
     }
 
     // 2. 관리자 권한 확인
@@ -327,26 +371,38 @@ export class ServerInvitationService {
       where: {
         serverPk: serverMember.serverPk,
         userPk: updateDto.adminUserPk,
-        sStatus: 'Active'
-      }
+        sStatus: 'Active',
+      },
     });
 
-    if (!adminMember || !ServerRoleUtils.hasAdminPermission(adminMember.serverRole)) {
-      throw new ForbiddenException('서버 관리자 또는 소유자만 멤버를 승인/거절할 수 있습니다');
+    if (
+      !adminMember ||
+      !ServerRoleUtils.hasAdminPermission(adminMember.serverRole)
+    ) {
+      throw new ForbiddenException(
+        '서버 관리자 또는 소유자만 멤버를 승인/거절할 수 있습니다',
+      );
     }
 
     // 3. 상태가 Pending인지 확인
     if (serverMember.sStatus !== 'Pending') {
-      throw new ConflictException('대기 중인 멤버만 승인 또는 거절할 수 있습니다');
+      throw new ConflictException(
+        '대기 중인 멤버만 승인 또는 거절할 수 있습니다',
+      );
     }
 
     // 4. 상태 업데이트 (Active 또는 Inactive만 허용)
     if (!['Active', 'Inactive'].includes(updateDto.sStatus)) {
-      throw new ConflictException('잘못된 상태입니다. 대기 멤버는 Active 또는 Inactive만 허용됩니다');
+      throw new ConflictException(
+        '잘못된 상태입니다. 대기 멤버는 Active 또는 Inactive만 허용됩니다',
+      );
     }
 
     // 5. 상태 업데이트
-    await this._updateServerMemberStatus(serverMember.serverMemberPk, updateDto.sStatus);
+    await this._updateServerMemberStatus(
+      serverMember.serverMemberPk,
+      updateDto.sStatus,
+    );
 
     // 업데이트된 멤버 정보를 다시 가져오기
     const updatedMember = await this.serverMemberRepository.findOne({
@@ -355,7 +411,9 @@ export class ServerInvitationService {
     });
 
     if (!updatedMember) {
-      throw new NotFoundException(`유저 ${serverMemberPk}의 상태 변경에 실패했습니다.`);
+      throw new NotFoundException(
+        `유저 ${serverMemberPk}의 상태 변경에 실패했습니다.`,
+      );
     }
 
     return {
@@ -372,7 +430,7 @@ export class ServerInvitationService {
     serverPk: number,
     userEmail: string,
     sStatus: 'Active' | 'Inactive' | 'Banned',
-    adminUserPk: number
+    adminUserPk: number,
   ): Promise<PendingMemberDto> {
     // 1. userEmail로 사용자 찾기
     const user = await this.userService.getUserByEmail(userEmail);
@@ -380,11 +438,13 @@ export class ServerInvitationService {
     // 2. 서버 멤버 찾기
     const serverMember = await this.serverMemberRepository.findOne({
       where: { serverPk, userPk: user.userPk },
-      relations: ['user', 'server']
+      relations: ['user', 'server'],
     });
 
     if (!serverMember) {
-      throw new NotFoundException(`사용자 ${userEmail}이 이 서버의 멤버가 아닙니다`);
+      throw new NotFoundException(
+        `사용자 ${userEmail}이 이 서버의 멤버가 아닙니다`,
+      );
     }
 
     // 3. 관리자 권한 확인
@@ -392,17 +452,24 @@ export class ServerInvitationService {
       where: {
         serverPk,
         userPk: adminUserPk,
-        sStatus: 'Active'
-      }
+        sStatus: 'Active',
+      },
     });
 
-    if (!adminMember || !ServerRoleUtils.hasAdminPermission(adminMember.serverRole)) {
-      throw new ForbiddenException('서버 관리자 또는 소유자만 멤버를 승인/거절할 수 있습니다');
+    if (
+      !adminMember ||
+      !ServerRoleUtils.hasAdminPermission(adminMember.serverRole)
+    ) {
+      throw new ForbiddenException(
+        '서버 관리자 또는 소유자만 멤버를 승인/거절할 수 있습니다',
+      );
     }
 
     // 4. 상태가 Pending인지 확인 (Banned는 예외)
     if (serverMember.sStatus !== 'Pending' && sStatus !== 'Banned') {
-      throw new ConflictException('대기 중인 멤버만 승인 또는 거절할 수 있습니다');
+      throw new ConflictException(
+        '대기 중인 멤버만 승인 또는 거절할 수 있습니다',
+      );
     }
 
     // 5. 상태 업데이트
@@ -420,7 +487,9 @@ export class ServerInvitationService {
     });
 
     if (!updatedMember) {
-      throw new NotFoundException(`유저 ${serverMember.serverMemberPk}의 상태 변경에 실패했습니다.`);
+      throw new NotFoundException(
+        `유저 ${serverMember.serverMemberPk}의 상태 변경에 실패했습니다.`,
+      );
     }
 
     return {
@@ -434,14 +503,17 @@ export class ServerInvitationService {
   }
 
   // 기본 프로젝트와 모든 public 채널에 멤버 자동 추가 (private helper)
-  private async addMemberToDefaultProjectAndChannel(serverPk: number, userPk: number): Promise<void> {
+  private async addMemberToDefaultProjectAndChannel(
+    serverPk: number,
+    userPk: number,
+  ): Promise<void> {
     // 1. 기본 "일반" 프로젝트 찾기
     const defaultProject = await this.projectRepository.findOne({
       where: {
         serverPk,
         projectName: '일반',
-        isDeletedProject: false
-      }
+        isDeletedProject: false,
+      },
     });
 
     if (!defaultProject) {
@@ -452,7 +524,7 @@ export class ServerInvitationService {
 
     // 2. 이미 프로젝트 멤버인지 확인
     const existingProjectMember = await this.projectMemberRepository.findOne({
-      where: { projectPk: defaultProject.projectPk, userPk }
+      where: { projectPk: defaultProject.projectPk, userPk },
     });
 
     if (!existingProjectMember) {
@@ -461,7 +533,7 @@ export class ServerInvitationService {
         projectPk: defaultProject.projectPk,
         userPk,
         pStatus: 'Active',
-        projectRole: 'member'
+        projectRole: 'member',
       });
       await this.projectMemberRepository.save(projectMember);
     }
@@ -471,14 +543,17 @@ export class ServerInvitationService {
   }
 
   // 프로젝트의 모든 public 채널에 멤버를 추가하는 헬퍼 메서드
-  private async addMemberToPublicChannels(projectPk: number, userPk: number): Promise<void> {
+  private async addMemberToPublicChannels(
+    projectPk: number,
+    userPk: number,
+  ): Promise<void> {
     // 해당 프로젝트의 모든 public 채널 조회
     const publicChannels = await this.channelRepository.find({
       where: {
         projectPk,
         isDeletedChannel: false,
-        accessType: 'PUBLIC' // isPrivate 대신 accessType 사용
-      }
+        accessType: 'PUBLIC', // isPrivate 대신 accessType 사용
+      },
     });
 
     if (publicChannels.length === 0) {
@@ -490,22 +565,24 @@ export class ServerInvitationService {
     const existingChannelMembers = await this.channelMemberRepository.find({
       where: {
         userPk,
-        channelPk: In(publicChannels.map(ch => ch.channelPk))
-      }
+        channelPk: In(publicChannels.map((ch) => ch.channelPk)),
+      },
     });
 
-    const existingChannelPks = new Set(existingChannelMembers.map(m => m.channelPk));
+    const existingChannelPks = new Set(
+      existingChannelMembers.map((m) => m.channelPk),
+    );
 
     // 아직 가입되지 않은 public 채널에만 추가
     const channelMembersToAdd = publicChannels
-      .filter(channel => !existingChannelPks.has(channel.channelPk))
-      .map(channel =>
+      .filter((channel) => !existingChannelPks.has(channel.channelPk))
+      .map((channel) =>
         this.channelMemberRepository.create({
           channelPk: channel.channelPk,
           userPk: userPk,
           cStatus: 'Active',
           channelRole: 'member',
-        })
+        }),
       );
 
     if (channelMembersToAdd.length > 0) {
@@ -514,7 +591,10 @@ export class ServerInvitationService {
   }
 
   // 서버 멤버 목록 조회 (모든 상태)
-  async getActiveServerMembers(serverPk: number, requestUserPk: number): Promise<PendingMemberDto[]> {
+  async getActiveServerMembers(
+    serverPk: number,
+    requestUserPk: number,
+  ): Promise<PendingMemberDto[]> {
     // 1. 서버 존재 확인
     await findActiveEntityById(
       this.serverRepository,
@@ -525,11 +605,11 @@ export class ServerInvitationService {
     );
 
     const server = await this.serverRepository.findOne({
-        where: { serverPk, isDeletedServer: false }
+      where: { serverPk, isDeletedServer: false },
     });
 
     if (!server) {
-        throw new NotFoundException(`서버를 찾을 수 없습니다 (내부 오류).`);
+      throw new NotFoundException(`서버를 찾을 수 없습니다 (내부 오류).`);
     }
 
     // 2. 요청자가 서버 멤버인지 확인
@@ -537,8 +617,8 @@ export class ServerInvitationService {
       where: {
         serverPk,
         userPk: requestUserPk,
-        sStatus: 'Active'
-      }
+        sStatus: 'Active',
+      },
     });
 
     if (!requestMember) {
@@ -552,7 +632,7 @@ export class ServerInvitationService {
       order: { serverMemberPk: 'ASC' },
     });
 
-    return allMembers.map(member => ({
+    return allMembers.map((member) => ({
       sStatus: member.sStatus,
       userInfo: {
         user_pk: member.user.userPk,
@@ -564,7 +644,10 @@ export class ServerInvitationService {
   }
 
   // 밴당한 멤버 목록 조회 (관리자만)
-  async getBannedMembers(serverPk: number, requestUserPk: number): Promise<PendingMemberDto[]> {
+  async getBannedMembers(
+    serverPk: number,
+    requestUserPk: number,
+  ): Promise<PendingMemberDto[]> {
     // 1. 서버 존재 확인 (가드 역할)
     await findActiveEntityById(
       this.serverRepository,
@@ -576,11 +659,11 @@ export class ServerInvitationService {
 
     // 1.5. 유효성이 확인된 서버 객체를 다시 로드
     const server = await this.serverRepository.findOne({
-        where: { serverPk, isDeletedServer: false }
+      where: { serverPk, isDeletedServer: false },
     });
 
     if (!server) {
-        throw new NotFoundException(`서버를 찾을 수 없습니다 (내부 오류).`);
+      throw new NotFoundException(`서버를 찾을 수 없습니다 (내부 오류).`);
     }
 
     // 2. 요청자가 서버 관리자인지 확인
@@ -588,12 +671,17 @@ export class ServerInvitationService {
       where: {
         serverPk,
         userPk: requestUserPk,
-        sStatus: 'Active'
-      }
+        sStatus: 'Active',
+      },
     });
 
-    if (!requestMember || !ServerRoleUtils.hasAdminPermission(requestMember.serverRole)) {
-      throw new ForbiddenException('서버 관리자 또는 소유자만 차단된 멤버를 볼 수 있습니다');
+    if (
+      !requestMember ||
+      !ServerRoleUtils.hasAdminPermission(requestMember.serverRole)
+    ) {
+      throw new ForbiddenException(
+        '서버 관리자 또는 소유자만 차단된 멤버를 볼 수 있습니다',
+      );
     }
 
     // 3. 밴된 멤버 목록 조회
@@ -603,7 +691,7 @@ export class ServerInvitationService {
       order: { serverMemberPk: 'DESC' }, // 최근 밴된 순서
     });
 
-    return bannedMembers.map(member => ({
+    return bannedMembers.map((member) => ({
       sStatus: member.sStatus,
       userInfo: {
         user_pk: member.user.userPk,
@@ -615,11 +703,14 @@ export class ServerInvitationService {
   }
 
   // 밴당한 멤버 복구 (Owner만 가능)
-  async unbanMember(serverMemberPk: number, adminUserPk: number): Promise<PendingMemberDto> {
+  async unbanMember(
+    serverMemberPk: number,
+    adminUserPk: number,
+  ): Promise<PendingMemberDto> {
     // 1. 밴된 멤버 확인
     const bannedMember = await this.serverMemberRepository.findOne({
       where: { serverMemberPk, sStatus: 'Banned' },
-      relations: ['user', 'server']
+      relations: ['user', 'server'],
     });
 
     if (!bannedMember) {
@@ -631,12 +722,14 @@ export class ServerInvitationService {
       where: {
         serverPk: bannedMember.serverPk,
         userPk: adminUserPk,
-        sStatus: 'Active'
-      }
+        sStatus: 'Active',
+      },
     });
 
     if (!adminMember || adminMember.serverRole !== 'owner') {
-      throw new ForbiddenException('서버 소유자만 멤버의 차단을 해제할 수 있습니다');
+      throw new ForbiddenException(
+        '서버 소유자만 멤버의 차단을 해제할 수 있습니다',
+      );
     }
 
     // 3. 상태를 Active로 복구
@@ -649,7 +742,9 @@ export class ServerInvitationService {
     });
 
     if (!unbannedMember) {
-      throw new NotFoundException(`유저 ${bannedMember.serverMemberPk} 차단 해제 실패.`);
+      throw new NotFoundException(
+        `유저 ${bannedMember.serverMemberPk} 차단 해제 실패.`,
+      );
     }
 
     return {
@@ -662,7 +757,11 @@ export class ServerInvitationService {
     };
   }
 
-  async banMember(serverPk: number, targetUserPk: number, adminUserPk: number): Promise<void> {
+  async banMember(
+    serverPk: number,
+    targetUserPk: number,
+    adminUserPk: number,
+  ): Promise<void> {
     // 1. 서버 존재 확인
     await findActiveEntityById(
       this.serverRepository,
@@ -674,28 +773,31 @@ export class ServerInvitationService {
 
     // 1.5. 유효성이 확인된 서버 객체를 다시 로드
     const server = await this.serverRepository.findOne({
-        where: { serverPk, isDeletedServer: false }
+      where: { serverPk, isDeletedServer: false },
     });
 
     if (!server) {
-        throw new NotFoundException(`서버를 찾을 수 없습니다 (내부 오류).`);
+      throw new NotFoundException(`서버를 찾을 수 없습니다 (내부 오류).`);
     }
 
     // 2. 차단할 멤버 확인 (승인된 멤버만)
     const targetMember = await this.serverMemberRepository.findOne({
-      where: { serverPk, userPk: targetUserPk, sStatus: 'Active' }
+      where: { serverPk, userPk: targetUserPk, sStatus: 'Active' },
     });
 
     if (!targetMember) {
-      throw new NotFoundException('대상 사용자가 이 서버의 활성 멤버가 아닙니다');
+      throw new NotFoundException(
+        '대상 사용자가 이 서버의 활성 멤버가 아닙니다',
+      );
     }
 
     // 3. ban_members 권한 확인 (DB 권한 시스템 사용)
-    const hasBanPermission = await this.serverRolePermissionService.hasPermission(
-      serverPk,
-      adminUserPk,
-      'banMembers'
-    );
+    const hasBanPermission =
+      await this.serverRolePermissionService.hasPermission(
+        serverPk,
+        adminUserPk,
+        'banMembers',
+      );
 
     if (!hasBanPermission) {
       throw new ForbiddenException('멤버 차단 권한이 없습니다');
@@ -703,7 +805,7 @@ export class ServerInvitationService {
 
     // 요청자 정보 조회 (Owner 여부 확인용)
     const adminMember = await this.serverMemberRepository.findOne({
-      where: { serverPk, userPk: adminUserPk, sStatus: 'Active' }
+      where: { serverPk, userPk: adminUserPk, sStatus: 'Active' },
     });
 
     if (!adminMember) {
@@ -716,8 +818,13 @@ export class ServerInvitationService {
     }
 
     // 5. Admin끼리는 차단 불가 (Owner만 Admin 차단 가능)
-    if (targetMember.serverRole === 'admin' && adminMember.serverRole !== 'owner') {
-      throw new ForbiddenException('서버 소유자만 관리자 멤버를 차단할 수 있습니다');
+    if (
+      targetMember.serverRole === 'admin' &&
+      adminMember.serverRole !== 'owner'
+    ) {
+      throw new ForbiddenException(
+        '서버 소유자만 관리자 멤버를 차단할 수 있습니다',
+      );
     }
 
     // 6. 논리적 삭제 (상태를 'Banned'로 변경)
@@ -727,7 +834,7 @@ export class ServerInvitationService {
   // serverUrl로 서버 멤버 목록 조회 (권한에 따라 다른 정보 반환)
   async getServerMembersByUrl(
     serverUrl: string,
-    requestUserPk: number
+    requestUserPk: number,
   ): Promise<ServerMemberInfoDto[] | ServerMemberDetailDto[]> {
     // 1. 서버 존재 확인
     await findActiveEntityById(
@@ -740,11 +847,13 @@ export class ServerInvitationService {
 
     // 1.5. 유효성이 확인된 서버 객체를 다시 로드
     const server = await this.serverRepository.findOne({
-        where: { serverUrl, isDeletedServer: false }
+      where: { serverUrl, isDeletedServer: false },
     });
 
     if (!server) {
-        throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다 (내부 오류).`);
+      throw new NotFoundException(
+        `서버 URL ${serverUrl}을 찾을 수 없습니다 (내부 오류).`,
+      );
     }
 
     // 2. 요청자의 서버 멤버 정보 확인
@@ -752,8 +861,8 @@ export class ServerInvitationService {
       where: {
         serverPk: server.serverPk,
         userPk: requestUserPk,
-        sStatus: 'Active'
-      }
+        sStatus: 'Active',
+      },
     });
 
     if (!requestMember) {
@@ -768,11 +877,13 @@ export class ServerInvitationService {
     });
 
     // 4. 권한에 따라 다른 정보 반환
-    const isAdmin = ServerRoleUtils.hasAdminPermission(requestMember.serverRole);
+    const isAdmin = ServerRoleUtils.hasAdminPermission(
+      requestMember.serverRole,
+    );
 
     if (isAdmin) {
       // Admin/Owner: 상세 정보 포함
-      return allMembers.map(member => ({
+      return allMembers.map((member) => ({
         sStatus: member.sStatus,
         serverRole: member.serverRole,
         userInfo: {
@@ -783,7 +894,7 @@ export class ServerInvitationService {
       }));
     } else {
       // Member: 기본 정보만
-      return allMembers.map(member => ({
+      return allMembers.map((member) => ({
         userInfo: {
           userName: member.user.userName,
           userEmail: member.user.userEmail,
@@ -794,7 +905,10 @@ export class ServerInvitationService {
   }
 
   // 서버 나가기 (사용자 본인)
-  async leaveServer(serverUrl: string, userPk: number): Promise<{ message: string }> {
+  async leaveServer(
+    serverUrl: string,
+    userPk: number,
+  ): Promise<{ message: string }> {
     // 1. 서버 존재 확인
     await findActiveEntityById(
       this.serverRepository,
@@ -805,11 +919,13 @@ export class ServerInvitationService {
     );
 
     const server = await this.serverRepository.findOne({
-        where: { serverUrl, isDeletedServer: false }
+      where: { serverUrl, isDeletedServer: false },
     });
 
     if (!server) {
-        throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다 (내부 오류).`);
+      throw new NotFoundException(
+        `서버 URL ${serverUrl}을 찾을 수 없습니다 (내부 오류).`,
+      );
     }
 
     // 2. 요청자가 서버 멤버인지 확인
@@ -817,9 +933,9 @@ export class ServerInvitationService {
       where: {
         serverPk: server.serverPk,
         userPk,
-        sStatus: 'Active'
+        sStatus: 'Active',
       },
-      relations: ['user']
+      relations: ['user'],
     });
 
     if (!serverMember) {
@@ -828,22 +944,27 @@ export class ServerInvitationService {
 
     // 3. 서버 소유자는 나갈 수 없음 (Owner는 서버를 삭제해야 함)
     if (serverMember.serverRole === 'owner') {
-      throw new ForbiddenException('서버 소유자는 서버를 나갈 수 없습니다. 서버를 삭제해야 합니다.');
+      throw new ForbiddenException(
+        '서버 소유자는 서버를 나갈 수 없습니다. 서버를 삭제해야 합니다.',
+      );
     }
 
     // 4. 상태를 Inactive로 변경 (soft delete)
-    await this._updateServerMemberStatus(serverMember.serverMemberPk, 'Inactive');
+    await this._updateServerMemberStatus(
+      serverMember.serverMemberPk,
+      'Inactive',
+    );
 
     // 5. 해당 서버 내의 모든 프로젝트와 채널에서 사용자의 멤버십 상태를 Inactive로 변경
     const projectsInServer = await this.projectRepository.find({
       where: { serverPk: server.serverPk, isDeletedProject: false },
-      select: ['projectPk']
+      select: ['projectPk'],
     });
 
     for (const project of projectsInServer) {
       // 프로젝트 멤버십 비활성화
       const projectMember = await this.projectMemberRepository.findOne({
-        where: { projectPk: project.projectPk, userPk, pStatus: 'Active' }
+        where: { projectPk: project.projectPk, userPk, pStatus: 'Active' },
       });
       if (projectMember) {
         projectMember.pStatus = 'Inactive';
@@ -855,11 +976,13 @@ export class ServerInvitationService {
         .createQueryBuilder('cm')
         .leftJoin('cm.channel', 'channel')
         .where('cm.userPk = :userPk', { userPk })
-        .andWhere('channel.projectPk = :projectPk', { projectPk: project.projectPk })
+        .andWhere('channel.projectPk = :projectPk', {
+          projectPk: project.projectPk,
+        })
         .getMany();
 
       if (channelMembersInProject.length > 0) {
-        channelMembersInProject.forEach(cm => {
+        channelMembersInProject.forEach((cm) => {
           cm.cStatus = 'Inactive';
         });
         await this.channelMemberRepository.save(channelMembersInProject);
@@ -879,7 +1002,9 @@ export class ServerInvitationService {
     });
 
     if (!serverMember) {
-      throw new NotFoundException(`서버멤버 ${serverMemberPk} 를 찾을 수 없습니다.`);
+      throw new NotFoundException(
+        `서버멤버 ${serverMemberPk} 를 찾을 수 없습니다.`,
+      );
     }
 
     serverMember.sStatus = newStatus;

@@ -17,7 +17,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("api/jv/internal")
+@RequestMapping("/api/jv/internal")
 @RequiredArgsConstructor
 public class InternalController {
 

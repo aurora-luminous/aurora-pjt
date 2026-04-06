@@ -1,6 +1,6 @@
 import { useRouter } from "next/navigation";
 import { useChannelFlow } from "@/app/(server-setup)/hooks/useChannelFlow";
-import { Channel } from "@/app/(server-setup)/types/Channel";
+import type { Channel } from "@/app/(server-setup)/types";
 
 interface UseChannelItemProps {
   serverUrl: string;

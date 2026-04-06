@@ -1,4 +1,4 @@
-import { ServerListItem } from "../types/Server";
+import type { ServerListItem } from "../types";
 
 /**
  * 서버 접근 권한 확인 유틸리티

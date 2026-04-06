@@ -11,7 +11,7 @@ import {
 } from "@/app/(server-setup)/hooks/useServerMutation";
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { ServerAccess } from "@/app/(servers)/types/ServerAccess";
-import { MemberInfo, Permission } from "@/app/(server-setup)/types/Server";
+import type { MemberInfo, Permission } from "@/app/(server-setup)/types";
 
 // JoinRequest 타입 정의
 export interface JoinRequest {

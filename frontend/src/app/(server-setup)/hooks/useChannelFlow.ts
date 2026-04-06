@@ -8,7 +8,7 @@ import {
   useUpdateChannelMutation,
 } from "./useServerMutation";
 import { useModal } from "./useModal";
-import { ChannelPayload } from "../types/Payload";
+import type { ChannelPayload } from "../types";
 
 export const useChannelFlow = (
   serverUrl: string,

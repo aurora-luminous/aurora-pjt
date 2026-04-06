@@ -1,7 +1,7 @@
 import { useWebSocket } from "@/app/lib/useWebSocket";
 import { useEffect } from "react";
 import { ChatMessage } from "../types/websocket";
-import { useMyChannelsQuery } from "@/app/(server-setup)/hooks/useServerApi";
+import { useMyChannelsQuery } from "@/app/(server-setup)/hooks/useServerMutation";
 
 /**
  * 웹소켓 연결 및 채널 구독을 관리하는 훅

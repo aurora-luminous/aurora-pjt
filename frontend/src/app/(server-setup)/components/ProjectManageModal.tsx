@@ -3,12 +3,12 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
-import { ProjectManageData, useModal } from "../hooks/useModal";
+import { useModal } from "../hooks/useModal";
 import { useProjectFlow } from "../hooks/useProjectFlow";
 import { useProjectListQuery, useProjectMemberListQuery } from "../hooks/useServerMutation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useResponsive } from "../../lib/useResponsive";
-import { ProjectPayload } from "../types/Payload";
+import type { ProjectManageData, ProjectPayload } from "../types";
 
 export const ProjectManageModal = () => {
   const { isMobile, isTablet } = useResponsive();

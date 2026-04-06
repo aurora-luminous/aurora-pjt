@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Channel } from "@/app/(server-setup)/types/Channel";
+import type { Channel } from "@/app/(server-setup)/types";
 import { ChannelDropdownMenu } from "./ChannelDropdownMenu";
 import { useUpdateLastChannelMutation } from "@/app/(server-setup)/hooks/useServerMutation";
 import { InviteChannelDropDown } from "./InviteChannelDropdown";

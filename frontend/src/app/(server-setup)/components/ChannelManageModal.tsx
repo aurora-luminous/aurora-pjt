@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
-import { ChannelManageData, useModal } from "../hooks/useModal";
+import { useModal } from "../hooks/useModal";
+import type { ChannelManageData } from "../types";
 import { useChannelFlow } from "../hooks/useChannelFlow";
 import { useChannelListQuery, useChannelMemberListQuery } from "../hooks/useServerMutation";
 import { useResponsive } from "../../lib/useResponsive";

@@ -9,11 +9,8 @@ import {
 import { useModal } from "@/app/(server-setup)/hooks/useModal";
 import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
 import { useAdminSidebar } from "./useAdmin";
-import { Project } from "@/app/(server-setup)/types/Projcets";
-import { Channel } from "@/app/(server-setup)/types/Channel";
-import { ChannelKind } from "@/app/(server-setup)/types/ChannelKind";
-import { AccessType } from "@/app/(server-setup)/types/AccessType";
-import { ChannelRole } from "@/app/(server-setup)/types/ChannelRole";
+import type { Project, Channel } from "@/app/(server-setup)/types";
+import { ChannelKind, AccessType, ChannelRole } from "@/app/(server-setup)/types";
 import { createChannelUrl } from "@/app/(server-setup)/utils/serverAccessUtils";
 
 interface UseProjectSidebarProps {

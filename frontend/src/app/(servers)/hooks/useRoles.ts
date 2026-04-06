@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { Role, Permission } from "../[server_id]/admin/components/RoleCard";
 import { useRolePermissions } from "./useAdmin";
-import { RolePermisson } from "@/app/(server-setup)/types/Server";
+import type { RolePermisson } from "@/app/(server-setup)/types";
 
 // API 권한 데이터를 UI 형식으로 변환
 const convertApiPermissionsToUIPermissions = (

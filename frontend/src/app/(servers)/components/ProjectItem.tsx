@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { Project } from "@/app/(server-setup)/types/Projcets";
+import type { Project } from "@/app/(server-setup)/types";
 import { useChannelListQuery } from "@/app/(server-setup)/hooks/useServerMutation";
 import { createChannelUrl } from "@/app/(server-setup)/utils/serverAccessUtils";
 

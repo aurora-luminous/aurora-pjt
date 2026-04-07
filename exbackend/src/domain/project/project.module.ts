@@ -8,13 +8,19 @@ import { User } from '../user/entities/user.entity';
 import { UserModule } from '../user/user.module';
 import { Channel } from '../channel/entities/channel.entity';
 import { ChannelMember } from '../channel/entities/channel-member.entity';
-import { ProjectCreationService } from './services/project-creation.service';
-import { ProjectInvitationService } from './services/project-invitation.service';
-import { ProjectController } from './controllers/project.controller';
-import { ProjectDeletionService } from './services/project-deletion.service';
-import { ProjectUpdateService } from './services/project-update.service';
+import { ProjectRepository } from './repositories/project.repository';
+import { TypeOrmProjectRepository } from './repositories/repositoriesImpl/typeorm-project.repository';
+import { ProjectMemberRepository } from './repositories/project-member.repository';
+import { TypeOrmProjectMemberRepository } from './repositories/repositoriesImpl/typeorm-project-member.repository';
+import { ProjectService } from './services/project.service';
+import { ProjectServiceImpl } from './services/servicesImpl/project.service.impl';
+import { ProjectMemberService } from './services/project-member.service';
+import { ProjectMemberServiceImpl } from './services/servicesImpl/project-member.service.impl';
 import { ProjectNotificationService } from './services/project-notification.service';
-import { ProjectMemberUpdateService } from './services/project-member-update.service';
+import { ProjectNotificationServiceImpl } from './services/servicesImpl/project-notification.service.impl';
+import { ProjectController } from './controllers/project.controller';
+import { ChannelModule } from '../channel/channel.module';
+
 
 @Module({
   imports: [
@@ -28,23 +34,36 @@ import { ProjectMemberUpdateService } from './services/project-member-update.ser
       ChannelMember,
     ]),
     UserModule,
+    ChannelModule,
   ],
   controllers: [ProjectController],
   providers: [
-    ProjectCreationService,
-    ProjectInvitationService,
-    ProjectDeletionService,
-    ProjectUpdateService,
-    ProjectNotificationService,
-    ProjectMemberUpdateService,
+    {
+      provide: ProjectRepository,
+      useClass: TypeOrmProjectRepository
+    },
+    {
+      provide: ProjectMemberRepository,
+      useClass: TypeOrmProjectMemberRepository
+    },
+    {
+      provide: ProjectService,
+      useClass: ProjectServiceImpl
+    },
+    {
+      provide: ProjectMemberService,
+      useClass: ProjectMemberServiceImpl
+    },
+    {
+      provide: ProjectNotificationService,
+      useClass: ProjectNotificationServiceImpl
+    },
+
   ],
   exports: [
-    ProjectCreationService,
-    ProjectInvitationService,
-    ProjectDeletionService,
-    ProjectUpdateService,
-    ProjectNotificationService,
-    ProjectMemberUpdateService,
+    ProjectService,
+    ProjectMemberService,
+    ProjectNotificationService
   ],
 })
 export class ProjectModule {}

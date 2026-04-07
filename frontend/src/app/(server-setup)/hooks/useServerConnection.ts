@@ -1,17 +1,15 @@
 import { useRouter } from "next/navigation";
-import { useServerListQuery } from "./useServerMutation";
 import { useState } from "react";
-import {
-  checkServerAccess,
-  createPendingPageUrl,
-} from "../utils/serverAccessUtils";
+import { createPendingPageUrl } from "../utils/serverAccessUtils";
+import { joinServerApi } from "../api/server.api";
+import type { ServerAccess } from "@/app/(servers)/types/ServerAccess";
 
 /**
  * 서버 연결 및 접근 권한 확인을 담당하는 훅
  */
 export const useServerConnection = () => {
   const [isValidating, setIsValidating] = useState(false);
-  const serverListQuery = useServerListQuery(false); // 기본적으로 비활성화
+  const [validationError, setValidationError] = useState<unknown>(null);
   const router = useRouter();
 
   /**
@@ -19,37 +17,48 @@ export const useServerConnection = () => {
    */
   const validateServerAccess = async (
     serverUrl: string,
-    serverName: string
+    serverName: string,
   ): Promise<boolean> => {
     try {
       setIsValidating(true);
-      console.log("🔍 사용자 서버 목록 조회 중...");
+      setValidationError(null);
 
-      // 서버 목록 조회 실행
-      console.log("📡 서버 목록 refetch 실행");
-      const result = await serverListQuery.refetch();
-      const serverList = result.data;
+      const result = await joinServerApi(serverUrl);
 
-      if (!serverList) {
-        throw new Error("서버 목록을 가져올 수 없습니다.");
-      }
-
-      const hasAccess = checkServerAccess(serverList, serverUrl, serverName);
-
-      if (!hasAccess) {
-        console.log(
-          "❌ 서버에 접근 권한이 없습니다. 승인 대기 페이지로 이동합니다."
-        );
-        const pendingUrl = createPendingPageUrl(serverUrl, serverName);
-        router.push(pendingUrl);
+      // 서버가 존재하지 않는 경우 ({ message } 응답)
+      if ("message" in result && !("sStatus" in result)) {
+        alert("존재하지 않는 서버입니다.");
         return false;
       }
 
-      console.log("✅ 서버 접근 권한 확인됨.");
-      return true;
-    } catch (error) {
-      console.error("❌ 서버 접근 권한 확인 실패:", error);
-      throw error;
+      const { sStatus } = result as ServerAccess;
+
+      switch (sStatus) {
+        case "Active":
+          console.log("✅ 서버 접근 권한 확인됨.");
+          return true;
+        case "Pending":
+          console.log("❌ 승인 대기 중. 승인 대기 페이지로 이동합니다.");
+          router.push(createPendingPageUrl(serverUrl, serverName));
+          return false;
+        case "Inactive":
+        case "Banned":
+          alert("가입이 거절된 서버입니다.");
+          return false;
+        default:
+          router.push(createPendingPageUrl(serverUrl, serverName));
+          return false;
+      }
+    } catch (err: unknown) {
+      const status =
+        (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404 || status === 400) {
+        alert("존재하지 않는 서버입니다.");
+        return false;
+      }
+      setValidationError(err);
+      console.error("❌ 서버 접근 권한 확인 실패:", err);
+      throw err;
     } finally {
       setIsValidating(false);
     }
@@ -58,6 +67,6 @@ export const useServerConnection = () => {
   return {
     validateServerAccess,
     isValidating,
-    validationError: serverListQuery.error,
+    validationError,
   };
 };

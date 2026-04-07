@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Message } from "../types";
 import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
-import { Channel } from "@/app/(server-setup)/types/Channel";
+import type { Channel } from "@/app/(server-setup)/types";
 import { useChannels } from "./useChannels";
 import { useWebSocket } from "@/app/lib/useWebSocket";
 import { ChatMessage } from "../types/websocket";

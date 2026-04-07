@@ -1,4 +1,4 @@
-import { ProjectPayload } from "../types/Payload";
+import type { ProjectPayload } from "../types";
 import {
   useBanProjectMemberMutation,
   useLeaveProjectMutation,

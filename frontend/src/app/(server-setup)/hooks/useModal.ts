@@ -1,82 +1,17 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "../../lib/store";
-import { ChannelKind } from "../types/ChannelKind";
-import { AccessType } from "../types/AccessType";
-
-// 모달 타입 정의
-export type ModalType =
-  | "SERVER_ADD"
-  | "SERVER_EDIT"
-  | "SERVER_DELETE"
-  | "CHANNEL_ADD"
-  | "PROJECT_ADD"
-  | "PROJECT_INVITE"
-  | "PROJECT_MANAGE"
-  | "CHANNEL_MANAGE"
-  | "SETTING"
-  | null;
-
-// 서버 데이터 타입 정의
-export interface ServerData {
-  id?: string;
-  name: string;
-  url: string;
-  description?: string;
-}
-
-// 채널 데이터 타입 정의
-export interface ChannelData {
-  serverUrl: string;
-  projectPk: number;
-  channelPk: number;
-  channelName: string;
-  channelKind: ChannelKind;
-  accessType: AccessType;
-}
-
-// 프로젝트 데이터 타입 정의
-export interface ProjectData {
-  serverUrl: string;
-  projectName: string;
-  projectDescription?: string;
-}
-
-// 프로젝트 초대 데이터 타입 정의
-export interface ProjectInviteData {
-  serverUrl: string;
-  projectPk: number;
-  projectName: string;
-}
-
-// 프로젝트 관리 데이터 타입 정의
-export interface ProjectManageData {
-  serverUrl: string;
-  projectPk: number;
-}
-
-// 채널 관리 데이터 타입 정의
-export interface ChannelManageData {
-  serverUrl: string;
-  projectPk: number;
-  channelPk: number;
-}
-
-// 모달 상태 인터페이스
-export interface ModalState {
-  isOpen: boolean;
-  type: ModalType;
-  data:
-    | ServerData
-    | ChannelData
-    | ProjectData
-    | ProjectInviteData
-    | ProjectManageData
-    | ChannelManageData
-    | null;
-  loading: boolean;
-  error: string | null;
-}
+import type {
+  ModalType,
+  ModalState,
+  ModalData,
+  ServerData,
+  ChannelData,
+  ProjectData,
+  ProjectInviteData,
+  ProjectManageData,
+  ChannelManageData,
+} from "../types";
 
 // 초기 상태
 const initialState: ModalState = {
@@ -95,16 +30,7 @@ const modalSlice = createSlice({
     // 모달 열기
     openModal: (
       state,
-      action: PayloadAction<{
-        type: ModalType;
-        data?:
-          | ServerData
-          | ChannelData
-          | ProjectData
-          | ProjectInviteData
-          | ProjectManageData
-          | ChannelManageData;
-      }>
+      action: PayloadAction<{ type: ModalType; data?: ModalData }>
     ) => {
       state.isOpen = true;
       state.type = action.payload.type;
@@ -122,17 +48,7 @@ const modalSlice = createSlice({
     },
 
     // 모달 데이터 업데이트
-    updateModalData: (
-      state,
-      action: PayloadAction<
-        | ServerData
-        | ChannelData
-        | ProjectData
-        | ProjectInviteData
-        | ProjectManageData
-        | ChannelManageData
-      >
-    ) => {
+    updateModalData: (state, action: PayloadAction<ModalData>) => {
       state.data = action.payload;
     },
 
@@ -224,15 +140,7 @@ export const useModal = () => {
     },
 
     // 모달 데이터 업데이트
-    updateData: (
-      data:
-        | ServerData
-        | ChannelData
-        | ProjectData
-        | ProjectInviteData
-        | ProjectManageData
-        | ChannelManageData
-    ) => {
+    updateData: (data: ModalData) => {
       dispatch(updateModalData(data));
     },
 

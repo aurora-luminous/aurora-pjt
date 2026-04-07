@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
-import { useModal, ProjectData } from "../hooks/useModal";
+import { useModal } from "../hooks/useModal";
+import type { ProjectData } from "../types";
 import { useCreateProjectMutation } from "../hooks/useServerMutation";
 import { useRouter } from "next/navigation";
 import { useResponsive } from "../../lib/useResponsive";

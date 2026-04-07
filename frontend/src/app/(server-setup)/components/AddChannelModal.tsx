@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
-import { useModal, ChannelData } from "../hooks/useModal";
+import { useModal } from "../hooks/useModal";
 import {
   useCreateChannelMutation,
   useInvitePrivateChannelMutation,
@@ -12,11 +12,10 @@ import {
 import { useRouter } from "next/navigation";
 import { useChannels } from "@/app/(servers)/hooks/useChannels";
 import { createChannelUrl } from "../utils/serverAccessUtils";
-import { Channel } from "../types/Channel";
 import { useCurrentServerInfo } from "@/app/(server-setup)/hooks/useServer";
 import { useResponsive } from "../../lib/useResponsive";
-import { ChannelKind } from "../types/ChannelKind";
-import { AccessType } from "../types/AccessType";
+import type { ChannelData, Channel } from "../types";
+import { ChannelKind, AccessType } from "../types";
 
 const AddChannelModal = () => {
   const { isMobile, isTablet } = useResponsive();

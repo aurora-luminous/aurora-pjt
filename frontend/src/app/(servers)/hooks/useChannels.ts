@@ -11,7 +11,7 @@ import {
   clearChannels,
   resetChannelState,
 } from "../store/channelSlice";
-import { Channel } from "@/app/(server-setup)/types/Channel";
+import type { Channel } from "@/app/(server-setup)/types";
 import {
   useChannelListQuery,
   useCreateChannelMutation,

@@ -1,15 +1,7 @@
-import { useState, useEffect } from "react";
 import { useServerFlow } from "./useServerFlow";
+import type { ServerInfo } from "../types";
 
-// 서버 정보 타입 정의
-export interface ServerInfo {
-  serverName: string;
-  serverUrl: string;
-  projectName: string;
-  projectPk: number;
-  channelName: string;
-  role: string;
-}
+export type { ServerInfo };
 
 /**
  * 현재 서버 정보를 가져오는 커스텀 훅

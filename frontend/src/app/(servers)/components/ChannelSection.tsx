@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Channel } from "@/app/(server-setup)/types/Channel";
+import type { Channel } from "@/app/(server-setup)/types";
 import { ChannelItem } from "./ChannelItem";
 
 interface ChannelSectionProps {

@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
-import { useModal, ProjectInviteData } from "../hooks/useModal";
+import { useModal } from "../hooks/useModal";
 import { useRouter } from "next/navigation";
 import {
   useUserMemberListQuery,
   useInviteProjectMutation,
 } from "../hooks/useServerMutation";
-import { MemberInfo } from "../types/Server";
+import type { ProjectInviteData, MemberInfo } from "../types";
 import { useResponsive } from "../../lib/useResponsive";
 
 const AddProjectInviteModal = () => {

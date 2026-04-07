@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useJoinQuery } from "./useJoinQuery";
-import { useServerJoinStatusApi } from "@/app/(server-setup)/hooks/useServerApi";
+import { useMutation } from "@tanstack/react-query";
+import { joinServerApi } from "@/app/(server-setup)/api/server.api";
 import { getAccessToken } from "@/app/lib/tokenStorage";
 import axios from "axios";
 
@@ -34,25 +35,22 @@ export const useJoin = () => {
   const isPageLoading = !isLoggedIn || isJoinLoading;
   const isJoinButtonDisabled = !serverUrl || isJoining;
 
-  // error도 함께 구조분해해서 가져옴
-  const { execute: requestJoin, error: joinApiError } = useServerJoinStatusApi(serverUrl);
+  const joinMutation = useMutation({
+    mutationFn: () => joinServerApi(serverUrl),
+    onError: (error) => {
+      console.error("🔴 join API 에러:", error);
 
-  // joinApiError가 생기면 메시지 추출
-  useEffect(() => {
-    if (!joinApiError) return;
+      if (axios.isAxiosError(error) && error.response?.data?.message) {
+        setJoinErrorMessage(error.response.data.message);
+      } else if (error instanceof Error) {
+        setJoinErrorMessage(error.message);
+      } else {
+        setJoinErrorMessage("서버 가입에 실패했습니다.");
+      }
 
-    console.error("🔴 join API 에러:", joinApiError);
-
-    if (axios.isAxiosError(joinApiError) && joinApiError.response?.data?.message) {
-      setJoinErrorMessage(joinApiError.response.data.message);
-    } else if (joinApiError instanceof Error) {
-      setJoinErrorMessage(joinApiError.message);
-    } else {
-      setJoinErrorMessage("서버 가입에 실패했습니다.");
-    }
-
-    setIsJoining(false);
-  }, [joinApiError]);
+      setIsJoining(false);
+    },
+  });
 
   // 미로그인 → 로그인 페이지로
   const hasRedirected = useRef(false);
@@ -73,13 +71,7 @@ export const useJoin = () => {
 
     try {
       setIsJoining(true);
-      const result = await requestJoin();
-
-      // execute()가 에러로 인해 undefined를 반환한 경우 → joinApiError useEffect가 처리
-      if (!result) {
-        // joinApiError useEffect에서 isJoining도 false로 세팅함
-        return;
-      }
+      const result = await joinMutation.mutateAsync();
 
       // 서버가 삭제된 경우: { message: string }만 있고 sStatus 없음
       if (
@@ -114,7 +106,7 @@ export const useJoin = () => {
       }
       setIsJoining(false);
     }
-  }, [serverUrl, isJoining, requestJoin, joinInfo, router]);
+  }, [serverUrl, isJoining, joinMutation, joinInfo, router]);
 
   const handleGoHome = () => router.push("/");
 

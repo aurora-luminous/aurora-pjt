@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { MemberInfo } from "@/app/(server-setup)/types/Server";
+import type { MemberInfo } from "@/app/(server-setup)/types";
 import { useResponsive } from "../../../../lib/useResponsive";
 
 interface MemberCardProps {

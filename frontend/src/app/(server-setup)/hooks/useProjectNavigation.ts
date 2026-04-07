@@ -1,7 +1,7 @@
 import { useRouter } from "next/navigation";
-import { ServerInfo } from "./useServer";
+import type { ServerInfo } from "../types";
 import { useCallback, useState } from "react";
-import { Project } from "../types/Projcets";
+import type { Project } from "../types";
 import {
   useProjectListQuery,
   useChannelListQuery,

@@ -24,6 +24,11 @@ export abstract class ChannelRepository {
     projectPk: number
   ): Promise<Channel[]>;
 
+  // 프로젝트에 속한 모든 채널 목록 조회
+  abstract findChannelsInProject(
+    projectPk: number
+  ): Promise<Channel[]>;
+
   // 채널 생성 및 업데이트
   abstract save(channel: Partial<Channel>): Promise<Channel>;
 

@@ -17,10 +17,8 @@ import {
 import { JwtAuthGuard } from '../../auth';
 import { CurrentUser, User } from '../../user'
 import { Project } from '../entities/project.entity';
-import { ProjectCreationService } from '../services/project-creation.service';
-import { ProjectInvitationService } from '../services/project-invitation.service';
-import { ProjectDeletionService } from '../services/project-deletion.service';
-import { ProjectUpdateService } from '../services/project-update.service';
+import { ProjectService } from '../services/project.service';
+import { ProjectMemberService } from '../services/project-member.service';
 import {
   CreateProjectDto,
   ProjectListDto,
@@ -32,13 +30,11 @@ import {
 } from '../dto';
 
 @ApiTags('projects')
-@Controller()
+@Controller('servers/:serverUrl/projects')
 export class ProjectController {
   constructor(
-    private readonly projectCreationService: ProjectCreationService,
-    private readonly projectInvitationService: ProjectInvitationService,
-    private readonly projectDeletionService: ProjectDeletionService,
-    private readonly projectUpdateService: ProjectUpdateService,
+    private readonly projectService: ProjectService,
+    private readonly projectMemberService: ProjectMemberService,
   ) {}
 
   @Post()
@@ -67,7 +63,7 @@ export class ProjectController {
       creatorUserPk: creatorUserPk,
     };
     const result =
-      await this.projectCreationService.createProject(completeProjectDto);
+      await this.projectService.createProject(completeProjectDto);
     return {
       projectPk: result.projectPk,
       projectName: result.projectName,
@@ -89,7 +85,7 @@ export class ProjectController {
   ): Promise<ProjectListDto[]> {
     const requestUserPk = user.userPk;
 
-    return await this.projectCreationService.getProjectsByServerForUser(
+    return await this.projectService.getProjectByServerForUser(
       serverUrl,
       requestUserPk,
     );
@@ -115,7 +111,7 @@ export class ProjectController {
       inviterUserPk: inviterUserPk,
     };
 
-    await this.projectInvitationService.bulkInviteUsersToProject(bulkInviteDto);
+    await this.projectMemberService.inviteMembers(bulkInviteDto);
     return { message: '초대 완료' };
   }
 
@@ -134,9 +130,9 @@ export class ProjectController {
   ): Promise<ProjectMemberDto[]> {
     const requestUserPk = user.userPk;
 
-    return this.projectInvitationService.getProjectMembers(
+    return this.projectMemberService.getProjectMembers(
       projectPk,
-      requestUserPk,
+      requestUserPk
     );
   }
 
@@ -147,14 +143,14 @@ export class ProjectController {
   @ApiResponse({ status: 200, description: '사용자 제거 성공' })
   async removeUserFromProject(
     @Param('projectPk', ParseIntPipe) projectPk: number,
-    @Body() manageMemberDto: ManageMemberDto,
+    @Body() userEmail: string,
     @CurrentUser() user: User,
   ): Promise<{ message: string }> {
     const adminUserPk = user.userPk;
 
-    await this.projectInvitationService.removeUserFromProjectByEmail(
+    await this.projectMemberService.removeMember(
       projectPk,
-      manageMemberDto.userEmail,
+      userEmail,
       adminUserPk,
     );
     return { message: '사용자 퇴장 성공' };
@@ -172,7 +168,7 @@ export class ProjectController {
   ): Promise<{ message: string }> {
     const adminUserPk = user.userPk;
 
-    return this.projectInvitationService.banUserFromProjectByEmail(
+    return this.projectMemberService.banMemberFromProject(
       projectPk,
       manageMemberDto.userEmail,
       adminUserPk,
@@ -191,7 +187,7 @@ export class ProjectController {
   ): Promise<{ message: string }> {
     const ownerUserPk = user.userPk;
 
-    await this.projectInvitationService.unbanUserFromProjectByEmail(
+    await this.projectMemberService.unbanMemberFromProject(
       projectPk,
       manageMemberDto.userEmail,
       ownerUserPk,
@@ -211,7 +207,7 @@ export class ProjectController {
     const userPk = user.userPk;
 
     // 프로젝트 나가기 로직 실행 (PM 검증 포함)
-    const result = await this.projectInvitationService.leaveProject(
+    const result = await this.projectMemberService.leaveProject(
       projectPk,
       userPk,
     );
@@ -234,7 +230,7 @@ export class ProjectController {
     @Param('projectPk', ParseIntPipe) projectPk: number,
     @CurrentUser() user: User,
   ): Promise<{ message: string }> {
-    await this.projectDeletionService.deleteProject(projectPk, user.userPk);
+    await this.projectService.deleteProject(projectPk, user.userPk);
     return { message: '프로젝트가 성공적으로 삭제되었습니다.' };
   }
 
@@ -250,14 +246,12 @@ export class ProjectController {
   @ApiResponse({ status: 403, description: '프로젝트 이름을 변경할 권한 없음' })
   @ApiResponse({ status: 404, description: '프로젝트를 찾을 수 없음' })
   async updateProjectName(
-    @Param('serverUrl') serverUrl: string,
     @Param('projectPk', ParseIntPipe) projectPk: number,
     @Body() updateProjectDto: UpdateProjectDto,
     @CurrentUser() user: User,
   ): Promise<{ message: string }> {
     const modifierUserPk = user.userPk;
-    await this.projectUpdateService.updateProjectName(
-      serverUrl,
+    await this.projectService.updateProject(
       projectPk,
       updateProjectDto.projectName,
       modifierUserPk,

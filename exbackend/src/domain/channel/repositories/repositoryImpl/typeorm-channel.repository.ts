@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, Brackets } from "typeorm";
 import { Channel } from "../../entities/channel.entity";
 import { ChannelRepository } from "../channel.repository";
+import { ChannelKind, AccessType } from "src/common/enums";
 
 @Injectable()
 export class TypeOrmChannelRepository extends ChannelRepository {
@@ -85,12 +86,23 @@ export class TypeOrmChannelRepository extends ChannelRepository {
     });
   }
 
+  async findChannelsInProject(
+    projectPk: number
+  ): Promise<Channel[]> {
+    return this.channelRepository.find({
+      where: {
+        projectPk,
+        isDeletedChannel: false,
+      },
+    });
+  }
+
   async save(channel: Partial<Channel>): Promise<Channel> {
 
     const saveChannel: Partial<Channel> = {
       ...channel,
-      ...(channel.channelKind && {channelKind: channel.channelKind.toUpperCase() as any}),
-      ...(channel.accessType && { accessType: channel.accessType.toUpperCase() as any }),
+      ...(channel.channelKind && {channelKind: channel.channelKind.toUpperCase() as ChannelKind}),
+      ...(channel.accessType && { accessType: channel.accessType.toUpperCase() as AccessType }),
     };
 
     return this.channelRepository.save(saveChannel);

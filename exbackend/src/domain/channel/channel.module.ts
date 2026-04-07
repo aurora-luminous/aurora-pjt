@@ -59,6 +59,8 @@ import { TypeOrmChannelMemberRepository } from './repositories/repositoryImpl/ty
     ChannelService,
     ChannelMemberService,
     ChannelNotificationService,
+    ChannelRepository,
+    ChannelMemberRepository,
   ],
 })
 export class ChannelModule {}

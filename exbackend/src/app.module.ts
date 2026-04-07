@@ -43,7 +43,7 @@ import { RedisModule } from './common/redis/redis.module';
       maxRedirects: 5,
     }),
 
-    // Workspace 도메인 모듈들 (RouterModule으로 계층적 라우팅)
+    // Workspace 도메인 모듈들
     ServerModule,
     ProjectModule,
     ChannelModule,
@@ -57,10 +57,6 @@ import { RedisModule } from './common/redis/redis.module';
       {
         path: 'servers',
         module: ServerModule,
-      },
-      {
-        path: 'servers/:serverUrl/projects',
-        module: ProjectModule,
       },
     ]),
   ],

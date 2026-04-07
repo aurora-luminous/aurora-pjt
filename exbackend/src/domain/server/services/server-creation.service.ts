@@ -4,7 +4,7 @@ import { Repository } from "typeorm";
 import { Server } from "../entities/server.entity";
 import { ServerMember } from "../entities/server-member.entity";
 import { User } from "../../user/entities/user.entity";
-import { ProjectCreationService } from "../../project/services/project-creation.service";
+import { ProjectService } from "../../project/services/project.service";
 import { ServerRolePermissionService } from "./server-role-permission.service";
 import { CreateServerDto, ServerResponseDto, ServerListDto } from "../dto";
 import { findActiveEntityById } from '../../../common/utils/entity-status.util';
@@ -18,7 +18,7 @@ export class ServerCreationService {
         private readonly serverMemberRepository: Repository<ServerMember>,
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
-        private readonly projectCreationService: ProjectCreationService,
+        private readonly projectService: ProjectService,
         private readonly serverRolePermissionService: ServerRolePermissionService,
     ) {}
 
@@ -69,7 +69,7 @@ export class ServerCreationService {
         await this.serverRolePermissionService.createDefaultPermissions(savedServer.serverPk);
 
         // 5. 기본 "일반" 프로젝트 생성 (채널도 함께 생성됨)
-        await this.projectCreationService.createProject({
+        await this.projectService.createProject({
             serverPk: savedServer.serverPk,
             projectName: '일반',
             creatorUserPk: createServerDto.creatorUserPk

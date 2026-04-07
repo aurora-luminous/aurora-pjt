@@ -12,14 +12,19 @@ export const usePending = () => {
   const serverUrl = searchParams.get("serverUrl") || "";
   const serverName = searchParams.get("serverName") || "";
 
+  // URL 파라미터 누락 여부를 동기적으로 판별
+  const hasMissingParams = !serverUrl || !serverName;
+
+  // 리다이렉트 진행 중 여부 (페이지 렌더링 차단용)
+  const [isRedirecting, setIsRedirecting] = useState(hasMissingParams);
+
   // 서버 정보가 없으면 서버 연결 페이지로 리다이렉트
   useEffect(() => {
-    if (!serverUrl || !serverName) {
+    if (hasMissingParams) {
       console.log("❌ 서버 정보가 없습니다. 서버 연결 페이지로 이동합니다.");
       router.push("/server-connect");
     }
-  }, [serverUrl, serverName, router]);
-
+  }, [hasMissingParams, router]);
 
   // 로컬 상태
   const [approvalStatus, setApprovalStatus] = useState<
@@ -35,20 +40,38 @@ export const usePending = () => {
   } = useServerJoinStatusQuery(serverUrl || "dummy", approvalStatus);
 
   // 서버가 삭제된 경우: API가 400 에러를 throw함
-  const isServerDeleted = !!error && (
+  const isServerDeleted =
+    !!error &&
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (error as any)?.response?.status === 400 ||
+    ((error as any)?.response?.status === 400 ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (error as any)?.response?.data?.statusCode === 400);
+
+  const isCannotFind =
+    !!error &&
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (error as any)?.response?.data?.statusCode === 400
-  );
+    ((error as any)?.response?.status === 404 ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (error as any)?.response?.data.statusCode === 404);
+
+  useEffect(() => {
+    if (isCannotFind) {
+      setIsRedirecting(true);
+      alert("서버에 접근할 수 없습니다.");
+      router.push("/server-connect");
+    }
+  }, [isCannotFind, router]);
 
   // serverAccessData를 ServerAccess 타입으로 좁히기
-  const serverAccessList = (serverAccessData as { sStatus: string } | undefined) ?? null;
+  const serverAccessList =
+    (serverAccessData as { sStatus: string } | undefined) ?? null;
 
   // 서버 삭제(400) 감지 시 server-connect로 즉시 이동
   useEffect(() => {
     if (isServerDeleted) {
       console.log("⚠️ 서버가 삭제되었습니다. 서버 연결 페이지로 이동합니다.");
+      setIsRedirecting(true);
+      alert("서버에 접근할 수 없습니다.");
       router.push("/server-connect");
     }
   }, [isServerDeleted, router]);
@@ -85,9 +108,15 @@ export const usePending = () => {
   const handleServerConnectionRef = useRef(handleServerConnection);
   const serverUrlRef = useRef(serverUrl);
   const serverNameRef = useRef(serverName);
-  useEffect(() => { handleServerConnectionRef.current = handleServerConnection; }, [handleServerConnection]);
-  useEffect(() => { serverUrlRef.current = serverUrl; }, [serverUrl]);
-  useEffect(() => { serverNameRef.current = serverName; }, [serverName]);
+  useEffect(() => {
+    handleServerConnectionRef.current = handleServerConnection;
+  }, [handleServerConnection]);
+  useEffect(() => {
+    serverUrlRef.current = serverUrl;
+  }, [serverUrl]);
+  useEffect(() => {
+    serverNameRef.current = serverName;
+  }, [serverName]);
 
   // 승인 완료 시 자동 입장
   useEffect(() => {
@@ -98,7 +127,10 @@ export const usePending = () => {
       setTimeout(async () => {
         try {
           // handleServerConnection이 내부에서 projectPk, channelPk를 조회하고 라우팅까지 처리
-          await handleServerConnectionRef.current(serverUrlRef.current, serverNameRef.current);
+          await handleServerConnectionRef.current(
+            serverUrlRef.current,
+            serverNameRef.current,
+          );
         } catch (error) {
           console.error("자동 입장 실패:", error);
         }
@@ -175,6 +207,7 @@ export const usePending = () => {
     serverUrl,
     isLoading,
     error,
+    isRedirecting,
     handleServerConnection,
   };
 };

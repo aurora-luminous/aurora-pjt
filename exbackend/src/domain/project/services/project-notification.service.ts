@@ -1,67 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { ProjectNotificationDto } from '../dto/project-notification.dto';
 
-@Injectable()
-export class ProjectNotificationService {
-  private readonly logger = new Logger(ProjectNotificationService.name);
-  private readonly springBaseUrl: string;
-  private readonly internalSecret: string;
+export abstract class ProjectNotificationService {
 
-  constructor(private readonly configService: ConfigService) {
-    this.springBaseUrl = this.configService.get('SPRING_BASE_URL', 'http://localhost:8080');
-    this.internalSecret = this.configService.get('INTERNAL_SECRET', 'NeedApiKey');
-  }
+  // 프로젝트 변경 사항 알림
+  abstract notifyProjectChange(notificationDto: ProjectNotificationDto): Promise<void>;
 
-  async notifyProjectChange(notificationDto: ProjectNotificationDto): Promise<void> {
-    try {
-      const response = await fetch(`${this.springBaseUrl}/api/jv/internal/project/notify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Internal-Secret': this.internalSecret,
-        },
-        body: JSON.stringify({
-          ...notificationDto,
-          timestamp: Date.now(),
-        }),
-      });
+  // 프로젝트 추가 알림
+  abstract notifyProjectAdded(projectPk: number, projectName: string, serverUrl: string): Promise<void>;
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+  // 프로젝트 삭제 알림
+  abstract notifyProjectRemoved(projectPk: number, projectName: string, serverUrl: string): Promise<void>;
 
-      const result = await response.text();
-      this.logger.log(`Project notification sent successfully: ${result}`);
-    } catch (error) {
-      this.logger.error(`Failed to send project notification: ${error.message}`, error.stack);
-    }
-  }
-
-  async notifyProjectAdded(projectPk: number, projectName: string, serverUrl: string): Promise<void> {
-    await this.notifyProjectChange({
-      eventType: 'PROJECT_ADDED',
-      projectPk,
-      projectName,
-      serverUrl,
-    });
-  }
-
-  async notifyProjectRemoved(projectPk: number, projectName: string, serverUrl: string): Promise<void> {
-    await this.notifyProjectChange({
-      eventType: 'PROJECT_REMOVED',
-      projectPk,
-      projectName,
-      serverUrl,
-    });
-  }
-
-  async notifyProjectUpdated(projectPk: number, projectName: string, serverUrl: string): Promise<void> {
-    await this.notifyProjectChange({
-      eventType: 'PROJECT_UPDATE',
-      projectPk,
-      projectName,
-      serverUrl,
-    });
-  }
+  // 프로젝트 정보 수정 알림
+  abstract notifyProjectUpdated(projectPk: number, projectName: string, serverUrl: string): Promise<void>;
 }

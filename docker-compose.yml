@@ -63,7 +63,7 @@ services:
       INTERNAL_SECRET: ${INTERNAL_SECRET}
 
       SERVER_URL: ${SERVER_URL:-http://localhost:3001}
-      SPRING_CHAT_SERVER_URL: ${SPRING_CHAT_SERVER_URL:-http://localhost:8080}
+      SPRING_BASE_URL: ${SPRING_BASE_URL:-http://backend-sp:8080}
     depends_on:
       postgres:
         condition: service_healthy

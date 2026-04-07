@@ -16,8 +16,11 @@ const PendingApprovalPage = () => {
     serverUrl,
     isLoading,
     error,
+    isRedirecting,
     handleServerConnection,
   } = usePending();
+
+  if (isRedirecting) return null;
 
   // 모바일 레이아웃
   if (isMobile) {

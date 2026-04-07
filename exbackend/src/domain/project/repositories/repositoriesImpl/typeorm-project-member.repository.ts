@@ -1,0 +1,108 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Not, IsNull } from 'typeorm';
+import { ProjectMember } from '../../entities/project-member.entity';
+import { ProjectMemberRepository } from '../project-member.repository';
+import { MemberStatus, MemberRole } from 'src/common/enums';
+
+@Injectable()
+export class TypeOrmProjectMemberRepository extends ProjectMemberRepository {
+  constructor(
+    @InjectRepository(ProjectMember)
+    private readonly projectMemberRepository: Repository<ProjectMember>,
+  ) {
+    super();
+  }
+
+  // 프로젝트 멤버 조회
+  async findOne(
+    options: {
+      projectPk?: number;
+      userPk?: number;
+      projectMemberPk?: number;
+      pStatus?: MemberStatus;
+    },
+    relations?: string[],
+  ): Promise<ProjectMember | null> {
+    const { projectPk, userPk, projectMemberPk, pStatus } = options;
+
+    return this.projectMemberRepository.findOne({
+      where: {
+        ...(projectPk && { projectPk }),
+        ...(userPk && { userPk }),
+        ...(projectMemberPk && { projectMemberPk }),
+        ...(pStatus && { pStatus: pStatus }),
+      },
+      relations: relations || [],
+    });
+  }
+
+  // 프로젝트 참가 중인 멤버 목록 조회
+  async findMembersByProject(projectPk: number): Promise<ProjectMember[]> {
+    return this.projectMemberRepository.find({
+      where: {
+        projectPk,
+        pStatus: MemberStatus.ACTIVE,
+      },
+      relations: ['user'],
+    });
+  }
+
+  // 유저가 참가 중인 프로젝트들의 멤버 조회
+  async findActiveMemberByUser(userPk: number): Promise<ProjectMember[]> {
+    return this.projectMemberRepository.find({
+      where: {
+        userPk,
+        pStatus: MemberStatus.ACTIVE,
+      },
+      relations: ['project'],
+    });
+  }
+
+  // 프로젝트 멤버 저장(생성, 권한 변경 등의 업데이트)
+  async save(member: Partial<ProjectMember>): Promise<ProjectMember> {
+    return this.projectMemberRepository.save(member);
+  }
+
+  // 프로젝트 삭제 시 멤버들의 상태 일괄 변경
+  async updateStatusByProject(
+    projectPk: number,
+    newStatus: MemberStatus,
+    oldStatus?: MemberStatus,
+  ): Promise<void> {
+    const whereCondition = {
+      projectPk,
+      ...(oldStatus && { pStatus: oldStatus }),
+    };
+
+    await this.projectMemberRepository.update(whereCondition, {
+      pStatus: newStatus,
+    });
+  }
+
+  // 프로젝트 관리자 수 체크
+  async countProjectManagers(projectPk: number): Promise<number> {
+    return await this.projectMemberRepository.count({
+      where: {
+        projectPk,
+        pStatus: MemberStatus.ACTIVE,
+        projectRole: MemberRole.ADMIN,
+      }
+    })
+  }
+  
+  // 유저가 마지막으로 접속한 채널 조회
+  async findLastConnectedWithServer(userPk: number): Promise<ProjectMember | null> {
+    return this.projectMemberRepository.findOne({
+      where: {
+        userPk,
+        pStatus: MemberStatus.ACTIVE,
+        lastConnectedChannel: Not(IsNull()),
+      },
+      relations: ['project', 'project.server'],
+      order: {
+        lastConnectedTime: 'DESC',
+      },
+    });
+  }
+}

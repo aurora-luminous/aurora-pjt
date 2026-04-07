@@ -132,8 +132,8 @@ import {
      const members = await this.channelMemberRepository.findAll({ channelPk, cStatus: MemberStatus.ACTIVE }, ['user']);
 
      return members.map((m) => ({
-       cStatus: m.cStatus as any,
-       channelRole: m.channelRole as any,
+       cStatus: m.cStatus as MemberStatus,
+       channelRole: m.channelRole as MemberRole,
        isMute: m.isMute,
        userInfo: {
          userName: m.user.userName,
@@ -291,8 +291,8 @@ import {
     if (!m) throw new NotFoundException('멤버 정보를 찾을 수 없습니다.');
 
     return {
-      cStatus: m.cStatus as any,
-      channelRole: m.channelRole as any,
+      cStatus: m.cStatus as MemberStatus,
+      channelRole: m.channelRole as MemberRole,
       isMute: m.isMute,
       userInfo: {
         userName: m.user.userName,

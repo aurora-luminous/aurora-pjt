@@ -1,6 +1,8 @@
 export interface ServerAccess {
   sStatus: string;
-  userInfo: UserInfo;
+  userInfo?: UserInfo;
+  defaultProject?: { projectPk: number; projectName: string };
+  defaultChannel?: { channelPk: number; channelName: string; channelKind?: string };
 }
 
 export interface UserInfo {

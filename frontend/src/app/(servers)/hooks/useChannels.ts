@@ -16,7 +16,7 @@ import {
   useChannelListQuery,
   useCreateChannelMutation,
 } from "@/app/(server-setup)/hooks/useServerMutation";
-import { expressClient } from "@/app/lib/axiosClient";
+import { getChannelListApi } from "../api/channel.api";
 import React from "react";
 
 export const useChannels = (serverUrl?: string, projectPk?: number) => {
@@ -130,10 +130,7 @@ export const useChannels = (serverUrl?: string, projectPk?: number) => {
 
         // 직접 API 호출로 채널 목록 조회 (React Query 캐싱 문제 해결)
         console.log(`📡 프로젝트 ${finalProjectPk} 채널 목록 조회`);
-        const response = await expressClient.get(
-          `/ex/servers/${finalServerUrl}/projects/${finalProjectPk}/channels`
-        );
-        const channelList = response.data || [];
+        const channelList = await getChannelListApi(finalServerUrl, finalProjectPk);
 
         // Redux에 채널 저장
         dispatch(

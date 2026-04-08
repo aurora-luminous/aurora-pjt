@@ -6,7 +6,10 @@ import { createPortal } from "react-dom";
 import { useModal } from "../hooks/useModal";
 import type { ChannelManageData } from "../types";
 import { useChannelFlow } from "../hooks/useChannelFlow";
-import { useChannelListQuery, useChannelMemberListQuery } from "../hooks/useServerMutation";
+import {
+  useChannelListQuery,
+  useChannelMemberListQuery,
+} from "../hooks/useServerMutation";
 import { useResponsive } from "../../lib/useResponsive";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -19,17 +22,22 @@ export const ChannelManageModal = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState("");
 
-  const { handleKickMember, handleBanMember, handleUnbanMember, handleDeleteChannel, handleUpdateChannel } =
-    useChannelFlow(
-      channelData?.serverUrl || "",
-      channelData?.projectPk || 0,
-      channelData?.channelPk || 0
-    );
+  const {
+    handleKickMember,
+    handleBanMember,
+    handleUnbanMember,
+    handleDeleteChannel,
+    handleUpdateChannel,
+  } = useChannelFlow(
+    channelData?.serverUrl || "",
+    channelData?.projectPk || 0,
+    channelData?.channelPk || 0,
+  );
 
   const channelMemberList = useChannelMemberListQuery(
     channelData?.serverUrl || "",
     channelData?.projectPk || 0,
-    channelData?.channelPk || 0
+    channelData?.channelPk || 0,
   );
 
   const {
@@ -38,52 +46,63 @@ export const ChannelManageModal = () => {
     error: channelMemberListError,
   } = channelMemberList;
 
-  const channelList = useChannelListQuery(channelData?.serverUrl, channelData?.projectPk);
-  const channelName = channelList.data?.filter((channel) => channel.channelPk === channelData.channelPk)[0]?.channelName;
+  const channelList = useChannelListQuery(
+    channelData?.serverUrl,
+    channelData?.projectPk,
+  );
+  const channelName = channelList.data?.filter(
+    (channel) => channel.channelPk === channelData.channelPk,
+  )[0]?.channelName;
 
   useEffect(() => {
     if (channelName) {
       setEditedName(channelName);
     }
-   
   }, [channelName]);
 
   const handleEditStart = () => {
     setEditedName(channelName || "");
     setIsEditing(true);
-  }
+  };
 
   const handleEditCancel = () => {
     setEditedName(channelName || "");
     setIsEditing(false);
-  }
+  };
 
   const handleEditSave = async () => {
     if (!editedName.trim() || editedName === channelName) {
       setIsEditing(false);
       return;
-    };
-    try {
-      await handleUpdateChannel({channelName: editedName.trim()})
-      await queryClient.invalidateQueries({
-        queryKey: ["channelList", channelData?.serverUrl, channelData?.projectPk],
-      });
-      setIsEditing(false)
-    }catch (e){
-      console.error(e)
     }
-  }
+    try {
+      await handleUpdateChannel({ channelName: editedName.trim() });
+      await queryClient.invalidateQueries({
+        queryKey: [
+          "channelList",
+          channelData?.serverUrl,
+          channelData?.projectPk,
+        ],
+      });
+      setIsEditing(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   if (isChannelMemberListLoading) {
-    return <div>Loading...</div>;
+    return createPortal(<div>Loading...</div>, document.body);
   }
 
   if (channelMemberListError) {
-    return <div>Error: {channelMemberListError.message}</div>;
+    return createPortal(
+      <div>Error: {channelMemberListError.message}</div>,
+      document.body,
+    );
   }
 
   if (!channelMemberListData) {
-    return <div>No data</div>;
+    return createPortal(<div>No data</div>, document.body);
   }
 
   const handleClose = () => {
@@ -597,7 +616,7 @@ export const ChannelManageModal = () => {
                     </p>
                   </div>
                 )}
-                 {/* 삭제 버튼 */}
+                {/* 삭제 버튼 */}
                 <div className="pt-4 pb-4">
                   <button
                     onClick={deleteChannel}
@@ -613,7 +632,6 @@ export const ChannelManageModal = () => {
                     isMobile ? "space-x-2" : "space-x-3"
                   } pt-2`}
                 >
-                  
                   <button
                     type="button"
                     onClick={handleClose}

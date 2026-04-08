@@ -1,5 +1,5 @@
 import { VoiceParticipantCard } from "./VoiceParticipantCard";
-import { VoiceParticipant } from "../../../../../types/voiceChannelTypes";
+import type { VoiceParticipant } from "../../../../../types";
 import { useResponsive } from "../../../../../../lib/useResponsive";
 import { ScreenVideo } from "./ScreenVideo";
 

@@ -2,35 +2,22 @@
 
 import React, { useState } from "react";
 import { useResponsive } from "../../../../lib/useResponsive";
+import { RoleUI } from "@/app/(servers)/types";
+// import type { RoleUI, RolePermissionUI } from "../../../../types";
 
-export interface Permission {
-  id: string;
-  name: string;
-  description: string;
-  enabled: boolean;
-}
-
-export interface Role {
-  id: string;
-  name: string;
-  color: string;
-  permissions: Permission[];
-  memberCount: number;
-  isDefault?: boolean;
-  isOwner?: boolean;
-}
+export type { RoleUI as Role };
 
 interface RoleCardProps {
-  role: Role;
+  role: RoleUI;
   position: number;
-  onEdit: (role: Role) => void;
+  onEdit: (role: RoleUI) => void;
   onDelete: (roleId: string) => void;
   onPermissionChange: (
     roleId: string,
     permissionId: string,
     enabled: boolean
   ) => void;
-  isChanging?: boolean; // 권한 변경 중 상태
+  isChanging?: boolean;
 }
 
 const RoleCard: React.FC<RoleCardProps> = ({

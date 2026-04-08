@@ -20,8 +20,7 @@ import type {
   ChannelPayload,
   ProjectPayload,
 } from "../types";
-import type { ServerAccess, ServerStatus } from "@/app/(servers)/types/ServerAccess";
-import type { ChannelInfo } from "@/app/(servers)/types/websocket";
+import type { ServerAccess, ServerStatus, ChannelInfo } from "@/app/(servers)/types";
 
 // ─── Server ──────────────────────────────────────────────────────────────────
 

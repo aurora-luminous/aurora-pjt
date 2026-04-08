@@ -1,13 +1,13 @@
 "use client";
 
 import React from "react";
-import { useMessagePage } from "../../../../../hooks/useMessagePage";
 import { useResponsive } from "../../../../../../lib/useResponsive";
 import {
   PrivateMessageHeader,
   PrivateMessageList,
   PrivateMessageInput,
 } from "../components";
+import { useMessagePage } from "../hooks/useMessagePage";
 
 const MessagePage = () => {
   const { isMobile } = useResponsive();

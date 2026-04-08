@@ -5,7 +5,7 @@ import JoinRequestItem from "../components/JoinRequestItem";
 import {
   useJoinRequestsPage,
   useAdminPermission,
-} from "@/app/(servers)/hooks/useAdmin";
+} from "@/app/(servers)/[server_id]/admin/hooks/useAdmin";
 import { useResponsive } from "../../../../lib/useResponsive";
 
 export default function JoinRequestsPage() {
@@ -240,7 +240,7 @@ export default function JoinRequestsPage() {
                       | "Pending"
                       | "Active"
                       | "Inactive"
-                      | "Banned"
+                      | "Banned",
                   )
                 }
                 className={`

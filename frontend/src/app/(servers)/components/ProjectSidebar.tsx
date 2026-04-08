@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { useProjectSidebar } from "../hooks/useProjectSidebar";
+import { useProjectSidebar } from "../[server_id]/admin/hooks/useProjectSidebar";
 import AddChannelModal from "@/app/(server-setup)/components/AddChannelModal";
 import AddProjectModal from "@/app/(server-setup)/components/AddProjectModal";
 import AddProjectInviteModal from "@/app/(server-setup)/components/AddProjectInviteModal";
@@ -85,9 +85,13 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
             ${isMobile ? "w-12" : "w-16"}
           `}
           >
-            <div className={`flex-1 overflow-visible ${isMobile ? "px-1" : "px-2"}`}>
+            <div
+              className={`flex-1 overflow-visible ${isMobile ? "px-1" : "px-2"}`}
+            >
               {projectListQuery.isLoading ? (
-                <div className="text-white text-center py-4 text-xs">로딩중...</div>
+                <div className="text-white text-center py-4 text-xs">
+                  로딩중...
+                </div>
               ) : (
                 projects.map((project, index) => (
                   <ProjectItem
@@ -118,12 +122,16 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                   <h1 className="text-white font-semibold text-lg">
                     {isAdminPage
                       ? `${serverInfo?.serverName || "서버"} 관리`
-                      : currentProject?.projectName || serverInfo?.projectName || "프로젝트"}
+                      : currentProject?.projectName ||
+                        serverInfo?.projectName ||
+                        "프로젝트"}
                   </h1>
                   {!isAdminPage && (
                     <div className="relative channel-dropdown">
                       <button
-                        onClick={() => setShowChannelDropdown(!showChannelDropdown)}
+                        onClick={() =>
+                          setShowChannelDropdown(!showChannelDropdown)
+                        }
                         className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white hover:bg-gray-500 transition-colors"
                       >
                         +
@@ -140,8 +148,12 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                                 <div className="flex items-center">
                                   <span className="mr-3">🔗</span>
                                   <div>
-                                    <div className="font-medium">프로젝트 초대</div>
-                                    <div className="text-xs text-gray-400">서버 멤버 초대하기</div>
+                                    <div className="font-medium">
+                                      프로젝트 초대
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                      서버 멤버 초대하기
+                                    </div>
                                   </div>
                                 </div>
                               </button>
@@ -152,8 +164,12 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                                 <div className="flex items-center">
                                   <span className="mr-3">📁</span>
                                   <div>
-                                    <div className="font-medium">프로젝트 생성</div>
-                                    <div className="text-xs text-gray-400">새 프로젝트 만들기</div>
+                                    <div className="font-medium">
+                                      프로젝트 생성
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                      새 프로젝트 만들기
+                                    </div>
                                   </div>
                                 </div>
                               </button>
@@ -164,8 +180,12 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                                 <div className="flex items-center">
                                   <span className="mr-3">⚙️</span>
                                   <div>
-                                    <div className="font-medium">프로젝트 관리</div>
-                                    <div className="text-xs text-gray-400">프로젝트 설정하기</div>
+                                    <div className="font-medium">
+                                      프로젝트 관리
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                      프로젝트 설정하기
+                                    </div>
                                   </div>
                                 </div>
                               </button>
@@ -179,7 +199,9 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                               <span className="mr-3">➕</span>
                               <div>
                                 <div className="font-medium">채널 생성</div>
-                                <div className="text-xs text-gray-400">새 채널 만들기</div>
+                                <div className="text-xs text-gray-400">
+                                  새 채널 만들기
+                                </div>
                               </div>
                             </div>
                           </button>
@@ -193,7 +215,9 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
               <div className="px-4 py-3 flex-1 overflow-y-auto relative">
                 {isAdminPage ? (
                   adminLoading ? (
-                    <div className="text-white text-center py-4">로딩 중...</div>
+                    <div className="text-white text-center py-4">
+                      로딩 중...
+                    </div>
                   ) : (
                     <div className="space-y-1">
                       {adminMenuItems.map((item) => (
@@ -234,10 +258,11 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                         showChannelOptionMenu={showChannelOptionMenu}
                         showInviteDropdown={showInviteDropdown}
                         currentProjectRole={currentProjectRole}
-                        onChannelDropdownClose={() => setShowChannelOptionMenu(null)}
+                        onChannelDropdownClose={() =>
+                          setShowChannelOptionMenu(null)
+                        }
                         onChannelInviteDropdown={openChannelInviteDropdown}
                         onChannelManage={handleChannelManage}
-                       
                       />
                     )}
 
@@ -254,9 +279,10 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                       showInviteDropdown={showInviteDropdown}
                       currentProjectRole={currentProjectRole}
                       onChannelInviteDropdown={openChannelInviteDropdown}
-                      onChannelDropdownClose={() => setShowChannelOptionMenu(null)}
+                      onChannelDropdownClose={() =>
+                        setShowChannelOptionMenu(null)
+                      }
                       onChannelManage={handleChannelManage}
-                      
                     />
 
                     <ChannelSection
@@ -272,7 +298,9 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
                       serverId={serverId}
                       currentProjectRole={currentProjectRole}
                       onChannelInviteDropdown={openChannelInviteDropdown}
-                      onChannelDropdownClose={() => setShowChannelOptionMenu(null)}
+                      onChannelDropdownClose={() =>
+                        setShowChannelOptionMenu(null)
+                      }
                       onChannelManage={handleChannelManage}
                       emptyMessage="음성 채널이 없습니다"
                     />

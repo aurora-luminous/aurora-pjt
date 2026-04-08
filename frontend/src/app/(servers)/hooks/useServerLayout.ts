@@ -7,7 +7,7 @@ import {
   serverNames,
   projectNames,
   channelNames,
-} from "../types/data";
+} from "../constants/data";
 import { useResponsive } from "../../lib/useResponsive";
 
 export const useServerLayout = () => {

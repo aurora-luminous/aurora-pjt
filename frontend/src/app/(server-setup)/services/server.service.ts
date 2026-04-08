@@ -1,7 +1,7 @@
 import type { ServerInfo } from "../types";
 import { joinServerApi } from "../api/server.api";
 import { createChannelUrl, createPendingPageUrl } from "../utils/serverAccessUtils";
-import type { ServerAccess } from "@/app/(servers)/types/ServerAccess";
+import type { ServerAccess } from "@/app/(servers)/types";
 import axios from "axios";
 
 export interface ServerConnectionResult {

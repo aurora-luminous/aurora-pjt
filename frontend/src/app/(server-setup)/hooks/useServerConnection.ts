@@ -2,7 +2,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createPendingPageUrl } from "../utils/serverAccessUtils";
 import { joinServerApi } from "../api/server.api";
-import type { ServerAccess } from "@/app/(servers)/types/ServerAccess";
+import type { ServerAccess } from "@/app/(servers)/types";
 
 /**
  * 서버 연결 및 접근 권한 확인을 담당하는 훅

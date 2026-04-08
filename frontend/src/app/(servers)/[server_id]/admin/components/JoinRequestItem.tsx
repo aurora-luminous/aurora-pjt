@@ -3,7 +3,7 @@ import Image from "next/image";
 import {
   useJoinRequestItem,
   JoinRequest,
-} from "@/app/(servers)/hooks/useAdmin";
+} from "@/app/(servers)/[server_id]/admin/hooks/useAdmin";
 import { useResponsive } from "../../../../lib/useResponsive";
 
 interface JoinRequestItemProps {

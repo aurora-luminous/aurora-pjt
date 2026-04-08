@@ -8,7 +8,7 @@ import type {
 } from "../types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
-import type { ServerStatus } from "@/app/(servers)/types/ServerAccess";
+import type { ServerStatus } from "@/app/(servers)/types";
 import {
   addServerApi,
   getServerListApi,

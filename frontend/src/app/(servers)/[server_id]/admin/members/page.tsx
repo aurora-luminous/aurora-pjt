@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { useMembersPage } from "@/app/(servers)/hooks/useMembers";
+import { useMembersPage } from "@/app/(servers)/[server_id]/admin/hooks/useMembers";
 import { useResponsive } from "../../../../lib/useResponsive";
-import { useAdminPermission } from "../../../hooks/useAdmin";
+import { useAdminPermission } from "../hooks/useAdmin";
 import MemberFilters from "../components/MemberFilters";
 import BulkActions from "../components/BulkActions";
 import MemberCard from "../components/MemberCard";

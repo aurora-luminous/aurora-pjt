@@ -1,5 +1,5 @@
 import { VoiceParticipantCard } from "./VoiceParticipantCard";
-import { VoiceParticipant } from "../../../../../types/voiceChannelTypes";
+import type { VoiceParticipant } from "../../../../../types";
 
 interface VoiceGridProps {
   participants: { [userId: string]: VoiceParticipant };

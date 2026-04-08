@@ -7,8 +7,6 @@ import { ServerHeader, ProjectSidebar, UserSidebar } from "./components";
 import { useResponsive } from "../lib/useResponsive";
 import { useChannelSubscription } from "../(server-setup)/hooks/useChannelSubscription";
 import { ChatMessage } from "./types";
-// import { ChatMessage } from "./types/websocket";
-
 export default function ServersLayout({
   children,
 }: {
@@ -21,8 +19,6 @@ export default function ServersLayout({
     channelId,
     activeTab,
     setActiveTab,
-    directMessages,
-    onlineUsers,
     isSidebarOpen,
     isProjectActive,
     isProjectSelected,
@@ -147,7 +143,6 @@ export default function ServersLayout({
             <UserSidebar
               activeTab={activeTab}
               setActiveTab={setActiveTab}
-              directMessages={directMessages}
               serverId={serverId}
               projectId={projectId}
               isSidebarOpen={isSidebarOpen}
@@ -221,7 +216,6 @@ export default function ServersLayout({
               <UserSidebar
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
-                directMessages={directMessages}
                 serverId={serverId}
                 projectId={projectId}
                 isSidebarOpen={isSidebarOpen}

@@ -29,7 +29,7 @@ export const useChannelPage = () => {
   // URL의 projectId를 숫자로 변환
   const urlProjectPk = useMemo(() => {
     const pk = parseInt(projectId, 10);
-    return isNaN(pk) ? 0 : pk;
+    return Number.isNaN(pk) ? 0 : pk;
   }, [projectId]);
 
   const {
@@ -95,7 +95,7 @@ export const useChannelPage = () => {
     console.log(`🔍 찾는 채널 PK: ${channelPk}, 타입: ${typeof channelPk}`);
 
     // Redux에서 현재 채널 찾기 (PK 또는 이름으로)
-    let channel = !isNaN(channelPk) ? findChannelByPk(channelPk) : findChannel(channelId);
+    let channel = !Number.isNaN(channelPk) ? findChannelByPk(channelPk) : findChannel(channelId);
 
     // 정확히 매칭되지 않으면 fallback 매칭 시도
     if (!channel && channels.length > 0) {
@@ -315,7 +315,7 @@ export const useChannelPage = () => {
 
     const decodedPk = parseInt(decodedId, 10);
 
-    if (!isNaN(decodedPk)) {
+    if (!Number.isNaN(decodedPk)) {
       const foundChannelByPk = findChannelByPk(decodedPk);
       if (foundChannelByPk) return foundChannelByPk.channelName;
     }
@@ -329,7 +329,7 @@ export const useChannelPage = () => {
       return currentChannel.channelName;
     }
 
-    if (decodedId && decodedId !== "" && isNaN(decodedPk)) {
+    if (decodedId && decodedId !== "" && Number.isNaN(decodedPk)) {
       return decodedId;
     }
 

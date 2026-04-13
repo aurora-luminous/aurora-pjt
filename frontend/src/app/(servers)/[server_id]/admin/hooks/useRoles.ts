@@ -1,65 +1,6 @@
 import { useCallback, useMemo } from "react";
-import { Role, Permission } from "../[server_id]/admin/components/RoleCard";
 import { useRolePermissions } from "./useAdmin";
-import type { RolePermisson } from "@/app/(server-setup)/types";
-
-// API 권한 데이터를 UI 형식으로 변환
-const convertApiPermissionsToUIPermissions = (
-  apiPermissions: RolePermisson
-): Permission[] => {
-  return [
-    {
-      id: "kickMembers",
-      name: "멤버 추방",
-      description: "멤버를 서버에서 추방할 수 있습니다",
-      enabled: apiPermissions.kickMembers,
-    },
-    {
-      id: "banMembers",
-      name: "멤버 차단",
-      description: "멤버를 서버에서 차단할 수 있습니다",
-      enabled: apiPermissions.banMembers,
-    },
-    {
-      id: "manageRoles",
-      name: "역할 관리",
-      description: "역할을 생성하고 멤버의 역할을 변경할 수 있습니다",
-      enabled: apiPermissions.manageRoles,
-    },
-  ];
-};
-
-// serverRole을 한글 이름과 색상으로 변환
-const getRoleDisplayInfo = (serverRole: string) => {
-  switch (serverRole) {
-    case "owner":
-      return { name: "서버 오너", color: "#FFD700", isOwner: true };
-    case "admin":
-      return { name: "관리자", color: "#FF6B6B" };
-    case "member":
-      return { name: "멤버", color: "#95A5A6", isDefault: true };
-    default:
-      return { name: serverRole, color: "#6B7280" };
-  }
-};
-
-// API 역할 데이터를 UI 형식으로 변환
-const convertApiRoleToUIRole = (
-  apiRole: RolePermisson,
-  memberCount: number = 0
-): Role => {
-  const displayInfo = getRoleDisplayInfo(apiRole.serverRole);
-
-  return {
-    id: apiRole.serverRole,
-    name: displayInfo.name,
-    color: displayInfo.color,
-    permissions: convertApiPermissionsToUIPermissions(apiRole),
-    memberCount,
-    isDefault: displayInfo.isDefault,
-    isOwner: displayInfo.isOwner,
-  };
-};
+import { convertApiRoleToUIRole } from "../../../services/role.service";
 
 export const useRolesPage = () => {
   // 실제 API 훅 사용
@@ -111,7 +52,7 @@ export const useRolesPage = () => {
       try {
         // 현재 역할의 모든 권한 가져오기
         const currentRole = rolePermissions?.find(
-          (r) => r.serverRole === roleId
+          (r) => r.serverRole === roleId,
         );
 
         if (!currentRole) {
@@ -144,7 +85,7 @@ export const useRolesPage = () => {
         alert("권한 변경에 실패했습니다. 다시 시도해주세요.");
       }
     },
-    [rolePermissions, handleChangePermission]
+    [rolePermissions, handleChangePermission],
   );
 
   return {

@@ -1,8 +1,8 @@
 "use client";
 
-import { useVoiceChannelPage } from "../../../../../hooks/useVoiceChannelPage";
-import { useVoiceGrid } from "../../../../../hooks/useVoiceGrid";
-import { useMediaControl } from "../../../../../hooks/useMediaControl";
+// import { useVoiceChannelPage } from "../../../../../hooks/useVoiceChannelPage";
+// import { useVoiceGrid } from "../../../../../hooks/useVoiceGrid";
+import { useMediaControl } from "../hooks/useMediaControl";
 import { useResponsive } from "../../../../../../lib/useResponsive";
 import dynamic from "next/dynamic";
 import {
@@ -11,6 +11,8 @@ import {
   VoiceGrid,
   VoiceControlBar,
 } from "../components";
+import { useVoiceChannelPage } from "../hooks/useVoiceChannelPage";
+import { useVoiceGrid } from "../hooks/useVoiceGrid";
 
 // FullscreenButton을 클라이언트에서만 로드 (hydration 에러 방지)
 const FullscreenButton = dynamic(
@@ -19,7 +21,7 @@ const FullscreenButton = dynamic(
   {
     ssr: false,
     loading: () => null, // 로딩 중에는 아무것도 보여주지 않음
-  }
+  },
 );
 
 const VoiceChannelPage = () => {
@@ -56,7 +58,7 @@ const VoiceChannelPage = () => {
     isMicOn,
     isVideoOn,
     isScreenShareActive,
-    participants
+    participants,
   );
 
   return (

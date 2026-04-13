@@ -10,7 +10,11 @@ import { useModal } from "@/app/(server-setup)/hooks/useModal";
 import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
 import { useAdminSidebar } from "./useAdmin";
 import type { Project, Channel } from "@/app/(server-setup)/types";
-import { ChannelKind, AccessType, ChannelRole } from "@/app/(server-setup)/types";
+import {
+  ChannelKind,
+  AccessType,
+  ChannelRole,
+} from "@/app/(server-setup)/types";
 import { createChannelUrl } from "@/app/(server-setup)/utils/serverAccessUtils";
 
 interface UseProjectSidebarProps {
@@ -40,9 +44,15 @@ export const useProjectSidebar = ({
 
   // 드롭다운 상태 관리
   const [showChannelDropdown, setShowChannelDropdown] = useState(false);
-  const [showProjectOptionMenu, setShowProjectOptionMenu] = useState<number | null>(null);
-  const [showChannelOptionMenu, setShowChannelOptionMenu] = useState<string | null>(null);
-  const [showInviteDropdown, setShowInviteDropdown] = useState<string | null>(null);
+  const [showProjectOptionMenu, setShowProjectOptionMenu] = useState<
+    number | null
+  >(null);
+  const [showChannelOptionMenu, setShowChannelOptionMenu] = useState<
+    string | null
+  >(null);
+  const [showInviteDropdown, setShowInviteDropdown] = useState<string | null>(
+    null,
+  );
 
   // 데이터 조회
   const projectListQuery = useProjectListQuery(serverUrl || "");
@@ -51,7 +61,7 @@ export const useProjectSidebar = ({
 
   const currentUserEmail = userInfo.data?.userEmail;
   const currentProjectRole = memberInfo.data?.find(
-    (member) => member.userInfo.userEmail === currentUserEmail
+    (member) => member.userInfo.userEmail === currentUserEmail,
   )?.projectRole;
 
   // 디코딩된 채널 ID
@@ -84,13 +94,19 @@ export const useProjectSidebar = ({
 
   const channelListQuery = useChannelListQuery(
     serverUrl || "",
-    currentProject?.projectPk || 0
+    currentProject?.projectPk || 0,
   );
 
   const channels = channelListQuery.data || [];
-  const textChannels = channels.filter((c) => c.channelKind === ChannelKind.TEXT);
-  const voiceChannels = channels.filter((c) => c.channelKind === ChannelKind.VOICE);
-  const noticeChannels = channels.filter((c) => c.channelKind === ChannelKind.NOTIFICATION);
+  const textChannels = channels.filter(
+    (c) => c.channelKind === ChannelKind.TEXT,
+  );
+  const voiceChannels = channels.filter(
+    (c) => c.channelKind === ChannelKind.VOICE,
+  );
+  const noticeChannels = channels.filter(
+    (c) => c.channelKind === ChannelKind.NOTIFICATION,
+  );
 
   // Admin 로직
   const isAdminPage = pathname.includes("/admin");
@@ -104,11 +120,10 @@ export const useProjectSidebar = ({
       badge: pendingRequestsCount > 0 ? pendingRequestsCount : undefined,
     },
     { href: `/${serverId}/admin/members`, label: "구성원", icon: "👤" },
-    { href: `/${serverId}/admin/projects`, label: "프로젝트 관리", icon: "📦"},
+    { href: `/${serverId}/admin/projects`, label: "프로젝트 관리", icon: "📦" },
     { href: `/${serverId}/admin/roles`, label: "역할", icon: "🏷️" },
     { href: `/${serverId}/admin/invitations`, label: "초대", icon: "✉️" },
     { href: `/${serverId}/admin/settings`, label: "서버 설정", icon: "⚙️" },
-    
   ];
 
   const isActiveAdminLink = (href: string) => pathname === href;
@@ -129,15 +144,17 @@ export const useProjectSidebar = ({
   const openChannelDropdown = (e: React.MouseEvent, channelName: string) => {
     e.preventDefault();
     e.stopPropagation();
-    setShowChannelOptionMenu(showChannelOptionMenu === channelName ? null : channelName);
+    setShowChannelOptionMenu(
+      showChannelOptionMenu === channelName ? null : channelName,
+    );
   };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
-      
+
       if (
-        !target.closest(".channel-dropdown") && 
+        !target.closest(".channel-dropdown") &&
         !target.closest(".invite-channel-dropdown") &&
         !target.closest(".invite-button")
       ) {
@@ -213,7 +230,7 @@ export const useProjectSidebar = ({
       serverId,
       currentProject?.projectPk || 0,
       channel.channelPk,
-      channel.channelKind
+      channel.channelKind,
     );
   };
 

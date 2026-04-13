@@ -1,6 +1,6 @@
+import { defaultMessages } from "@/app/(servers)/constants/channelData";
+import { VoiceParticipant } from "@/app/(servers)/types";
 import { useEffect } from "react";
-import { defaultMessages } from "../types/channelData";
-import { VoiceParticipant } from "../types/voiceChannelTypes";
 
 interface UseVoiceChannelInitProps {
   channelId: string;

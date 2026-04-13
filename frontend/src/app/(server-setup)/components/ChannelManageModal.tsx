@@ -6,7 +6,10 @@ import { createPortal } from "react-dom";
 import { useModal } from "../hooks/useModal";
 import type { ChannelManageData } from "../types";
 import { useChannelFlow } from "../hooks/useChannelFlow";
-import { useChannelListQuery, useChannelMemberListQuery } from "../hooks/useServerMutation";
+import {
+  useChannelListQuery,
+  useChannelMemberListQuery,
+} from "../hooks/useServerMutation";
 import { useResponsive } from "../../lib/useResponsive";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -19,17 +22,22 @@ export const ChannelManageModal = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState("");
 
-  const { handleKickMember, handleBanMember, handleUnbanMember, handleDeleteChannel, handleUpdateChannel } =
-    useChannelFlow(
-      channelData?.serverUrl || "",
-      channelData?.projectPk || 0,
-      channelData?.channelPk || 0
-    );
+  const {
+    handleKickMember,
+    handleBanMember,
+    handleUnbanMember,
+    handleDeleteChannel,
+    handleUpdateChannel,
+  } = useChannelFlow(
+    channelData?.serverUrl || "",
+    channelData?.projectPk || 0,
+    channelData?.channelPk || 0,
+  );
 
   const channelMemberList = useChannelMemberListQuery(
     channelData?.serverUrl || "",
     channelData?.projectPk || 0,
-    channelData?.channelPk || 0
+    channelData?.channelPk || 0,
   );
 
   const {
@@ -38,53 +46,49 @@ export const ChannelManageModal = () => {
     error: channelMemberListError,
   } = channelMemberList;
 
-  const channelList = useChannelListQuery(channelData?.serverUrl, channelData?.projectPk);
-  const channelName = channelList.data?.filter((channel) => channel.channelPk === channelData.channelPk)[0]?.channelName;
+  const channelList = useChannelListQuery(
+    channelData?.serverUrl,
+    channelData?.projectPk,
+  );
+  const channelName = channelList.data?.filter(
+    (channel) => channel.channelPk === channelData.channelPk,
+  )[0]?.channelName;
 
   useEffect(() => {
     if (channelName) {
       setEditedName(channelName);
     }
-   
   }, [channelName]);
 
   const handleEditStart = () => {
     setEditedName(channelName || "");
     setIsEditing(true);
-  }
+  };
 
   const handleEditCancel = () => {
     setEditedName(channelName || "");
     setIsEditing(false);
-  }
+  };
 
   const handleEditSave = async () => {
     if (!editedName.trim() || editedName === channelName) {
       setIsEditing(false);
       return;
-    };
-    try {
-      await handleUpdateChannel({channelName: editedName.trim()})
-      await queryClient.invalidateQueries({
-        queryKey: ["channelList", channelData?.serverUrl, channelData?.projectPk],
-      });
-      setIsEditing(false)
-    }catch (e){
-      console.error(e)
     }
-  }
-
-  if (isChannelMemberListLoading) {
-    return <div>Loading...</div>;
-  }
-
-  if (channelMemberListError) {
-    return <div>Error: {channelMemberListError.message}</div>;
-  }
-
-  if (!channelMemberListData) {
-    return <div>No data</div>;
-  }
+    try {
+      await handleUpdateChannel({ channelName: editedName.trim() });
+      await queryClient.invalidateQueries({
+        queryKey: [
+          "channelList",
+          channelData?.serverUrl,
+          channelData?.projectPk,
+        ],
+      });
+      setIsEditing(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleClose = () => {
     close();
@@ -217,59 +221,73 @@ export const ChannelManageModal = () => {
 
               {/* 스크롤 가능한 콘텐츠 */}
               <div className="overflow-y-auto px-4 pb-4 max-h-[calc(90vh-80px)]">
-                {/* 멤버 리스트 */}
                 <div className="space-y-2">
-                  {channelMemberList.data?.map((member) => (
-                    <div
-                      key={member.userInfo.userEmail}
-                      className="flex items-center justify-between bg-gray-600 rounded-lg p-3"
-                    >
-                      <div className="flex items-center">
-                        <div className="rounded-full bg-blue-500 flex items-center justify-center text-white font-bold w-8 h-8 text-sm mr-3">
-                          {member.userInfo.userEmail[0].toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="text-white font-medium text-sm">
-                            {member.userInfo.userEmail}
-                          </p>
-                          <p className="text-gray-300 text-xs">
-                            {member.channelRole}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex space-x-1">
-                        {member.cStatus !== "Banned" ? (
-                          <>
-                            <button
-                              onClick={() =>
-                                handleKickMember(member.userInfo.userEmail)
-                              }
-                              className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
-                            >
-                              추방
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleBanMember(member.userInfo.userEmail)
-                              }
-                              className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
-                            >
-                              차단
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            onClick={() =>
-                              handleUnbanMember(member.userInfo.userEmail)
-                            }
-                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
-                          >
-                            해제
-                          </button>
-                        )}
-                      </div>
+                  {isChannelMemberListLoading ? (
+                    <div className="text-white text-center py-10">
+                      Loading...
                     </div>
-                  ))}
+                  ) : channelMemberListError ? (
+                    <div className="text-red-400 text-center py-10">
+                      Error: {channelMemberListError.message}
+                    </div>
+                  ) : !channelMemberListData ||
+                    channelMemberListData.length === 0 ? (
+                    <div className="text-center py-10 text-gray-400">
+                      No Data
+                    </div>
+                  ) : (
+                    channelMemberList.data?.map((member) => (
+                      <div
+                        key={member.userInfo.userEmail}
+                        className="flex items-center justify-between bg-gray-600 rounded-lg p-3"
+                      >
+                        <div className="flex items-center">
+                          <div className="rounded-full bg-blue-500 flex items-center justify-center text-white font-bold w-8 h-8 text-sm mr-3">
+                            {member.userInfo.userEmail[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-white font-medium text-sm">
+                              {member.userInfo.userEmail}
+                            </p>
+                            <p className="text-gray-300 text-xs">
+                              {member.channelRole}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex space-x-1">
+                          {member.cStatus !== "Banned" ? (
+                            <>
+                              <button
+                                onClick={() =>
+                                  handleKickMember(member.userInfo.userEmail)
+                                }
+                                className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                              >
+                                추방
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleBanMember(member.userInfo.userEmail)
+                                }
+                                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                              >
+                                차단
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() =>
+                                handleUnbanMember(member.userInfo.userEmail)
+                              }
+                              className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors"
+                            >
+                              해제
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
                 {/* 삭제 버튼 */}
                 <div className="pt-4 pb-4">
@@ -597,7 +615,7 @@ export const ChannelManageModal = () => {
                     </p>
                   </div>
                 )}
-                 {/* 삭제 버튼 */}
+                {/* 삭제 버튼 */}
                 <div className="pt-4 pb-4">
                   <button
                     onClick={deleteChannel}
@@ -613,7 +631,6 @@ export const ChannelManageModal = () => {
                     isMobile ? "space-x-2" : "space-x-3"
                   } pt-2`}
                 >
-                  
                   <button
                     type="button"
                     onClick={handleClose}

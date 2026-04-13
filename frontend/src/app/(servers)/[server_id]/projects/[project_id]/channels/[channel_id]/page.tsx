@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { useChannelPage } from "../../../../../hooks/useChannelPage";
 import { ChatHeader, MessageList, MessageInput } from "../components";
 import { useResponsive } from "../../../../../../lib/useResponsive";
+import { useChannelPage } from "../hooks/useChannelPage";
 
 const ChannelPage = () => {
   const { isMobile } = useResponsive();

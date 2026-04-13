@@ -1,21 +1,17 @@
 import { useWebSocket } from "@/app/lib/useWebSocket";
 import { useEffect } from "react";
-import { ChatMessage } from "../types/websocket";
+import type { ChatMessage } from "../../(servers)/types";
 import { useMyChannelsQuery } from "@/app/(server-setup)/hooks/useServerMutation";
 
 /**
  * 웹소켓 연결 및 채널 구독을 관리하는 훅
  */
 export const useChannelSubscription = (
-  onMessage?: (message: ChatMessage) => void
+  onMessage?: (message: ChatMessage) => void,
 ) => {
   const { data: channels, isLoading } = useMyChannelsQuery();
-  const {
-    isConnected,
-    isConnecting,
-    connect,
-    subscribeToChannels,
-  } = useWebSocket();
+  const { isConnected, isConnecting, connect, subscribeToChannels } =
+    useWebSocket();
 
   // 웹소켓 연결
   useEffect(() => {
@@ -33,13 +29,10 @@ export const useChannelSubscription = (
 
     console.log(`📡 ${channels.length}개 채널 구독 시작...`);
 
-    const unsubscribeFunctions = subscribeToChannels(
-      channels,
-      (message) => {
-        console.log("📨 메시지 수신:", message);
-        onMessage?.(message);
-      }
-    );
+    const unsubscribeFunctions = subscribeToChannels(channels, (message) => {
+      console.log("📨 메시지 수신:", message);
+      onMessage?.(message);
+    });
 
     return () => {
       console.log("🔌 모든 채널 구독 해제");

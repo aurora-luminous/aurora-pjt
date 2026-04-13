@@ -1,6 +1,7 @@
 import { useVoiceChannelParams } from "./useVoiceChannelParams";
-import { useConnectRedux } from "./useConnectRedux";
+// import { useConnectRedux } from "../[server_id]/projects/[project_id]/voice_channels/hooks/useConnectRedux";
 import { useVoiceChannelInit } from "./useVoiceChannelInit";
+import { useConnectRedux } from "./useConnectRedux";
 
 export const useVoiceChannelPage = () => {
   // 🎯 1. URL 파라미터 관리

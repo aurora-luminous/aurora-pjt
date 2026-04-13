@@ -1,6 +1,5 @@
-import { PrivateMessage, ChatUser } from "./index";
+import type { PrivateMessage, ChatUser } from "../types";
 
-// 채팅 사용자 목록
 export const chatUsers: ChatUser[] = [
   { id: 1, name: "김병년", status: "online" },
   { id: 2, name: "김세현", status: "away" },
@@ -9,11 +8,9 @@ export const chatUsers: ChatUser[] = [
   { id: 5, name: "손짐니", status: "online" },
 ];
 
-// 기본 개인 메시지 데이터
 export const getDefaultPrivateMessages = (userId: string): PrivateMessage[] => {
   const userSpecificMessages: { [key: string]: PrivateMessage[] } = {
     "1": [
-      // 김병년과의 대화
       {
         id: 1,
         sender: "김병년",
@@ -44,7 +41,6 @@ export const getDefaultPrivateMessages = (userId: string): PrivateMessage[] => {
       },
     ],
     "2": [
-      // 김세현과의 대화
       {
         id: 1,
         sender: "김세현",
@@ -61,7 +57,6 @@ export const getDefaultPrivateMessages = (userId: string): PrivateMessage[] => {
       },
     ],
     "3": [
-      // 이용재와의 대화
       {
         id: 1,
         sender: "이용재",
@@ -85,7 +80,6 @@ export const getDefaultPrivateMessages = (userId: string): PrivateMessage[] => {
       },
     ],
     "5": [
-      // 손짐니와의 대화
       {
         id: 1,
         sender: "손짐니",

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Client, IMessage } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { getAccessToken } from "./tokenStorage";
-import { ChannelInfo, ChatMessage, MessageRequest, WebSocketState } from "@/app/(servers)/types/websocket";
+import type { ChannelInfo, ChatMessage, MessageRequest, WebSocketState } from "@/app/(servers)/types";
 
 // SockJS를 전역으로 설정 (브라우저 환경에서만)
 if (typeof window !== "undefined") {

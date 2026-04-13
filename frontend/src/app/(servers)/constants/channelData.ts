@@ -1,12 +1,10 @@
-import { Message, ChannelNameMap } from "./index";
+import type { Message, ChannelNameMap } from "../types";
 
-// 채널 이름 매핑
 export const channelNames: ChannelNameMap = {
   general: "일반",
   announcements: "공지사항",
 };
 
-// 채팅 메시지 목록
 export const defaultMessages: Message[] = [
   {
     id: 1,

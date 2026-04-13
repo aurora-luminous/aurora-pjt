@@ -1,9 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { Message } from "../types";
-import {
-  VoiceChannelState,
-  VoiceParticipant,
-} from "../types/voiceChannelTypes";
+import type { Message, VoiceChannelState, VoiceParticipant } from "../types";
 
 // 초기 상태
 const initialState: VoiceChannelState = {

@@ -18,7 +18,7 @@ export const useMembersPage = () => {
 
   // 상태 관리
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [filterRole, setFilterRole] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -56,13 +56,13 @@ export const useMembersPage = () => {
   // 전체 선택 상태
   const selectedAll = useMemo(() => {
     const selectableMembers = filteredMembers?.filter(
-      (m) => m.serverRole !== "owner"
+      (m) => m.serverRole !== "owner",
     );
     return (
       selectableMembers &&
       selectableMembers.length > 0 &&
       selectableMembers.every((member) =>
-        selectedMembers.has(member.userInfo.userName)
+        selectedMembers.has(member.userInfo.userName),
       )
     );
   }, [filteredMembers, selectedMembers]);
@@ -80,7 +80,7 @@ export const useMembersPage = () => {
         return newSet;
       });
     },
-    []
+    [],
   );
 
   const handleSelectAll = useCallback(
@@ -94,7 +94,7 @@ export const useMembersPage = () => {
         setSelectedMembers(new Set());
       }
     },
-    [filteredMembers]
+    [filteredMembers],
   );
 
   const handleFilterChange = useCallback(
@@ -107,7 +107,7 @@ export const useMembersPage = () => {
       // 필터 변경 시 선택 초기화
       setSelectedMembers(new Set());
     },
-    []
+    [],
   );
 
   const handleSearchChange = useCallback((query: string) => {
@@ -171,7 +171,7 @@ export const useMembersPage = () => {
         alert("역할 변경에 실패했습니다. 다시 시도해주세요.");
       }
     },
-    [handleChangeMemberRole, refetch]
+    [handleChangeMemberRole, refetch],
   );
 
   return {

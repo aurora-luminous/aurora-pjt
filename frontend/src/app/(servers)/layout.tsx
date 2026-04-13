@@ -2,12 +2,11 @@
 
 import React from "react";
 import { useServerLayout } from "./hooks/useServerLayout";
-import { useFullscreen } from "./hooks/useFullscreen";
+import { useFullscreen } from "./[server_id]/projects/[project_id]/voice_channels/hooks/useFullscreen";
 import { ServerHeader, ProjectSidebar, UserSidebar } from "./components";
 import { useResponsive } from "../lib/useResponsive";
-import { useChannelSubscription } from "./hooks/useChannelSubscription";
-import { ChatMessage } from "./types/websocket";
-
+import { useChannelSubscription } from "../(server-setup)/hooks/useChannelSubscription";
+import { ChatMessage } from "./types";
 export default function ServersLayout({
   children,
 }: {
@@ -20,8 +19,6 @@ export default function ServersLayout({
     channelId,
     activeTab,
     setActiveTab,
-    directMessages,
-    onlineUsers,
     isSidebarOpen,
     isProjectActive,
     isProjectSelected,
@@ -36,7 +33,7 @@ export default function ServersLayout({
       // 메시지 수신 시 처리 로직
       console.log("📨 레이아웃에서 메시지 수신:", message);
       // 여기에 Redux store 업데이트 또는 다른 상태 관리 로직 추가 가능
-    }
+    },
   );
 
   // 모바일에서 프로젝트 사이드바 표시 상태 관리
@@ -146,7 +143,6 @@ export default function ServersLayout({
             <UserSidebar
               activeTab={activeTab}
               setActiveTab={setActiveTab}
-              directMessages={directMessages}
               serverId={serverId}
               projectId={projectId}
               isSidebarOpen={isSidebarOpen}
@@ -220,7 +216,6 @@ export default function ServersLayout({
               <UserSidebar
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
-                directMessages={directMessages}
                 serverId={serverId}
                 projectId={projectId}
                 isSidebarOpen={isSidebarOpen}

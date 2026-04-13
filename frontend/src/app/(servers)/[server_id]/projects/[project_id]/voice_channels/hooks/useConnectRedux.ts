@@ -1,8 +1,8 @@
 import { useDispatch, useSelector } from "react-redux";
 import { useCallback } from "react";
-import type { RootState, AppDispatch } from "../../lib/store";
-import { Message } from "../types";
-import { VoiceParticipant } from "../types/voiceChannelTypes";
+import type { RootState, AppDispatch } from "../../../../../../lib/store";
+import { Message } from "../../../../../types";
+import type { VoiceParticipant } from "../../../../../types";
 import {
   initializeChannel,
   addParticipant,
@@ -17,13 +17,13 @@ import {
   toggleSettings,
   addMessage,
   setSpeaking,
-} from "../store/voiceChannelSlice";
+} from "../../../../../store/voiceChannelSlice";
 
 // Redux Store와 Hook을 연결하는 커넥터 훅
 export const useConnectRedux = (channelId: string) => {
   const dispatch = useDispatch<AppDispatch>();
   const voiceChannelState = useSelector(
-    (state: RootState) => state.voiceChannel
+    (state: RootState) => state.voiceChannel,
   );
   const currentUserId = voiceChannelState.currentUser.userId;
 
@@ -37,7 +37,7 @@ export const useConnectRedux = (channelId: string) => {
       (messages: Message[]) => {
         dispatch(initializeChannel({ channelId, messages }));
       },
-      [dispatch, channelId]
+      [dispatch, channelId],
     ),
 
     // 참여자 관리
@@ -45,14 +45,14 @@ export const useConnectRedux = (channelId: string) => {
       (participant: VoiceParticipant) => {
         dispatch(addParticipant({ channelId, participant }));
       },
-      [dispatch, channelId]
+      [dispatch, channelId],
     ),
 
     leaveChannel: useCallback(
       (userId: string) => {
         dispatch(removeParticipant({ channelId, userId }));
       },
-      [dispatch, channelId]
+      [dispatch, channelId],
     ),
 
     // 현재 사용자 상태 토글
@@ -94,7 +94,7 @@ export const useConnectRedux = (channelId: string) => {
       (message: Message) => {
         dispatch(addMessage({ channelId, message }));
       },
-      [dispatch, channelId]
+      [dispatch, channelId],
     ),
 
     // 발언 상태
@@ -102,7 +102,7 @@ export const useConnectRedux = (channelId: string) => {
       (userId: string, isSpeaking: boolean) => {
         dispatch(setSpeaking({ channelId, userId, isSpeaking }));
       },
-      [dispatch, channelId]
+      [dispatch, channelId],
     ),
   };
 

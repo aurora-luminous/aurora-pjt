@@ -1,5 +1,5 @@
 import { useParams } from "next/navigation";
-import { channelNames } from "../types/data";
+import { channelNames } from "../../../../../constants/channelData";
 
 export const useVoiceChannelParams = () => {
   const params = useParams();

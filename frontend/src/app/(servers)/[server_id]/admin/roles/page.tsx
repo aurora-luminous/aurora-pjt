@@ -1,10 +1,10 @@
 "use client";
 
 import React from "react";
-import { useRolesPage } from "@/app/(servers)/hooks/useRoles";
+import { useRolesPage } from "@/app/(servers)/[server_id]/admin/hooks/useRoles";
 import RoleCard from "../components/RoleCard";
 import { useResponsive } from "../../../../lib/useResponsive";
-import { useAdminPermission } from "../../../hooks/useAdmin";
+import { useAdminPermission } from "../hooks/useAdmin";
 
 const RolesPage = () => {
   const { isMobile } = useResponsive();

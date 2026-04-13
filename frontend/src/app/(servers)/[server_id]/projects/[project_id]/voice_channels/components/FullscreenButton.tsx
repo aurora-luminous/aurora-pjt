@@ -1,4 +1,4 @@
-import { useFullscreen } from "../../../../../hooks/useFullscreen";
+import { useFullscreen } from "../hooks/useFullscreen";
 
 interface FullscreenButtonProps {
   onToggleFullscreen: () => void;
@@ -33,7 +33,7 @@ export const FullscreenButton = ({
       // 맥북 크롬에서 차단되는 경우 안내 메시지
       if (isMacChrome()) {
         alert(
-          '🔒 크롬에서 전체화면이 차단되었습니다.\n\n해결 방법:\n1. 주소창 좌측 🔒 아이콘 클릭\n2. "팝업 및 리디렉션" → 허용\n3. 페이지 새로고침\n\n또는 Safari 브라우저를 사용해보세요!'
+          '🔒 크롬에서 전체화면이 차단되었습니다.\n\n해결 방법:\n1. 주소창 좌측 🔒 아이콘 클릭\n2. "팝업 및 리디렉션" → 허용\n3. 페이지 새로고침\n\n또는 Safari 브라우저를 사용해보세요!',
         );
       }
 

@@ -1,4 +1,4 @@
-import { VoiceParticipant } from "../../../../../types/voiceChannelTypes";
+import type { VoiceParticipant } from "../../../../../types";
 import { useEffect, useRef } from "react";
 
 interface VoiceParticipantCardProps {

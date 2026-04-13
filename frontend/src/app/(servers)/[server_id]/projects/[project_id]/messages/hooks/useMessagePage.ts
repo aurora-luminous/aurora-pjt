@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
-import { PrivateMessage } from "../types";
-import { chatUsers, getDefaultPrivateMessages } from "../types/messageData";
+import { PrivateMessage } from "@/app/(servers)/types";
+import { chatUsers, getDefaultPrivateMessages } from "@/app/(servers)/constants/messageData";
 
 export const useMessagePage = () => {
   const params = useParams();

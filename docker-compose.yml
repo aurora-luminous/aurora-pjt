@@ -8,6 +8,7 @@ services:
       - 3000:3000
     environment:
       - NODE_ENV=production
+      - NODE_OPTIONS=--trace-uncaught --trace-warnings
     command: npm start
     networks:
       - aurora-network

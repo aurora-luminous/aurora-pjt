@@ -22,8 +22,8 @@
     "react-dom": "19.1.0",
     "react-redux": "^9.2.0",
     "react-window": "^2.2.7",
-    "redux-toolkit": "^1.1.2",
-    "sockjs-client": "^1.6.1"
+    "sockjs-client": "^1.6.1",
+    "typescript": "^5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -33,7 +33,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.4.2",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "tailwindcss": "^4" 
   }
 }

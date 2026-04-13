@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { Role, Permission } from "./RoleCard";
+import { Role } from "./RoleCard";
+import { RolePermissionUI } from "@/app/(servers)/types";
+
 
 interface CreateRoleModalProps {
   onClose: () => void;
@@ -18,7 +20,7 @@ const CreateRoleModal: React.FC<CreateRoleModalProps> = ({
     new Set()
   );
 
-  const availablePermissions: Permission[] = [
+  const availablePermissions: RolePermissionUI[] = [
     {
       id: "view_channels",
       name: "채널 보기",

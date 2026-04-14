@@ -3,6 +3,8 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, FindOptionsWhere, Brackets } from "typeorm";
 import { ChannelMember } from "../../entities/channel-member.entity";
 import { ChannelMemberRepository } from "../channel-member.repository";
+import { EntityManager } from "typeorm";
+import { MemberStatus } from "src/common/enums";
 
 @Injectable()
 export class TypeOrmChannelMemberRepository extends ChannelMemberRepository {
@@ -95,4 +97,49 @@ export class TypeOrmChannelMemberRepository extends ChannelMemberRepository {
       { cStatus: 'Inactive' }
     );
   };
+
+  // 특정 서버에 속한 모든 프로젝트의 모든 채널 멤버 나가기 처리
+  async deactivateAllByServer(manager: EntityManager, serverPk: number): Promise<void> {
+    await manager
+      .createQueryBuilder()
+      .update(ChannelMember)
+      .set({ cStatus: MemberStatus.INACTIVE })
+      .where('cStatus = :status', { status: MemberStatus.ACTIVE })
+      .andWhere('channelPk IN (SELECT c.channel_pk FROM channel c JOIN project p ON c.project_pk = p.project_pk WHERE p.server_pk = :serverPk)', { serverPk })
+      .execute();
+  }
+
+  // 특정 프로젝트의 모든 채널 멤버 나가기 처리
+  async deactivateAllByProject(manager: EntityManager, projectPk: number): Promise<void> {
+    await manager
+      .createQueryBuilder()
+      .update(ChannelMember)
+      .set({ cStatus: MemberStatus.INACTIVE })
+      .where('cStatus = :status', { status: MemberStatus.ACTIVE })
+      .andWhere('channelPk IN (SELECT channel_pk FROM channel WHERE project_pk = :projectPk)', { projectPk })
+      .execute();
+  }
+
+  // 유저가 가입중인 모든 프로젝트에서 나가기 처리
+  async deactivateUserInProject(manager: EntityManager, projectPk: number, userPk: number): Promise<void> {
+    await manager
+      .createQueryBuilder()
+      .update(ChannelMember)
+      .set({ cStatus: MemberStatus.INACTIVE })
+      .where('userPk = :userPk', { userPk })
+      .andWhere('cStatus = :status', { status: MemberStatus.ACTIVE })
+      .andWhere('channelPk IN (SELECT channel_pk FROM channel WHERE project_pk = :projectPk)', { projectPk })
+      .execute();
+  }
+  // 유저가 가입중인 서버의 모든 프로젝트의 모든 채널에서 나가기 처리
+  async deactivateUserInServer(manager: EntityManager, serverPk: number, userPk: number): Promise<void> {
+    await manager
+      .createQueryBuilder()
+      .update(ChannelMember)
+      .set({ cStatus: MemberStatus.INACTIVE })
+      .where('userPk = :userPk', { userPk })
+      .andWhere('cStatus = :status', { status: MemberStatus.ACTIVE })
+      .andWhere('channelPk IN (SELECT c.channel_pk FROM channel c JOIN project p ON c.project_pk = p.project_pk WHERE p.server_pk = :serverPk)', { serverPk })
+      .execute();
+  }
 }

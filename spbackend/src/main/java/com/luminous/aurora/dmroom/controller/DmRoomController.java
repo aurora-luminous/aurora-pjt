@@ -8,7 +8,6 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.coyote.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +38,9 @@ public class DmRoomController {
     }
 
     /**
-     *
+     * 특정 상대방과의 기존 DM방 조회
+     * - 존재하면 200 -> DM방 정보
+     * - 없으면 404
      */
     @GetMapping("/rooms/by-user")
     public ResponseEntity<DmRoomCreateResponse> getDmRoomByUser(
@@ -55,7 +56,7 @@ public class DmRoomController {
     /**
      * 쿠키에서 access_token 추출
      * - 토큰 없으면 UnauthorizedException → 401
-     * <p>
+     *
      * TODO : 지금 이거 컨트롤러별로 쓰고 있는데 공용 유틸로 빼기
      */
     private String extractTokenFromCookie(HttpServletRequest request) {

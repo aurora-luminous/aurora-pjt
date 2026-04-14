@@ -85,21 +85,24 @@ public class ChatWebSocketController {
     }
 
     /**
-     * DM 메시지 전송 (webSocket)
-     * <p>
-     * 프론트에서 /app/chat/dm/{dmRoomPk}로 메시지를 보내면
-     * 1. DB에 미시지 저장
-     * 2. MessageResponse로 변환해 /topic/dm/{dmRoomPk} 구독자에게 전송
-     * 3. 상대방에게 Dm unread 알림 전송(/topic/user/{userEmail}/dm/unread)
-     * <p>
-     * DM 구독이 user 레벨(/topic/user/{userEmail}/dm)이므로,
-     * 메시지 수신 자체가 unread 알림 역할을 함 -> 별도 unread알림 불필요
-     * <p>
-     * 프론트는 /topic/user/{myEmail}/dm 하나만 구독하면
-     * 모든 DM 방의 메시지 수신 가능
-     * dmRoomPk는 MessageResponse에 포함되지 않으므로
-     * 프론트에서 어떤 DM방의 메시지인지 알려면
-     * 발신자(UserEmail)로 DM방을 매칭해야함
+     * DM 메시지 전송 (WebSocket)
+     *
+     * 프론트 요청: /app/chat/dm/{dmRoomPk}
+     * Payload: { "content": "...", "messageType": "TEXT" }
+     *
+     * 처리 순서:
+     * 1. JWT 토큰 추출 및 검증
+     * 2. 메시지 저장 (ChatService.saveDmMessage)
+     * 3. Message → MessageResponse DTO 변환
+     * 4. DM방 존재 검증 (멤버 조회)
+     * 5. DM방 멤버 전원의 유저 토픽으로 각각 전송
+     *
+     * 브로드캐스트 방식:
+     * - /topic/user/{userEmail}/dm 으로 멤버별 개별 전송
+     * - 본인 포함 전원에게 전송 (프론트에서 본인 메시지 렌더링에 활용)
+     * - 메시지 수신 자체가 unread 알림 역할 → 별도 unread 알림 불필요
+     *
+     * 구독: /topic/user/{userEmail}/dm (로그인 시 1회 구독)
      */
     @MessageMapping("/chat/dm/{dmRoomPk}")
     public void sendDmMessage(@Payload MessageRequest messageRequest,
@@ -111,6 +114,7 @@ public class ChatWebSocketController {
             if (jwtToken == null) {
                 throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
             }
+
             // 메시지 저장 및 chatMessage로 변환
             Message savedMessage = chatService.saveDmMessage(messageRequest, dmRoomPk, jwtToken);
 
@@ -119,9 +123,13 @@ public class ChatWebSocketController {
 
             // DM 방의 멤버각각의 user 레벨 토픽으로 메시지 전송
             List<DmMember> dmMembers = dmMemberRepository.findByDmRoom_DmRoomPk(dmRoomPk);
-            dmMembers.forEach(m->
+            // DM 방 멤버 조회 (존재 검증 겸용)
+            if (dmMembers.isEmpty()) {
+                throw new RuntimeException("존재하지 않는 DM방 입니다.");
+            }
+            dmMembers.forEach(m ->
                     messagingTemplate.convertAndSend(
-                            "/topic/user/" +m.getUser().getUserEmail() +"/dm",
+                            "/topic/user/" + m.getUser().getUserEmail() + "/dm",
                             messageResponse
                     ));
 

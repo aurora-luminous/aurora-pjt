@@ -49,6 +49,16 @@ export class TypeOrmProjectMemberRepository extends ProjectMemberRepository {
     });
   }
 
+  // 유저가 참가 중인 모든 프로젝트들 조회
+  async findActiveMemberByUser(userPk: number): Promise<ProjectMember[]> {
+    return this.projectMemberRepository.find({
+      where: {
+        userPk,
+        pStatus: MemberStatus.ACTIVE,
+      },
+      relations: ['project'],
+    });
+  }
 
   // 프로젝트 멤버 저장(생성, 권한 변경 등의 업데이트)
   async save(member: Partial<ProjectMember>): Promise<ProjectMember> {

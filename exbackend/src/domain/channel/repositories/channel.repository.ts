@@ -1,4 +1,5 @@
 import { Channel } from "../entities/channel.entity";
+import { EntityManager } from "typeorm";
 
 export abstract class ChannelRepository {
 
@@ -35,4 +36,9 @@ export abstract class ChannelRepository {
   // 채널 삭제
   abstract delete(channelPk: number): Promise<void>;
 
+  // 특정 프로젝트의 모든 채널 삭제
+  abstract deleteAllByProject(manager: EntityManager, projectPk: number): Promise<void>;
+
+  // 특정 서버의 모든 채널 삭제
+  abstract deleteAllByServer(manager: EntityManager, serverPk: number): Promise<void>;
 }

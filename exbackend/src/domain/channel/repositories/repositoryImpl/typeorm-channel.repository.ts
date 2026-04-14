@@ -4,6 +4,7 @@ import { Repository, Brackets } from "typeorm";
 import { Channel } from "../../entities/channel.entity";
 import { ChannelRepository } from "../channel.repository";
 import { ChannelKind, AccessType } from "src/common/enums";
+import { EntityManager } from "typeorm";
 
 @Injectable()
 export class TypeOrmChannelRepository extends ChannelRepository {
@@ -110,6 +111,24 @@ export class TypeOrmChannelRepository extends ChannelRepository {
 
   async delete(channelPk: number): Promise<void> {
     await this.channelRepository.update(channelPk, { isDeletedChannel: true })
+  }
+
+  // 특정 서버의 모든 채널 삭제
+  async deleteAllByServer(manager: EntityManager, serverPk: number): Promise<void> {
+    await manager
+      .createQueryBuilder()
+      .update(Channel)
+      .set({ isDeletedChannel: true })
+      .where('projectPk IN (SELECT project_pk FROM project WHERE server_pk = :serverPk)', { serverPk })
+      .execute();
+  }
+
+  // 특정 프로젝트의 모든 채널 삭제
+  async deleteAllByProject(manager: EntityManager, projectPk: number): Promise<void> {
+    await manager.update(Channel,
+      { projectPk, isDeletedChannel: false },
+      { isDeletedChannel: true }
+    );
   }
 }
 

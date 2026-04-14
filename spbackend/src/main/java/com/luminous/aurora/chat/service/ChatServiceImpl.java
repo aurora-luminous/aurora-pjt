@@ -4,7 +4,7 @@ import com.luminous.aurora.auth.entity.Users;
 import com.luminous.aurora.auth.repository.UserRepository;
 import com.luminous.aurora.channel.entity.Channel;
 import com.luminous.aurora.channel.repository.ChannelRepository;
-import com.luminous.aurora.chat.dto.ChatMessage;
+import com.luminous.aurora.chat.dto.MessageListResponse;
 import com.luminous.aurora.chat.dto.MessageRequest;
 import com.luminous.aurora.chat.dto.MessageResponse;
 import com.luminous.aurora.chat.entity.Message;
@@ -47,54 +47,42 @@ public class ChatServiceImpl implements ChatService {
     private final DmMemberRepository dmMemberRepository;
 
     /**
-     * 메시지를 DB에 저장
+     * 채널 메시지를 DB에 저장
      *
-     * @param request - 클라이언트가 보낸 메시지 정보 (channelPk/dmRoomPk, content, messageType)
-     * @param jwtToken - 사용자 인증 토큰 (누가 보냈는지 확인용)
-     *
+     * @param request - 메시지 내용 (content, messageType)
+     * @param channelPk - 대상 채널 PK (WebSocket PathVariable에서 전달)
+     * @param jwtToken - 사용자 인증 토큰
      * <p>
      * 호출되는 곳:
-     * - ChatWebSocketController.sendChannelMessage() → 채널 채팅 시
-     * - ChatWebSocketController.sendDmMessage()      → DM 채팅 시
+     * - ChatWebSocketController.sendChannelMessage()
      * <p>
      * 처리 순서:
      * 1. JWT에서 userPk 추출
-     * 2. 채널/DM방 접근 권한 검증
-     * 3. Channel, DmRoom, Users 엔티티 조회
+     * 2. 채널 접근 권한 검증
+     * 3. Channel, Users 엔티티 조회
      * 4. Message 엔티티 생성 및 DB 저장
      */
     @Override
     @Transactional
-    public Message saveMessage(MessageRequest request, String jwtToken) {
+    public Message saveChannelMessage(MessageRequest request, Integer channelPk, String jwtToken) {
         try {
             Integer userPk = getUserPkFromToken(jwtToken);
+            validateChannelAccess(channelPk, userPk);
 
-            boolean isChannelMessage = request.getChannelPk() != null;
-            boolean isDmMessage = request.getDmRoomPk() != null;
+            Channel channel = channelRepository.findById(channelPk)
+                    .orElseThrow(() -> new NotFoundException("채널을 찾을 수 없습니다."));
 
-            // 권한 검증
-            if (isChannelMessage) {
-                validateChannelAccess(request.getChannelPk(), userPk);
-            } else {
-                validateDmRoomAccess(request.getDmRoomPk(), userPk);
-            }
+            Users user = userRepository.findById(userPk)
+                    .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
 
-            Channel channel = null;
-            DmRoom dmRoom = null;
-
-            if (request.getChannelPk() != null) {
-                channel = channelRepository.findById(request.getChannelPk()).orElseThrow(() -> new NotFoundException("채널을 찾을 수 없습니다."));
-            }
-            if (request.getDmRoomPk() != null) {
-                dmRoom = dmRoomRepository.findById(request.getDmRoomPk()).orElseThrow(() -> new NotFoundException("DM방을 찾을 수 없습니다."));
-            }
-            Users user = userRepository.findById(userPk).orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
-
-            Message message = Message.builder().channelPk(channel).dmRoomPk(dmRoom).userPk(user).content(request.getContent()).messageType(request.getMessageType() != null ? request.getMessageType() : "TEXT").build();
+            Message message = Message.builder()
+                    .channelPk(channel)
+                    .userPk(user)
+                    .content(request.getContent())
+                    .messageType(request.getMessageType() != null ? request.getMessageType() : "TEXT")
+                    .build();
 
             Message savedMessage = messageRepository.save(message);
-
-            log.info("메세지 저장: channelPk = {}, userPk = {}", request.getChannelPk(), userPk);
 
             return savedMessage;
         } catch (ForbiddenException | NotFoundException e) {
@@ -106,11 +94,60 @@ public class ChatServiceImpl implements ChatService {
     }
 
     /**
-     * 채널의 최신 메시지 20개 조회 (처음 채널 입장 시)
+     * DM 메시지를 DB에 저장
+     *
+     * @param request - 메시지 내용 (content, messageType)
+     * @param dmRoomPk - 대상 DM방 PK (WebSocket PathVariable에서 전달)
+     * @param jwtToken - 사용자 인증 토큰
+     * <p>
+     * 호출되는 곳:
+     * - ChatWebSocketController.sendDmMessage()
+     * <p>
+     * 처리 순서:
+     * 1. JWT에서 userPk 추출
+     * 2. DM방 접근 권한 검증
+     * 3. DmRoom, Users 엔티티 조회
+     * 4. Message 엔티티 생성 및 DB 저장
+     */
+    @Override
+    @Transactional
+    public Message saveDmMessage(MessageRequest request, Integer dmRoomPk, String jwtToken) {
+        try {
+            Integer userPk = getUserPkFromToken(jwtToken);
+            validateDmRoomAccess(dmRoomPk, userPk);
+
+            DmRoom dmRoom = dmRoomRepository.findById(dmRoomPk)
+                    .orElseThrow(() -> new NotFoundException("DM 방을 찾을 수 없습니다."));
+
+            Users user = userRepository
+                    .findById(userPk)
+                    .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
+
+            Message message = Message.builder()
+                    .dmRoomPk(dmRoom)
+                    .userPk(user)
+                    .content(request.getContent())
+                    .messageType(request.getMessageType() != null ? request.getMessageType() : "TEXT")
+                    .build();
+
+            Message savedMessage = messageRepository.save(message);
+            log.info("DM 메시지 저장: dmRoomPk = {}, userPk = {}", dmRoomPk, userPk);
+
+            return savedMessage;
+        } catch (ForbiddenException | NotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("DM 메시지 저장 실패 : {}", e.getMessage());
+            throw new InternalServerErrorException("메시지 저장 중 서버 오류가 발생했습니다.: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 채널의 최신 메시지 40개 조회 (처음 채널 입장 시)
      *
      * @param channelPk - 조회할 채널 PK
      * @param jwtToken - 사용자 인증 토큰
-     * @return List<MessageResponse> - 메시지 목록 (최신순, 최대 20개)
+     * @return MessageListResponse - lastReadMessagePk + 메시지 목록
      * <p>
      * 호출되는 곳:
      * - ChatController (REST API) → GET /api/jv/chat/channel/{channelPk}/messages
@@ -118,20 +155,29 @@ public class ChatServiceImpl implements ChatService {
      * 처리 순서:
      * 1. JWT에서 userPk 추출
      * 2. 채널 접근 권한 검증
-     * 3. MessageRepository에서 최신 20개 조회
+     * 3. MessageRepository에서 최신 40개 조회
      * 4. Message → MessageResponse DTO 변환
      * <p>
      * 사용 시점: 사용자가 채널에 처음 들어갈 때
      */
     @Override
-    public List<MessageResponse> getLatestMessage(Integer channelPk, String jwtToken) {
+    public MessageListResponse getLatestMessage(Integer channelPk, String jwtToken) {
         try {
             Integer userPk = getUserPkFromToken(jwtToken);
             validateChannelAccess(channelPk, userPk);
 
             List<Message> messages = messageRepository.findLatestMessagesByChannelPk(channelPk);
+            List<MessageResponse> messageResponses = messages.stream()
+                    .map(this::convertToMessageResponse)
+                    .toList();
 
-            return messages.stream().map(this::convertToMessageResponse).collect(Collectors.toList());
+            Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
+
+            return MessageListResponse.builder()
+                    .lastReadMessagePk(lastReadMessagePk)
+                    .messages(messageResponses)
+                    .build();
+
         } catch (ForbiddenException | NotFoundException e) {
             throw e;
         } catch (Exception e) {
@@ -141,12 +187,12 @@ public class ChatServiceImpl implements ChatService {
     }
 
     /**
-     * 채널의 이전 메시지 20개 조회 (스크롤 위로 올릴 때)
+     * 채널의 이전 메시지 40개 조회 (스크롤 위로 올릴 때)
      *
      * @param channelPk - 조회할 채널 PK
      * @param lastMessageTime - 현재 화면에서 가장 오래된 메시지의 시간
      * @param jwtToken - 사용자 인증 토큰
-     * @return List<MessageResponse> - 이전 메시지 목록 (최대 20개)
+     * @return MessageListResponse - lastReadMessagePk + 메시지 목록
      * <p>
      * 호출되는 곳:
      * - ChatController (REST API) → GET /api/jv/chat/channel/{channelPk}/messages/older
@@ -154,19 +200,29 @@ public class ChatServiceImpl implements ChatService {
      * 처리 순서:
      * 1. JWT에서 userPk 추출
      * 2. 채널 접근 권한 검증
-     * 3. lastMessageTime 이전의 메시지 20개 조회
+     * 3. lastMessageTime 이전의 메시지 40개 조회
      * 4. Message → MessageResponse DTO 변환
      * <p>
      * 사용 시점: 사용자가 채팅창을 위로 스크롤할 때 (무한 스크롤)
      */
     @Override
-    public List<MessageResponse> getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, String jwtToken) {
+    public MessageListResponse getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, String jwtToken) {
         try {
             Integer userPk = getUserPkFromToken(jwtToken);
             validateChannelAccess(channelPk, userPk);
 
             List<Message> messages = messageRepository.findOlderMessagesByChannelPk(channelPk, lastMessageTime);
-            return messages.stream().map(this::convertToMessageResponse).collect(Collectors.toList());
+            List<MessageResponse> messageResponses = messages.stream()
+                    .map(this::convertToMessageResponse)
+                    .toList();
+
+            Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
+
+            return MessageListResponse.builder()
+                    .lastReadMessagePk(lastReadMessagePk)
+                    .messages(messageResponses)
+                    .build();
+
         } catch (ForbiddenException | NotFoundException e) {
             throw e;
         } catch (Exception e) {
@@ -176,11 +232,11 @@ public class ChatServiceImpl implements ChatService {
     }
 
     /**
-     * DM방의 최신 메시지 20개 조회 (처음 DM방 입장 시)
+     * DM방의 최신 메시지 40개 조회 (처음 DM방 입장 시)
      *
      * @param dmRoomPk - 조회할 DM방 PK
      * @param jwtToken - 사용자 인증 토큰
-     * @return List<MessageResponse> - 메시지 목록 (최신순, 최대 20개)
+     * @return MessageListResponse - lastReadMessagePk + 메시지 목록
      * <p>
      * 호출되는 곳:
      * - ChatController (REST API) → GET /api/jv/chat/dm/{dmRoomPk}/messages
@@ -188,13 +244,24 @@ public class ChatServiceImpl implements ChatService {
      * 사용 시점: 사용자가 DM방에 처음 들어갈 때
      */
     @Override
-    public List<MessageResponse> getLatestDmMessage(Integer dmRoomPk, String jwtToken) {
+    public MessageListResponse getLatestDmMessage(Integer dmRoomPk, String jwtToken) {
         try {
             Integer userPk = getUserPkFromToken(jwtToken);
             validateDmRoomAccess(dmRoomPk, userPk);
 
             List<Message> messages = messageRepository.findLatestMessagesByDmRoomPk(dmRoomPk);
-            return messages.stream().map(this::convertToMessageResponse).collect(Collectors.toList());
+            List<MessageResponse> messageResponses = messages.stream()
+                    .map(this::convertToMessageResponse)
+                    .toList();
+
+            Long lastReadMessagePk = getDmLastReadMessagePk(dmRoomPk, userPk);
+
+            return MessageListResponse
+                    .builder()
+                    .lastReadMessagePk(lastReadMessagePk)
+                    .messages(messageResponses)
+                    .build();
+
         } catch (ForbiddenException | NotFoundException e) {
             throw e;
         } catch (Exception e) {
@@ -204,12 +271,12 @@ public class ChatServiceImpl implements ChatService {
     }
 
     /**
-     * DM방의 이전 메시지 20개 조회 (스크롤 위로 올릴 때)
+     * DM방의 이전 메시지 40개 조회 (스크롤 위로 올릴 때)
      *
      * @param dmRoomPk - 조회할 DM방 PK
      * @param lastMessageTime - 현재 화면에서 가장 오래된 메시지의 시간
      * @param jwtToken - 사용자 인증 토큰
-     * @return List<MessageResponse> - 이전 메시지 목록 (최대 20개)
+     * @return List<MessageResponse> - 이전 메시지 목록 (최대 40개)
      * <p>
      * 호출되는 곳:
      * - ChatController (REST API) → GET /api/jv/chat/dm/{dmRoomPk}/messages/older
@@ -217,13 +284,23 @@ public class ChatServiceImpl implements ChatService {
      * 사용 시점: 사용자가 DM 채팅창을 위로 스크롤할 때
      */
     @Override
-    public List<MessageResponse> getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, String jwtToken) {
+    public MessageListResponse getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, String jwtToken) {
         try {
             Integer userPk = getUserPkFromToken(jwtToken);
             validateDmRoomAccess(dmRoomPk, userPk);
 
             List<Message> messages = messageRepository.findOlderMessagesByDmRoomPk(dmRoomPk, lastMessageTime);
-            return messages.stream().map(this::convertToMessageResponse).collect(Collectors.toList());
+            List<MessageResponse> messageResponses = messages.stream()
+                    .map(this::convertToMessageResponse)
+                    .toList();
+
+            Long lastReadMessagePk = getDmLastReadMessagePk(dmRoomPk, userPk);
+
+            return MessageListResponse.builder()
+                    .lastReadMessagePk(lastReadMessagePk)
+                    .messages(messageResponses)
+                    .build();
+
         } catch (ForbiddenException | NotFoundException e) {
             throw e;
         } catch (Exception e) {
@@ -261,37 +338,38 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public List<ChannelUnreadResponse> getChannelsUnreadStatus(List<Integer> channelPks, Integer userPk) {
         try {
-            return channelPks.stream()
-                    .map(channelPk -> {
-                        Optional<ChannelMember> memberOpt = channelMemberRepository
-                                .findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk);
+            return channelPks.stream().map(channelPk -> {
+                Optional<ChannelMember> memberOpt = channelMemberRepository.findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk);
 
-                        if (memberOpt.isEmpty()) {
-                            return ChannelUnreadResponse.builder()
-                                    .channelPk(channelPk)
-                                    .hasUnread(false)
-                                    .build();
-                        }
+                if (memberOpt.isEmpty()) {
+                    // 멤버가 아니면 → unread 없음 (볼 권한 자체가 없으니)
+                    return ChannelUnreadResponse.builder()
+                            .channelPk(channelPk)
+                            .hasUnread(false)
+                            .build();
+                }
 
-                        ChannelMember member = memberOpt.get();
-                        boolean hasUnread;
+                ChannelMember member = memberOpt.get();
+                boolean hasUnread;
 
-                        if (member.getLastReadMessage() == null) {
-                            hasUnread = messageRepository.existsByChannelPk_ChannelPk(channelPk);
-                        } else {
-                            hasUnread = messageRepository.existsUnreadMessages(
-                                    channelPk,
-                                    member.getLastReadMessage().getMessagePk(),
-                                    userPk
-                            );
-                        }
+                if (member.getLastReadMessage() == null) {
+                    // 한 번도 읽은 적 없음 → 채널에 메시지가 1개라도 있으면 unread
+                    hasUnread = messageRepository.existsByChannelPk_ChannelPk(channelPk);
+                } else {
+                    // 읽은 적 있음 → lastReadMessage 이후에 다른 사람이 보낸 메시지가 있는지 확인
 
-                        return ChannelUnreadResponse.builder()
-                                .channelPk(channelPk)
-                                .hasUnread(hasUnread)
-                                .build();
-                    })
-                    .collect(Collectors.toList());
+                    hasUnread = messageRepository.existsUnreadMessages(
+                            channelPk,
+                            member.getLastReadMessage().getMessagePk(),
+                            userPk);
+                }
+
+                return ChannelUnreadResponse.builder()
+                        .channelPk(channelPk)
+                        .hasUnread(hasUnread)
+                        .build();
+            }).collect(Collectors.toList());
+
         } catch (Exception e) {
             log.error("채널 일괄 안 읽음 상태 조회 실패: {}", e.getMessage());
             throw new InternalServerErrorException("채널 안 읽음 상태 조회 중 서버 오류가 발생했습니다: " + e.getMessage());
@@ -334,8 +412,7 @@ public class ChatServiceImpl implements ChatService {
             Integer userPk = getUserPkFromToken(jwtToken);
             validateChannelAccess(channelPk, userPk);
 
-            ChannelMember channelMember = channelMemberRepository
-                    .findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk)
+            ChannelMember channelMember = channelMemberRepository.findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk)
                     .orElseThrow(() -> new NotFoundException("채널 멤버를 찾을 수 없습니다."));
 
             Message message = messageRepository.findById(messagePk)
@@ -384,8 +461,7 @@ public class ChatServiceImpl implements ChatService {
             Integer userPk = getUserPkFromToken(jwtToken);
             validateDmRoomAccess(dmRoomPk, userPk);
 
-            DmMember dmMember = dmMemberRepository
-                    .findByDmRoom_DmRoomPkAndUser_UserPk(dmRoomPk, userPk)
+            DmMember dmMember = dmMemberRepository.findByDmRoom_DmRoomPkAndUser_UserPk(dmRoomPk, userPk)
                     .orElseThrow(() -> new NotFoundException("DM 멤버를 찾을 수 없습니다."));
 
             Message message = messageRepository.findById(messagePk)
@@ -408,76 +484,36 @@ public class ChatServiceImpl implements ChatService {
      * ------------------------------------------------------------------------------------------------
      */
 
-    /**
-     * Message 엔티티 → ChatMessage DTO 변환 (WebSocket 응답용)
-     *
-     * @param message - DB에서 조회한 Message 엔티티
-     * @return ChatMessage - WebSocket으로 클라이언트에게 전송할 DTO
-     * <p>
-     * 호출되는 곳:
-     * - ChatWebSocketController
-     * <p>
-     * 변환 내용:
-     * - message.getChannelPk() (Channel 엔티티) → channelPk (Integer)
-     * - message.getDmRoomPk() (DmRoom 엔티티)   → dmRoomPk (Integer)
-     * - message.getUserPk() (Users 엔티티)      → userPk (Integer), userName (String)
-     * <p>
-     * 용도: 실시간 채팅 메시지를 다른 사용자들에게 브로드캐스트할 때
-     * <p>
-     * ChatMessage DTO 구조:
-     * {
-     * "messagePk": 123,
-     * "channelPk": 1,
-     * "dmRoomPk": null,
-     * "userPk": 5,
-     * "userName": "홍길동",    ← REST API와 다르게 userName 포함!
-     * "content": "안녕하세요",
-     * "messageType": "TEXT",
-     * "createdAt": "2025-01-20T10:30:00"
-     * }
-     */
-    @Override
-    public ChatMessage convertToChatMessage(Message message) {
-        try {
-            return ChatMessage.builder().messagePk(message.getMessagePk()).channelPk(message.getChannelPk() != null ? message.getChannelPk().getChannelPk() : null).dmRoomPk(message.getDmRoomPk() != null ? message.getDmRoomPk().getDmRoomPk() : null).userPk(message.getUserPk().getUserPk()).userName(message.getUserPk().getUserName()).content(message.getContent()).createdAt(message.getCreatedAt()).messageType(message.getMessageType()).build();
-        } catch (NotFoundException | BadRequestException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("ChatMessage 변환 실패: {}", e.getMessage());
-            throw new InternalServerErrorException("ChatMessage 변환 중 서버 오류가 발생했습니다: " + e.getMessage());
-        }
-    }
 
     /**
-     * Message 엔티티 → MessageResponse DTO 변환 (REST API 응답용)
+     * Message 엔티티 → MessageResponse DTO 변환
+     * <p>
+     * REST API 응답과 WebSocket 브로드캐스트 모두에서 사용하는 통합 변환 메서드.
+     * 기존에는 REST용(convertToMessageResponse)과 WebSocket용(convertToChatMessage)이
+     * 분리되어 있었으나, 두 DTO의 필드가 동일하여 MessageResponse로 통합함.
      *
-     * @param message - DB에서 조회한 Message 엔티티
-     * @return MessageResponse - REST API로 클라이언트에게 전송할 DTO
+     * @param message - DB에서 조회하거나 저장된 Message 엔티티
+     * @return MessageResponse - 클라이언트에게 전달할 메시지 DTO
      * <p>
      * 호출되는 곳:
-     * - getLatestMessage()
-     * - getOlderMessage()
-     * - getLatestDmMessage()
-     * - getOlderDmMessage()
-     * <p>
-     * 용도: 채널/DM방 입장 시 기존 메시지 목록 조회
-     * <p>
-     * MessageResponse DTO 구조: (ChatMessage와 동일)
-     * {
-     * "messagePk": 123,
-     * "channelPk": 1,
-     * "dmRoomPk": null,
-     * "userPk": 5,
-     * "userName": "홍길동",
-     * "content": "안녕하세요",
-     * "messageType": "TEXT",
-     * "createdAt": "2025-01-20T10:30:00"
-     * }
+     * - ChatController (REST API) → 채널/DM 메시지 조회 시
+     * - ChatWebSocketController  → 채널/DM 메시지 전송 시 브로드캐스트용
      */
     @Override
     public MessageResponse convertToMessageResponse(Message message) {
         try {
-            return MessageResponse.builder().messagePk(message.getMessagePk()).channelPk(message.getChannelPk() != null ? message.getChannelPk().getChannelPk() : null).dmRoomPk(message.getDmRoomPk() != null ? message.getDmRoomPk().getDmRoomPk() : null).userPk(message.getUserPk().getUserPk()).userName(message.getUserPk().getUserName()).content(message.getContent()).createdAt(message.getCreatedAt()).messageType(message.getMessageType()).build();
+            Users user = message.getUserPk();
+
+            return MessageResponse.builder()
+                    .messagePk(message.getMessagePk())
+                    .userEmail(user.getUserEmail())
+                    .userName(user.getUserName())
+                    .userProfileImage(user.getProfileImagePath())
+                    .content(message.getContent())
+                    .createdAt(message.getCreatedAt())
+                    .messageType(message.getMessageType())
+                    .build();
+
         } catch (NotFoundException | BadRequestException e) {
             throw e;
         } catch (Exception e) {
@@ -502,7 +538,32 @@ public class ChatServiceImpl implements ChatService {
      */
     private Integer getUserPkFromToken(String jwtToken) {
         String userEmail = jwtTokenProvider.getUserEmailFromToken(jwtToken);
-        return userRepository.findUserPkByUserEmail(userEmail).orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
+        return userRepository.findUserPkByUserEmail(userEmail)
+                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
+    }
+
+    /**
+     * 채널에서 현재 사용자의 lastReadMessagePk 조회
+     *
+     * @return Long - 마지막으로 읽은 메시지 PK (읽은 적 없으면 null)
+     */
+    private Long getChannelLastReadMessagePk(Integer channelPk, Integer userPk) {
+        return channelMemberRepository.findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk)
+                .map(ChannelMember::getLastReadMessage)
+                .map(Message::getMessagePk)
+                .orElse(null);
+    }
+
+    /**
+     * DM방에서 현재 사용자의 lastReadMessagePk 조회
+     *
+     * @return Long - 마지막으로 읽은 메시지 PK (읽은 적 없으면 null)
+     */
+    private Long getDmLastReadMessagePk(Integer dmRoomPk, Integer userPk) {
+        return dmMemberRepository.findByDmRoom_DmRoomPkAndUser_UserPk(dmRoomPk, userPk)
+                .map(DmMember::getLastReadMessage)
+                .map(Message::getMessagePk)
+                .orElse(null);
     }
 
 

@@ -1,8 +1,8 @@
 package com.luminous.aurora.chat.controller;
 
 import com.luminous.aurora.auth.repository.UserRepository;
-import com.luminous.aurora.chat.dto.ChatMessage;
 import com.luminous.aurora.chat.dto.MessageRequest;
+import com.luminous.aurora.chat.dto.MessageResponse;
 import com.luminous.aurora.chat.dto.ReadRequest;
 import com.luminous.aurora.chat.dto.UnreadNotification;
 import com.luminous.aurora.chat.entity.Message;
@@ -37,12 +37,21 @@ public class ChatWebSocketController {
     private final UserStateService userStateService;
     private final DmMemberRepository dmMemberRepository;
 
-    // 채널 메시지 전송
+    /**
+     * 채널 메시지 전송
+     * <p>
+     * 프론트에서 /app/chat/channel/{channelPk}로 메시지를 보내면
+     * 1. DB에 메시지 저장
+     * 2. MessageResponse로 변환해 /topic/channel/{channelPk} 구독자에게 브로드캐스트
+     * 3. 프로젝트 멤버 전원에게 unread 알림 전송 (/topic/project/{projectPk}/unread)
+     *
+     * @return MessageResponse - @SendTo에 의해 /topic/channel/{channelPk}로 브로드캐스트
+     */
     @MessageMapping("/chat/channel/{channelPk}")
     @SendTo("/topic/channel/{channelPk}")
-    public ChatMessage sendChannelMessage(@Payload MessageRequest messageRequest,
-                                          @DestinationVariable Integer channelPk,
-                                          SimpMessageHeaderAccessor headerAccessor) {
+    public MessageResponse sendChannelMessage(@Payload MessageRequest messageRequest,
+                                              @DestinationVariable Integer channelPk,
+                                              SimpMessageHeaderAccessor headerAccessor) {
         try {
             // 세션에서 JWT 토큰 추출
             // channelPk 검증
@@ -57,9 +66,11 @@ public class ChatWebSocketController {
 
             Message savedMessage = chatService.saveMessage(messageRequest, jwtToken);
 
-            ChatMessage chatMessage = chatService.convertToChatMessage(savedMessage);
+            // ChatMessage 대신 통합된 MessageResponse 사용
+            MessageResponse messageResponse = chatService.convertToMessageResponse(savedMessage);
 
-            // 프로젝트 unread 알림 브로드캐스트
+            // 프로젝트 멤버 전원에게 unread 알림 브로드캐스트
+            // 사이드바에서 현재 보고 있지 않는 채널의 뱃지 업데이트용
             Integer projectPk = savedMessage.getChannelPk().getProject().getProjectPk();
             UnreadNotification notification = UnreadNotification.builder()
                     .channelPk(channelPk)
@@ -68,16 +79,26 @@ public class ChatWebSocketController {
 
             messagingTemplate.convertAndSend("/topic/project/" + projectPk + "/unread", notification);
 
-            log.info("채널 메시지 전송 : channelPk = {}, userPk ={}", messageRequest.getChannelPk(), chatMessage.getUserPk());
+            log.info("채널 메시지 전송 : channelPk = {}, userPk ={}", messageRequest.getChannelPk(), messageResponse.getUserPk());
 
-            return chatMessage;
+            return messageResponse;
         } catch (Exception e) {
             log.error("채널 메시지 전송 실패: {}", e.getMessage());
             throw new RuntimeException("메시지 전송에 실패했습니다 :" + e.getMessage());
         }
     }
 
-    // DM 메시지 전송
+    /**
+     * DM 메시지 전송 (webSocket)
+     * <p>
+     * 프론트에서 /app/chat/dm/{dmRoomPk}로 메시지를 보내면
+     * 1. DB에 미시지 저장
+     * 2. MessageResponse로 변환해 /topic/dm/{dmRoomPk} 구독자에게 전송
+     * 3. 상대방에게 Dm unread 알림 전송(/topic/user/{userEmail}/dm/unread)
+     * <p>
+     * 참고 : 이후 커밋에서 DM 구독을 /topic/user/{userEmail}/dm 으로 변경하고
+     * DM unread알림 로직은 제거될 예정
+     */
     @MessageMapping("/chat/dm/{dmRoomPk}")
     @SendTo("/topic/dm/{dmRoomPk}")
     public void sendDmMessage(@Payload MessageRequest messageRequest,
@@ -96,11 +117,12 @@ public class ChatWebSocketController {
             // 메시지 저장 및 chatMessage로 변환
             Message savedMessage = chatService.saveMessage(messageRequest, jwtToken);
 
-            ChatMessage chatMessage = chatService.convertToChatMessage(savedMessage);
+            // ChatMessage 대신 통합된 MessageResponse 사용
+            MessageResponse messageResponse = chatService.convertToMessageResponse(savedMessage);
 
             // DM 방의 멤버에게 메시지 전송
             String destination = "/topic/dm/" + messageRequest.getDmRoomPk();
-            messagingTemplate.convertAndSend(destination, chatMessage);
+            messagingTemplate.convertAndSend(destination, messageResponse);
 
             // 상대방에게 DM unread 알림 브로드 캐스트
             String sendEmail = savedMessage.getUserPk().getUserEmail();
@@ -118,7 +140,7 @@ public class ChatWebSocketController {
                         );
                     });
 
-            log.info("DM 메시지 전송: DmRoomPk = {}, userPk ={}", messageRequest.getDmRoomPk(), chatMessage.getUserPk());
+            log.info("DM 메시지 전송: DmRoomPk = {}, userPk ={}", messageRequest.getDmRoomPk(), messageResponse.getUserPk());
 
         } catch (Exception e) {
             log.error("DM 메시지 전송 실패 : {}", e.getMessage());

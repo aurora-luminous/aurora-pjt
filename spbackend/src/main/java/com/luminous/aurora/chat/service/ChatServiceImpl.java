@@ -4,7 +4,6 @@ import com.luminous.aurora.auth.entity.Users;
 import com.luminous.aurora.auth.repository.UserRepository;
 import com.luminous.aurora.channel.entity.Channel;
 import com.luminous.aurora.channel.repository.ChannelRepository;
-import com.luminous.aurora.chat.dto.ChatMessage;
 import com.luminous.aurora.chat.dto.MessageRequest;
 import com.luminous.aurora.chat.dto.MessageResponse;
 import com.luminous.aurora.chat.entity.Message;
@@ -408,76 +407,32 @@ public class ChatServiceImpl implements ChatService {
      * ------------------------------------------------------------------------------------------------
      */
 
-    /**
-     * Message 엔티티 → ChatMessage DTO 변환 (WebSocket 응답용)
-     *
-     * @param message - DB에서 조회한 Message 엔티티
-     * @return ChatMessage - WebSocket으로 클라이언트에게 전송할 DTO
-     * <p>
-     * 호출되는 곳:
-     * - ChatWebSocketController
-     * <p>
-     * 변환 내용:
-     * - message.getChannelPk() (Channel 엔티티) → channelPk (Integer)
-     * - message.getDmRoomPk() (DmRoom 엔티티)   → dmRoomPk (Integer)
-     * - message.getUserPk() (Users 엔티티)      → userPk (Integer), userName (String)
-     * <p>
-     * 용도: 실시간 채팅 메시지를 다른 사용자들에게 브로드캐스트할 때
-     * <p>
-     * ChatMessage DTO 구조:
-     * {
-     * "messagePk": 123,
-     * "channelPk": 1,
-     * "dmRoomPk": null,
-     * "userPk": 5,
-     * "userName": "홍길동",    ← REST API와 다르게 userName 포함!
-     * "content": "안녕하세요",
-     * "messageType": "TEXT",
-     * "createdAt": "2025-01-20T10:30:00"
-     * }
-     */
-    @Override
-    public ChatMessage convertToChatMessage(Message message) {
-        try {
-            return ChatMessage.builder().messagePk(message.getMessagePk()).channelPk(message.getChannelPk() != null ? message.getChannelPk().getChannelPk() : null).dmRoomPk(message.getDmRoomPk() != null ? message.getDmRoomPk().getDmRoomPk() : null).userPk(message.getUserPk().getUserPk()).userName(message.getUserPk().getUserName()).content(message.getContent()).createdAt(message.getCreatedAt()).messageType(message.getMessageType()).build();
-        } catch (NotFoundException | BadRequestException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("ChatMessage 변환 실패: {}", e.getMessage());
-            throw new InternalServerErrorException("ChatMessage 변환 중 서버 오류가 발생했습니다: " + e.getMessage());
-        }
-    }
 
     /**
-     * Message 엔티티 → MessageResponse DTO 변환 (REST API 응답용)
+     * Message 엔티티 → MessageResponse DTO 변환
+     * <p>
+     * REST API 응답과 WebSocket 브로드캐스트 모두에서 사용하는 통합 변환 메서드.
+     * 기존에는 REST용(convertToMessageResponse)과 WebSocket용(convertToChatMessage)이
+     * 분리되어 있었으나, 두 DTO의 필드가 동일하여 MessageResponse로 통합함.
      *
-     * @param message - DB에서 조회한 Message 엔티티
-     * @return MessageResponse - REST API로 클라이언트에게 전송할 DTO
+     * @param message - DB에서 조회하거나 저장된 Message 엔티티
+     * @return MessageResponse - 클라이언트에게 전달할 메시지 DTO
      * <p>
      * 호출되는 곳:
-     * - getLatestMessage()
-     * - getOlderMessage()
-     * - getLatestDmMessage()
-     * - getOlderDmMessage()
-     * <p>
-     * 용도: 채널/DM방 입장 시 기존 메시지 목록 조회
-     * <p>
-     * MessageResponse DTO 구조: (ChatMessage와 동일)
-     * {
-     * "messagePk": 123,
-     * "channelPk": 1,
-     * "dmRoomPk": null,
-     * "userPk": 5,
-     * "userName": "홍길동",
-     * "content": "안녕하세요",
-     * "messageType": "TEXT",
-     * "createdAt": "2025-01-20T10:30:00"
-     * }
+     * - ChatController (REST API) → 채널/DM 메시지 조회 시
+     * - ChatWebSocketController  → 채널/DM 메시지 전송 시 브로드캐스트용
      */
     @Override
     public MessageResponse convertToMessageResponse(Message message) {
         try {
-            return MessageResponse.builder().messagePk(message.getMessagePk()).channelPk(message.getChannelPk() != null ? message.getChannelPk().getChannelPk() : null).dmRoomPk(message.getDmRoomPk() != null ? message.getDmRoomPk().getDmRoomPk() : null).userPk(message.getUserPk().getUserPk()).userName(message.getUserPk().getUserName()).content(message.getContent()).createdAt(message.getCreatedAt()).messageType(message.getMessageType()).build();
+            return MessageResponse.builder()
+                    .messagePk(message.getMessagePk())
+                    .channelPk(message.getChannelPk() != null ? message.getChannelPk().getChannelPk() : null)
+                    .dmRoomPk(message.getDmRoomPk() != null ? message.getDmRoomPk().getDmRoomPk() : null)
+                    .userPk(message.getUserPk().getUserPk()).userName(message.getUserPk().getUserName())
+                    .content(message.getContent()).createdAt(message.getCreatedAt())
+                    .messageType(message.getMessageType())
+                    .build();
         } catch (NotFoundException | BadRequestException e) {
             throw e;
         } catch (Exception e) {

@@ -10,10 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
@@ -38,6 +35,22 @@ public class DmRoomController {
                 request.getTargetUserEmail(), token);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * 특정 상대방과의 기존 DM방 조회
+     * - 존재하면 200 -> DM방 정보
+     * - 없으면 404
+     */
+    @GetMapping("/rooms/by-user")
+    public ResponseEntity<DmRoomCreateResponse> getDmRoomByUser(
+            @RequestParam String targetUserEmail,
+            HttpServletRequest httpRequest) {
+        String token = extractTokenFromCookie(httpRequest);
+        DmRoomCreateResponse response = dmRoomService.getDmRoomByUser(
+                targetUserEmail, token);
+
+        return ResponseEntity.ok(response);
     }
 
     /**

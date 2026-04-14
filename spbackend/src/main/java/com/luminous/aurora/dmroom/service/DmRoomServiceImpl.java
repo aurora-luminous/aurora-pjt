@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class DmRoomServiceImpl implements DmRoomService{
+public class DmRoomServiceImpl implements DmRoomService {
 
     private final DmRoomRepository dmRoomRepository;
     private final DmMemberRepository dmMemberRepository;
@@ -30,10 +30,10 @@ public class DmRoomServiceImpl implements DmRoomService{
 
     /**
      * DM방 생성
-     *
+     * <p>
      * 호출되는 곳
      * - dmRoomController -> POST /api/jv/dm/rooms
-     *
+     * <p>
      * 처리 순서:
      * 1. JWT에서 요청자 이메일 추출 -> User 조회
      * 2. 자기 자신에게 DM 시도 시 -> 400 BadRequest
@@ -84,6 +84,41 @@ public class DmRoomServiceImpl implements DmRoomService{
                 dmRoom.getDmRoomPk(), myEmail, targetUserEmail);
 
         // 6. 응답
+        return DmRoomCreateResponse.builder()
+                .dmRoomPk(dmRoom.getDmRoomPk())
+                .targetUserEmail(targetUserEmail)
+                .targetUserName(targetUser.getUserName())
+                .targetUserProfileImage(targetUser.getProfileImagePath())
+                .build();
+
+    }
+
+    /**
+     * 특정 상대방과의 기존 DM 방 조회
+     * 호출 되는 곳 :
+     * - DmRoomController → GET /api/jv/dm/rooms/by-user
+     *
+     * 처리 순서:
+     * 1. JWT 에서 요청자 이메일 추출 -> Users 조회
+     * 2. targetUserEmail로 상대방 Users 조회 -> 없으면 404
+     * 3. 두 유저가 같은 DM 방에 있는지 확인 -> 없으면 404
+     * 4. DmRoomCreate 반환
+     *
+     */
+    @Override
+    public DmRoomCreateResponse getDmRoomByUser(String targetUserEmail, String jwtToken) {
+        String myEmail = jwtTokenProvider.getUserEmailFromToken(jwtToken);
+
+        Users myUser = userRepository.findByUserEmail(myEmail)
+                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
+
+        Users targetUser = userRepository.findByUserEmail(targetUserEmail)
+                .orElseThrow(() -> new NotFoundException("해당 사용자를 찾을 수 없습니다."));
+
+        DmRoom dmRoom = dmMemberRepository.findExistingDmRoom(
+                myUser.getUserPk(), targetUser.getUserPk())
+                .orElseThrow(() -> new NotFoundException("해당 사용자와의 DM 방이 존재하지 않습니다."));
+
         return DmRoomCreateResponse.builder()
                 .dmRoomPk(dmRoom.getDmRoomPk())
                 .targetUserEmail(targetUserEmail)

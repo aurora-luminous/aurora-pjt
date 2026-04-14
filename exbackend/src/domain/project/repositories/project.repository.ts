@@ -1,4 +1,5 @@
 import { Project } from "../entities/project.entity";
+import { EntityManager } from 'typeorm';
 
 export abstract class ProjectRepository {
 
@@ -24,4 +25,7 @@ export abstract class ProjectRepository {
 
   // 프로젝트 존재 여부
   abstract isExists(projectPk: number): Promise<boolean>;
+
+  // 특정 서버의 모든 프로젝트 삭제
+  abstract deleteAllByServer(manager: EntityManager, serverPk: number): Promise<void>;
 }

@@ -4,6 +4,7 @@ import { Repository, Not, IsNull } from 'typeorm';
 import { ProjectMember } from '../../entities/project-member.entity';
 import { ProjectMemberRepository } from '../project-member.repository';
 import { MemberStatus, MemberRole } from 'src/common/enums';
+import { EntityManager } from 'typeorm';
 
 @Injectable()
 export class TypeOrmProjectMemberRepository extends ProjectMemberRepository {
@@ -48,16 +49,6 @@ export class TypeOrmProjectMemberRepository extends ProjectMemberRepository {
     });
   }
 
-  // 유저가 참가 중인 프로젝트들의 멤버 조회
-  async findActiveMemberByUser(userPk: number): Promise<ProjectMember[]> {
-    return this.projectMemberRepository.find({
-      where: {
-        userPk,
-        pStatus: MemberStatus.ACTIVE,
-      },
-      relations: ['project'],
-    });
-  }
 
   // 프로젝트 멤버 저장(생성, 권한 변경 등의 업데이트)
   async save(member: Partial<ProjectMember>): Promise<ProjectMember> {
@@ -104,5 +95,28 @@ export class TypeOrmProjectMemberRepository extends ProjectMemberRepository {
         lastConnectedTime: 'DESC',
       },
     });
+  }
+
+  // 유저가 가입한 서버에서 모든 프로젝트 나가기 처리
+  async deactivateUserInServer(manager: EntityManager, serverPk: number, userPk: number): Promise<void> {
+    await manager
+      .createQueryBuilder()
+      .update(ProjectMember)
+      .set({ pStatus: MemberStatus.INACTIVE })
+      .where('userPk = :userPk', { userPk })
+      .andWhere('pStatus = :status', { status: MemberStatus.ACTIVE })
+      .andWhere('projectPk IN (SELECT project_pk FROM project WHERE server_pk = :serverPk)', { serverPk })
+      .execute();
+  }
+
+  // 서버의 프로젝트 멤버 모두 나가기 처리
+  async deactivateAllByServer(manager: EntityManager, serverPk: number): Promise<void> {
+    await manager
+      .createQueryBuilder()
+      .update(ProjectMember)
+      .set({ pStatus: MemberStatus.INACTIVE })
+      .where('pStatus = :status', { status: MemberStatus.ACTIVE })
+      .andWhere('projectPk IN (SELECT project_pk FROM project WHERE server_pk = :serverPk)', { serverPk })
+      .execute();
   }
 }

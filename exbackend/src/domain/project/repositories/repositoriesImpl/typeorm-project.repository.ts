@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Project } from "../../entities/project.entity";
 import { ProjectRepository } from "../project.repository";
+import { EntityManager } from "typeorm";
 
 @Injectable()
 export class TypeOrmProjectRepository extends ProjectRepository {
@@ -66,4 +67,11 @@ export class TypeOrmProjectRepository extends ProjectRepository {
     return count > 0;
   };
 
+  // 특정 서버의 모든 프로젝트 삭제
+  async deleteAllByServer(manager: EntityManager, serverPk: number): Promise<void> {
+    await manager.update(Project,
+      { serverPk, isDeletedProject: false },
+      { isDeletedProject: true }
+    )
+  }
 }

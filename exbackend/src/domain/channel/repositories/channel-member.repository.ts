@@ -1,4 +1,5 @@
 import { ChannelMember } from "../entities/channel-member.entity";
+import { EntityManager } from "typeorm";
 
 export abstract class ChannelMemberRepository {
 
@@ -42,4 +43,16 @@ export abstract class ChannelMemberRepository {
 
   // 멤버 일괄 삭제
   abstract deactivateAllInChannel(channelPk: number): Promise<void>;
+
+  // 특정 서버의 모든 채널 멤버 나가기 처리
+  abstract deactivateAllByServer(manager: EntityManager, serverPk: number): Promise<void>;
+
+  // 특정 프로젝트의 모든 채널 멤버 나가기 처리
+  abstract deactivateAllByProject(manager: EntityManager, projectPk: number): Promise<void>;
+
+  // 유저가 가입중인 프로젝트의 모든 채널에서 나가기 처리
+  abstract deactivateUserInProject(manager: EntityManager, projectPk: number, userPk: number): Promise<void>;
+
+  // 유저가 가입중인 서버의 모든 프로젝트의 모든 채널에서 나가기 처리
+  abstract deactivateUserInServer(manager: EntityManager, serverPk: number, userPk: number): Promise<void>;
 }

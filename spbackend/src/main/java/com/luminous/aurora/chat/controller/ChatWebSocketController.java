@@ -77,46 +77,62 @@ public class ChatWebSocketController {
         }
     }
 
-    // DM 메시지 전송
+    /**
+     * DM 메시지 전송
+     * <p>
+     * 프론트 요청 : /app/chat/dm/{dmRoomPk}
+     * Payload : { "channelPk": null, "dmRoomPk": 1, "content": "...", "messageType": "TEXT" }
+     * <p>
+     * 처리 순서
+     * 1. 경로의 dmRommPk와 요청의 dmRoomPk 일치 검증
+     * 2. JWT 토큰 추출 및 검증
+     * 3. DM방 멤버 조회 (존재하지 않는 방이면 에러)
+     * 4. 메시지 저장 (ChatService.saveMessage)
+     * 5. Message -> ChatMessage DTO 변환
+     * 6. DM 방 멤버 전원의 유저 토픽으로 각각 전송
+     * <p>
+     * 브로드 캐스트 방식:
+     * - 유저 단위 토픽 /topic/user/{userEmail}/dm 으로 멤버별 개별 전송
+     * - 본인 포함 전원에게 전송 (프론트에서 본인 메시지 렌더링에 활용)
+     * - 프론트는 수신 메시지의 dmRoomPk로 어느 방인지 구분
+     * - 현재 보고 있는 DM방이면 채팅창 렌더링, 아니면 안 읽음 표시
+     * <p>
+     * 구독 : /topic/user/{userEmail}/dm  (로그인 시 1회 구독)
+     */
     @MessageMapping("/chat/dm/{dmRoomPk}")
-    @SendTo("/topic/dm/{dmRoomPk}")
     public void sendDmMessage(@Payload MessageRequest messageRequest,
                               @DestinationVariable Integer dmRoomPk,
                               SimpMessageHeaderAccessor headerAccessor) {
         try {
-            // 경로의 dmRoomPk와 요청의 dmRoomPk 일치 검증
+            // 1. 경로의 dmRoomPk와 요청의 dmRoomPk 일치 검증
             if (!dmRoomPk.equals(messageRequest.getDmRoomPk())) {
                 throw new RuntimeException("경로의 DM방과 요청의 DM방이 일치하지 않습니다.");
             }
 
+            // 2. JWT 토큰 추출
             String jwtToken = extractJwtFromSession(headerAccessor);
             if (jwtToken == null) {
                 throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
             }
-            // 메시지 저장 및 chatMessage로 변환
+            // 3. DM 방 멤버 조회 (존재 검증 겸용)
+            List<DmMember> dmMembers = dmMemberRepository.findByDmRoom_DmRoomPk(dmRoomPk);
+            if (dmMembers.isEmpty()) {
+                throw new RuntimeException("존재하지 않는 DM방 입니다.");
+            }
+
+            // 4. 메시지 저장
             Message savedMessage = chatService.saveMessage(messageRequest, jwtToken);
 
+            // 5. Message -> ChatMessage DTO 변환
             ChatMessage chatMessage = chatService.convertToChatMessage(savedMessage);
 
-            // DM 방의 멤버에게 메시지 전송
-            String destination = "/topic/dm/" + messageRequest.getDmRoomPk();
-            messagingTemplate.convertAndSend(destination, chatMessage);
-
-            // 상대방에게 DM unread 알림 브로드 캐스트
-            String sendEmail = savedMessage.getUserPk().getUserEmail();
-            List<DmMember> dmMembers = dmMemberRepository.findByDmRoom_DmRoomPk(dmRoomPk);
-            dmMembers.stream()
-                    .filter(m -> !m.getUser().getUserEmail().equals(sendEmail))
-                    .forEach(m -> {
-                        UnreadNotification notification = UnreadNotification.builder()
-                                .dmRoomPk(dmRoomPk)
-                                .sendUserEmail(sendEmail)
-                                .build();
-                        messagingTemplate.convertAndSend(
-                                "/topic/user/" + m.getUser().getUserEmail() + "/dm/unread",
-                                notification
-                        );
-                    });
+            // 6. DM방 멤버 전원의 유저 토픽으로 각각 전송
+            dmMembers.forEach(m -> {
+                messagingTemplate.convertAndSend(
+                        "/topic/user/" + m.getUser().getUserEmail() +"/dm",
+                        chatMessage
+                );
+            });
 
             log.info("DM 메시지 전송: DmRoomPk = {}, userPk ={}", messageRequest.getDmRoomPk(), chatMessage.getUserPk());
 

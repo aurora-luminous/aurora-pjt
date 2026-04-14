@@ -8,12 +8,10 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.coyote.Response;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
@@ -41,9 +39,23 @@ public class DmRoomController {
     }
 
     /**
+     *
+     */
+    @GetMapping("/rooms/by-user")
+    public ResponseEntity<DmRoomCreateResponse> getDmRoomByUser(
+            @RequestParam String targetUserEmail,
+            HttpServletRequest httpRequest) {
+        String token = extractTokenFromCookie(httpRequest);
+        DmRoomCreateResponse response = dmRoomService.getDmRoomByUser(
+                targetUserEmail, token);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * 쿠키에서 access_token 추출
      * - 토큰 없으면 UnauthorizedException → 401
-     *
+     * <p>
      * TODO : 지금 이거 컨트롤러별로 쓰고 있는데 공용 유틸로 빼기
      */
     private String extractTokenFromCookie(HttpServletRequest request) {

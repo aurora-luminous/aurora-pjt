@@ -342,6 +342,7 @@ public class ChatServiceImpl implements ChatService {
                 Optional<ChannelMember> memberOpt = channelMemberRepository.findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk);
 
                 if (memberOpt.isEmpty()) {
+                    // 멤버가 아니면 → unread 없음 (볼 권한 자체가 없으니)
                     return ChannelUnreadResponse.builder()
                             .channelPk(channelPk)
                             .hasUnread(false)
@@ -352,9 +353,15 @@ public class ChatServiceImpl implements ChatService {
                 boolean hasUnread;
 
                 if (member.getLastReadMessage() == null) {
+                    // 한 번도 읽은 적 없음 → 채널에 메시지가 1개라도 있으면 unread
                     hasUnread = messageRepository.existsByChannelPk_ChannelPk(channelPk);
                 } else {
-                    hasUnread = messageRepository.existsUnreadMessages(channelPk, member.getLastReadMessage().getMessagePk(), userPk);
+                    // 읽은 적 있음 → lastReadMessage 이후에 다른 사람이 보낸 메시지가 있는지 확인
+
+                    hasUnread = messageRepository.existsUnreadMessages(
+                            channelPk,
+                            member.getLastReadMessage().getMessagePk(),
+                            userPk);
                 }
 
                 return ChannelUnreadResponse.builder()

@@ -92,11 +92,16 @@ public class ChatWebSocketController {
      * 2. MessageResponse로 변환해 /topic/dm/{dmRoomPk} 구독자에게 전송
      * 3. 상대방에게 Dm unread 알림 전송(/topic/user/{userEmail}/dm/unread)
      * <p>
-     * 참고 : 이후 커밋에서 DM 구독을 /topic/user/{userEmail}/dm 으로 변경하고
-     * DM unread알림 로직은 제거될 예정
+     * DM 구독이 user 레벨(/topic/user/{userEmail}/dm)이므로,
+     * 메시지 수신 자체가 unread 알림 역할을 함 -> 별도 unread알림 불필요
+     * <p>
+     * 프론트는 /topic/user/{myEmail}/dm 하나만 구독하면
+     * 모든 DM 방의 메시지 수신 가능
+     * dmRoomPk는 MessageResponse에 포함되지 않으므로
+     * 프론트에서 어떤 DM방의 메시지인지 알려면
+     * 발신자(UserEmail)로 DM방을 매칭해야함
      */
     @MessageMapping("/chat/dm/{dmRoomPk}")
-    @SendTo("/topic/dm/{dmRoomPk}")
     public void sendDmMessage(@Payload MessageRequest messageRequest,
                               @DestinationVariable Integer dmRoomPk,
                               SimpMessageHeaderAccessor headerAccessor) {
@@ -107,30 +112,18 @@ public class ChatWebSocketController {
                 throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
             }
             // 메시지 저장 및 chatMessage로 변환
-            Message savedMessage = chatService.saveDmMessage(messageRequest, dmRoomPk,jwtToken);
+            Message savedMessage = chatService.saveDmMessage(messageRequest, dmRoomPk, jwtToken);
 
             // ChatMessage 대신 통합된 MessageResponse 사용
             MessageResponse messageResponse = chatService.convertToMessageResponse(savedMessage);
 
-            // DM 방의 멤버에게 메시지 전송
-            String destination = "/topic/dm/" + dmRoomPk;
-            messagingTemplate.convertAndSend(destination, messageResponse);
-
-            // 상대방에게 DM unread 알림 브로드 캐스트
-            String sendEmail = savedMessage.getUserPk().getUserEmail();
+            // DM 방의 멤버각각의 user 레벨 토픽으로 메시지 전송
             List<DmMember> dmMembers = dmMemberRepository.findByDmRoom_DmRoomPk(dmRoomPk);
-            dmMembers.stream()
-                    .filter(m -> !m.getUser().getUserEmail().equals(sendEmail))
-                    .forEach(m -> {
-                        UnreadNotification notification = UnreadNotification.builder()
-                                .dmRoomPk(dmRoomPk)
-                                .sendUserEmail(sendEmail)
-                                .build();
-                        messagingTemplate.convertAndSend(
-                                "/topic/user/" + m.getUser().getUserEmail() + "/dm/unread",
-                                notification
-                        );
-                    });
+            dmMembers.forEach(m->
+                    messagingTemplate.convertAndSend(
+                            "/topic/user/" +m.getUser().getUserEmail() +"/dm",
+                            messageResponse
+                    ));
 
             log.info("DM 메시지 전송: DmRoomPk = {}, userEmail ={}", dmRoomPk, messageResponse.getUserEmail());
 

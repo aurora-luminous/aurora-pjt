@@ -46,54 +46,41 @@ public class ChatServiceImpl implements ChatService {
     private final DmMemberRepository dmMemberRepository;
 
     /**
-     * 메시지를 DB에 저장
+     * 채널 메시지를 DB에 저장
      *
-     * @param request - 클라이언트가 보낸 메시지 정보 (channelPk/dmRoomPk, content, messageType)
-     * @param jwtToken - 사용자 인증 토큰 (누가 보냈는지 확인용)
-     *
+     * @param request - 메시지 내용 (content, messageType)
+     * @param channelPk - 대상 채널 PK (WebSocket PathVariable에서 전달)
+     * @param jwtToken - 사용자 인증 토큰
      * <p>
      * 호출되는 곳:
-     * - ChatWebSocketController.sendChannelMessage() → 채널 채팅 시
-     * - ChatWebSocketController.sendDmMessage()      → DM 채팅 시
+     * - ChatWebSocketController.sendChannelMessage()
      * <p>
      * 처리 순서:
      * 1. JWT에서 userPk 추출
-     * 2. 채널/DM방 접근 권한 검증
-     * 3. Channel, DmRoom, Users 엔티티 조회
+     * 2. 채널 접근 권한 검증
+     * 3. Channel, Users 엔티티 조회
      * 4. Message 엔티티 생성 및 DB 저장
      */
     @Override
     @Transactional
-    public Message saveMessage(MessageRequest request, String jwtToken) {
+    public Message saveChannelMessage(MessageRequest request, Integer channelPk, String jwtToken) {
         try {
             Integer userPk = getUserPkFromToken(jwtToken);
+            validateChannelAccess(channelPk, userPk);
 
-            boolean isChannelMessage = request.getChannelPk() != null;
-            boolean isDmMessage = request.getDmRoomPk() != null;
+            Channel channel = channelRepository.findById(channelPk)
+                    .orElseThrow(() -> new NotFoundException("채널을 찾을 수 없습니다."));
 
-            // 권한 검증
-            if (isChannelMessage) {
-                validateChannelAccess(request.getChannelPk(), userPk);
-            } else {
-                validateDmRoomAccess(request.getDmRoomPk(), userPk);
-            }
+            Users user = userRepository.findById(userPk)
+                    .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
 
-            Channel channel = null;
-            DmRoom dmRoom = null;
-
-            if (request.getChannelPk() != null) {
-                channel = channelRepository.findById(request.getChannelPk()).orElseThrow(() -> new NotFoundException("채널을 찾을 수 없습니다."));
-            }
-            if (request.getDmRoomPk() != null) {
-                dmRoom = dmRoomRepository.findById(request.getDmRoomPk()).orElseThrow(() -> new NotFoundException("DM방을 찾을 수 없습니다."));
-            }
-            Users user = userRepository.findById(userPk).orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
-
-            Message message = Message.builder().channelPk(channel).dmRoomPk(dmRoom).userPk(user).content(request.getContent()).messageType(request.getMessageType() != null ? request.getMessageType() : "TEXT").build();
+            Message message = Message.builder()
+                    .channelPk(channel)
+                    .userPk(user)
+                    .content(request.getContent())
+                    .messageType(request.getMessageType() != null ? request.getMessageType() : "TEXT").build();
 
             Message savedMessage = messageRepository.save(message);
-
-            log.info("메세지 저장: channelPk = {}, userPk = {}", request.getChannelPk(), userPk);
 
             return savedMessage;
         } catch (ForbiddenException | NotFoundException e) {
@@ -101,6 +88,54 @@ public class ChatServiceImpl implements ChatService {
         } catch (Exception e) {
             log.error("메시지 저장 실패 : {}", e.getMessage());
             throw new InternalServerErrorException("메시지 저장 중 서버 오류가 발생했습니다. : " + e.getMessage());
+        }
+    }
+
+    /**
+     * DM 메시지를 DB에 저장
+     *
+     * @param request  - 메시지 내용 (content, messageType)
+     * @param dmRoomPk - 대상 DM방 PK (WebSocket PathVariable에서 전달)
+     * @param jwtToken - 사용자 인증 토큰
+     *
+     * 호출되는 곳:
+     * - ChatWebSocketController.sendDmMessage()
+     *
+     * 처리 순서:
+     * 1. JWT에서 userPk 추출
+     * 2. DM방 접근 권한 검증
+     * 3. DmRoom, Users 엔티티 조회
+     * 4. Message 엔티티 생성 및 DB 저장
+     */
+    @Override
+    @Transactional
+    public Message saveDmMessage(MessageRequest request, Integer dmRoomPk, String jwtToken) {
+        try {
+            Integer userPk = getUserPkFromToken(jwtToken);
+            validateDmRoomAccess(dmRoomPk, userPk);
+
+            DmRoom dmRoom = dmRoomRepository.findById(dmRoomPk)
+                    .orElseThrow(() -> new NotFoundException("DM 방을 찾을 수 없습니다."));
+
+            Users user = userRepository.findById(userPk)
+                    .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
+
+            Message message = Message.builder()
+                    .dmRoomPk(dmRoom)
+                    .userPk(user)
+                    .content(request.getContent())
+                    .messageType(request.getMessageType() != null ? request.getMessageType() : "TEXT")
+                    .build();
+
+            Message savedMessage = messageRepository.save(message);
+            log.info("DM 메시지 저장: dmRoomPk = {}, userPk = {}", dmRoomPk, userPk);
+
+            return savedMessage;
+        } catch (ForbiddenException | NotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("DM 메시지 저장 실패 : {}", e.getMessage());
+            throw new InternalServerErrorException("메시지 저장 중 서버 오류가 발생했습니다.: " + e.getMessage());
         }
     }
 

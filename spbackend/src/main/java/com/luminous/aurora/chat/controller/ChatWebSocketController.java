@@ -54,17 +54,13 @@ public class ChatWebSocketController {
                                               SimpMessageHeaderAccessor headerAccessor) {
         try {
             // 세션에서 JWT 토큰 추출
-            // channelPk 검증
-            if (!channelPk.equals(messageRequest.getChannelPk())) {
-                throw new RuntimeException("경로의 채널과 요청의 채널이 일치하지 않습니다.");
-            }
             String jwtToken = extractJwtFromSession(headerAccessor);
             if (jwtToken == null) {
                 throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
 
             }
 
-            Message savedMessage = chatService.saveMessage(messageRequest, jwtToken);
+            Message savedMessage = chatService.saveChannelMessage(messageRequest, channelPk, jwtToken);
 
             // ChatMessage 대신 통합된 MessageResponse 사용
             MessageResponse messageResponse = chatService.convertToMessageResponse(savedMessage);
@@ -79,7 +75,7 @@ public class ChatWebSocketController {
 
             messagingTemplate.convertAndSend("/topic/project/" + projectPk + "/unread", notification);
 
-            log.info("채널 메시지 전송 : channelPk = {}, userEmail ={}", messageRequest.getChannelPk(), messageResponse.getUserEmail());
+            log.info("채널 메시지 전송 : channelPk = {}, userEmail ={}", channelPk, messageResponse.getUserEmail());
 
             return messageResponse;
         } catch (Exception e) {
@@ -105,23 +101,19 @@ public class ChatWebSocketController {
                               @DestinationVariable Integer dmRoomPk,
                               SimpMessageHeaderAccessor headerAccessor) {
         try {
-            // 경로의 dmRoomPk와 요청의 dmRoomPk 일치 검증
-            if (!dmRoomPk.equals(messageRequest.getDmRoomPk())) {
-                throw new RuntimeException("경로의 DM방과 요청의 DM방이 일치하지 않습니다.");
-            }
-
+            // 세션에서 JWT 토큰 추출
             String jwtToken = extractJwtFromSession(headerAccessor);
             if (jwtToken == null) {
                 throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
             }
             // 메시지 저장 및 chatMessage로 변환
-            Message savedMessage = chatService.saveMessage(messageRequest, jwtToken);
+            Message savedMessage = chatService.saveDmMessage(messageRequest, dmRoomPk,jwtToken);
 
             // ChatMessage 대신 통합된 MessageResponse 사용
             MessageResponse messageResponse = chatService.convertToMessageResponse(savedMessage);
 
             // DM 방의 멤버에게 메시지 전송
-            String destination = "/topic/dm/" + messageRequest.getDmRoomPk();
+            String destination = "/topic/dm/" + dmRoomPk;
             messagingTemplate.convertAndSend(destination, messageResponse);
 
             // 상대방에게 DM unread 알림 브로드 캐스트
@@ -140,7 +132,7 @@ public class ChatWebSocketController {
                         );
                     });
 
-            log.info("DM 메시지 전송: DmRoomPk = {}, userEmail ={}", messageRequest.getDmRoomPk(), messageResponse.getUserEmail());
+            log.info("DM 메시지 전송: DmRoomPk = {}, userEmail ={}", dmRoomPk, messageResponse.getUserEmail());
 
         } catch (Exception e) {
             log.error("DM 메시지 전송 실패 : {}", e.getMessage());

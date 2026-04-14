@@ -10,8 +10,23 @@ import java.util.List;
 
 public interface ChatService {
 
-    // 메시지 저장
-    Message saveMessage(MessageRequest request, String jwtToken);
+    /**
+     * 채널 메시지 저장
+     *
+     * @param request 메시지 내용 (content, messageType)
+     * @param channelPk 대상 채널 Pk
+     * @param jwtToken 사용자 인증 토큰
+     */
+    Message saveChannelMessage(MessageRequest request,Integer channelPk, String jwtToken);
+
+    /**
+     * DM 메시지 저장
+     * @param request 메시지 내용 (content, messageType)
+     * @param dmRoomPk 대상 DM방 Pk
+     * @param jwtToken 사용자 인증 토큰
+     */
+    Message saveDmMessage(MessageRequest request, Integer dmRoomPk, String jwtToken);
+
 
     // 채널별 최신 메시지 조회 (최초 로드 시)
     List<MessageResponse> getLatestMessage(Integer channelPk, String jwtToken);

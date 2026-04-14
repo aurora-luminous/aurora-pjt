@@ -120,7 +120,7 @@ export class TypeOrmChannelMemberRepository extends ChannelMemberRepository {
       .execute();
   }
 
-  // 유저가 가입중인 모든 프로젝트에서 나가기 처리
+  // 유저가 가입중인 프로젝트의 모든 채널에서 나가기 처리
   async deactivateUserInProject(manager: EntityManager, projectPk: number, userPk: number): Promise<void> {
     await manager
       .createQueryBuilder()

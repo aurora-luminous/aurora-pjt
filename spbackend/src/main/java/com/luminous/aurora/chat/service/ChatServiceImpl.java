@@ -425,12 +425,15 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public MessageResponse convertToMessageResponse(Message message) {
         try {
+            Users user = message.getUserPk();
+
             return MessageResponse.builder()
                     .messagePk(message.getMessagePk())
-                    .channelPk(message.getChannelPk() != null ? message.getChannelPk().getChannelPk() : null)
-                    .dmRoomPk(message.getDmRoomPk() != null ? message.getDmRoomPk().getDmRoomPk() : null)
-                    .userPk(message.getUserPk().getUserPk()).userName(message.getUserPk().getUserName())
-                    .content(message.getContent()).createdAt(message.getCreatedAt())
+                    .userEmail(user.getUserEmail())
+                    .userName(user.getUserName())
+                    .userProfileImage(user.getProfileImagePath())
+                    .content(message.getContent())
+                    .createdAt(message.getCreatedAt())
                     .messageType(message.getMessageType())
                     .build();
         } catch (NotFoundException | BadRequestException e) {

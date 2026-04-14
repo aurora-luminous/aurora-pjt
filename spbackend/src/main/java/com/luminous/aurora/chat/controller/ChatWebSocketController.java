@@ -79,7 +79,7 @@ public class ChatWebSocketController {
 
             messagingTemplate.convertAndSend("/topic/project/" + projectPk + "/unread", notification);
 
-            log.info("채널 메시지 전송 : channelPk = {}, userPk ={}", messageRequest.getChannelPk(), messageResponse.getUserPk());
+            log.info("채널 메시지 전송 : channelPk = {}, userEmail ={}", messageRequest.getChannelPk(), messageResponse.getUserEmail());
 
             return messageResponse;
         } catch (Exception e) {
@@ -140,7 +140,7 @@ public class ChatWebSocketController {
                         );
                     });
 
-            log.info("DM 메시지 전송: DmRoomPk = {}, userPk ={}", messageRequest.getDmRoomPk(), messageResponse.getUserPk());
+            log.info("DM 메시지 전송: DmRoomPk = {}, userEmail ={}", messageRequest.getDmRoomPk(), messageResponse.getUserEmail());
 
         } catch (Exception e) {
             log.error("DM 메시지 전송 실패 : {}", e.getMessage());

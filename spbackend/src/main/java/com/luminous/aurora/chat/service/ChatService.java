@@ -1,5 +1,6 @@
 package com.luminous.aurora.chat.service;
 
+import com.luminous.aurora.chat.dto.MessageListResponse;
 import com.luminous.aurora.chat.dto.MessageRequest;
 import com.luminous.aurora.chat.dto.MessageResponse;
 import com.luminous.aurora.chat.entity.Message;
@@ -29,16 +30,16 @@ public interface ChatService {
 
 
     // 채널별 최신 메시지 조회 (최초 로드 시)
-    List<MessageResponse> getLatestMessage(Integer channelPk, String jwtToken);
+    MessageListResponse getLatestMessage(Integer channelPk, String jwtToken);
 
     // 채널별 이전 메시지 조회 (스크롤 시)
-    List<MessageResponse> getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, String jwtToken);
+    MessageListResponse getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, String jwtToken);
 
     // DM 방별 최신 메시지 조회
-    List<MessageResponse> getLatestDmMessage(Integer dmRoomPk, String jwtToken);
+    MessageListResponse getLatestDmMessage(Integer dmRoomPk, String jwtToken);
 
     // DM 방별 이전 메시지 조회 (스크롤 시)
-    List<MessageResponse> getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, String jwtToken);
+    MessageListResponse getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, String jwtToken);
 
     // 채널 안읽은 메시지 표시용
     void markChannelAsRead(Integer channelPk, Long messagePk, String jwtToken);

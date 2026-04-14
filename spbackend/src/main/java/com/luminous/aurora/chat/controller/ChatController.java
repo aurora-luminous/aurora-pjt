@@ -1,6 +1,6 @@
 package com.luminous.aurora.chat.controller;
 
-import com.luminous.aurora.chat.dto.MessageResponse;
+import com.luminous.aurora.chat.dto.MessageListResponse;
 import com.luminous.aurora.chat.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -8,9 +8,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
-// REST API용 컨트롤러
+/**
+ * 메시지 조회 REST API 컨트롤러
+ * <p>
+ * 채널/DM 메시지 목록을 조회하는 REST API.
+ * 모든 응답은 MessageListResponse로 래핑되어
+ * lastReadMessagePk(읽음 위치)와 messages(메시지 목록)를 함께 반환함.
+ */
 @Slf4j
 @RestController
 @RequestMapping("/api/jv/chat")
@@ -19,49 +24,48 @@ public class ChatController {
 
     private final ChatService chatService;
 
-    // 채널 최신 메시지 조회 (최초 로드)
+    /**
+     * 채널 최신 메시지 조회 (채널 입장 시)
+     * GET /api/jv/chat/channel/{channelPk}/messages
+     */
     @GetMapping("/channel/{channelPk}/messages")
-    public ResponseEntity<List<MessageResponse>> getLatestChannelMessages(
-            @PathVariable Integer channelPk,
-            @CookieValue("access_token") String jwtToken) {
-        List<MessageResponse> messages = chatService.getLatestMessage(channelPk, jwtToken);
-        log.info("채널 최신 메시지 조회 성공: channelPk={}, messageCount={}",
-                channelPk, messages.size());
-        return ResponseEntity.ok(messages);
+    public ResponseEntity<MessageListResponse> getLatestChannelMessages(@PathVariable Integer channelPk, @CookieValue("access_token") String jwtToken) {
+        MessageListResponse response = chatService.getLatestMessage(channelPk, jwtToken);
+        log.info("채널 최신 메시지 조회 성공: channelPk={}, messageCount={}", channelPk, response.getMessages().size());
+        return ResponseEntity.ok(response);
     }
 
-    // 채널 이전 메시지 조회 (무한스크롤)
+    /**
+     * 채널 이전 메시지 조회 (무한스크롤)
+     * GET /api/jv/chat/channel/{channelPk}/messages/older
+     */
     @GetMapping("/channel/{channelPk}/messages/older")
-    public ResponseEntity<List<MessageResponse>> getOlderChannelMessages(
-            @PathVariable Integer channelPk,
-            @RequestParam LocalDateTime lastMessageTime,
-            @CookieValue("access_token") String jwtToken) {
-        List<MessageResponse> messages = chatService.getOlderMessage(channelPk, lastMessageTime, jwtToken);
-        log.info("채널 이전 메시지 조회 성공: channelPk={}, messageCount={}, lastMessageTime={}",
-                channelPk, messages.size(), lastMessageTime);
-        return ResponseEntity.ok(messages);
+    public ResponseEntity<MessageListResponse> getOlderChannelMessages(@PathVariable Integer channelPk, @RequestParam LocalDateTime lastMessageTime, @CookieValue("access_token") String jwtToken) {
+        MessageListResponse response = chatService.getOlderMessage(channelPk, lastMessageTime, jwtToken);
+        log.info("채널 이전 메시지 조회 성공: channelPk={}, messageCount={}, lastMessageTime={}", channelPk, response.getMessages().size(), lastMessageTime);
+        return ResponseEntity.ok(response);
     }
 
-    // DM방 최신 메시지 조회
+
+    /**
+     * DM방 최신 메시지 조회 (DM방 입장 시)
+     * GET /api/jv/chat/dm/{dmRoomPk}/messages
+     */
     @GetMapping("/dm/{dmRoomPk}/messages")
-    public ResponseEntity<List<MessageResponse>> getLatestDmMessages(
-            @PathVariable Integer dmRoomPk,
-            @CookieValue("access_token") String jwtToken) {
-        List<MessageResponse> messages = chatService.getLatestDmMessage(dmRoomPk, jwtToken);
-        log.info("DM방 최신 메시지 조회 성공: dmRoomPk={}, messageCount={}",
-                dmRoomPk, messages.size());
-        return ResponseEntity.ok(messages);
+    public ResponseEntity<MessageListResponse> getLatestDmMessages(@PathVariable Integer dmRoomPk, @CookieValue("access_token") String jwtToken) {
+        MessageListResponse response = chatService.getLatestDmMessage(dmRoomPk, jwtToken);
+        log.info("DM방 최신 메시지 조회 성공: dmRoomPk={}, messageCount={}", dmRoomPk, response.getMessages().size());
+        return ResponseEntity.ok(response);
     }
 
-    // DM방 이전 메시지 조회 (무한스크롤)
+    /**
+     * DM방 이전 메시지 조회 (무한스크롤)
+     * GET /api/jv/chat/dm/{dmRoomPk}/messages/older
+     */
     @GetMapping("/dm/{dmRoomPk}/messages/older")
-    public ResponseEntity<List<MessageResponse>> getOlderDmMessages(
-            @PathVariable Integer dmRoomPk,
-            @RequestParam LocalDateTime lastMessageTime,
-            @CookieValue("access_token") String jwtToken) {
-        List<MessageResponse> messages = chatService.getOlderDmMessage(dmRoomPk, lastMessageTime, jwtToken);
-        log.info("DM방 이전 메시지 조회 성공: dmRoomPk={}, messageCount={}, lastMessageTime={}",
-                dmRoomPk, messages.size(), lastMessageTime);
-        return ResponseEntity.ok(messages);
+    public ResponseEntity<MessageListResponse> getOlderDmMessages(@PathVariable Integer dmRoomPk, @RequestParam LocalDateTime lastMessageTime, @CookieValue("access_token") String jwtToken) {
+        MessageListResponse response = chatService.getOlderDmMessage(dmRoomPk, lastMessageTime, jwtToken);
+        log.info("DM방 이전 메시지 조회 성공: dmRoomPk={}, messageCount={}, lastMessageTime={}", dmRoomPk, response.getMessages().size(), lastMessageTime);
+        return ResponseEntity.ok(response);
     }
 }

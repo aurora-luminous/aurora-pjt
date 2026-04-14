@@ -17,6 +17,9 @@ export abstract class ProjectMemberRepository {
   // 프로젝트 참가 중인 멤버 목록 조회
   abstract findMembersByProject(projectPk: number): Promise<ProjectMember[]>;
 
+  // 유저가 참가 중인 프로젝트들의 멤버들 조회
+  abstract findActiveMemberByUser(userPk: number): Promise<ProjectMember[]>
+
   // 프로젝트 멤버 저장(생성, 권한 변경 등의 업데이트)
   abstract save(member: Partial<ProjectMember>): Promise<ProjectMember>;
 

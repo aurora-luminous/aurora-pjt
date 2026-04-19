@@ -107,4 +107,17 @@ public class ChatController {
         log.info("DM around 메시지 조회 성공: dmRoomPk = {}, messagePk = {}, count = {}", dmRoomPk, messagePk, response.getMessages().size());
         return ResponseEntity.ok(response);
     }
+
+    /**
+     * DM newer 메시지 조회 (messagePk 이후 최대 40개)
+     * GET /api/jv/chat/dm/{dmRoomPk}/messages/newer?messagePk=
+     */
+    @GetMapping("/dm/{dmRoomPk}/messages/newer")
+    public ResponseEntity<MessageListResponse> getNewerDmMessages(@PathVariable Integer dmRoomPk,
+                                                                  @RequestParam Long messagePk,
+                                                                  @CookieValue("access_token") String jwtToken) {
+        MessageListResponse response = chatService.getNewerDmMessage(dmRoomPk, messagePk, jwtToken);
+        log.info("DM newer 메시지 조회: dmRoomPk = {}, messagePk = {}, count = {}", dmRoomPk, messagePk, response.getMessages().size());
+        return ResponseEntity.ok(response);
+    }
 }

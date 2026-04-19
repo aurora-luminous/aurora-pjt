@@ -46,6 +46,19 @@ public class ChatController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * 채널 around 메시지 조회
+     * GET /api/jv/chat/channel/{channelPk}/messages/around
+     */
+    @GetMapping("/channel/{channelPk}/messages/around")
+    public ResponseEntity<MessageListResponse> getAroundChannelMessages(@PathVariable Integer channelPk,
+                                                                       @RequestParam Long messagePk,
+                                                                       @CookieValue("access_token") String jwtToken) {
+        MessageListResponse response = chatService.getAroundMessage(channelPk, messagePk, jwtToken);
+        log.info("채널 around 메시지 조회: channelPk = {}, messagePk = {}, count = {}",
+                channelPk, messagePk, response.getMessages().size());
+        return ResponseEntity.ok(response);
+    }
 
     /**
      * DM방 최신 메시지 조회 (DM방 입장 시)

@@ -24,6 +24,7 @@ import com.luminous.aurora.member.repository.DmMemberRepository;
 import com.luminous.aurora.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -291,6 +292,55 @@ public class ChatServiceImpl implements ChatService {
         }
     }
 
+    /**
+     * 채널에서 특정 메시지 이후(더 새로운) 메시지 조회
+     * <p>
+     * afterMessagePk보다 큰 message_pk를 가진 메시지를 오름차순으로 최대 40개 반환한다.
+     * 기준 메시지(afterMessagePk)는 결과에 포함하지 않는다.
+     *
+     * @param channelPk - 조회할 채널 PK
+     * @param afterMessagePk - 커서로 쓰는 메시지 PK (해당 채널에 존재해야 함)
+     * @param jwtToken - 사용자 인증 토큰
+     * @return MessageListResponse - lastReadMessagePk + 메시지 목록
+     * <p>
+     * 호출되는 곳:
+     * - ChatController (REST API) → GET /api/jv/chat/channel/{channelPk}/messages/newer
+     * <p>
+     * 처리 순서:
+     * 1. JWT에서 userPk 추출
+     * 2. 채널 접근 권한 검증
+     * 3. 커서 메시지가 해당 채널에 존재하는지 확인
+     * 4. 이후 메시지 최대 40개 조회
+     * 5. Message → MessageResponse 변환
+     */
+    @Override
+    public MessageListResponse getNewerMessage(Integer channelPk, Long afterMessagePk, String jwtToken) {
+        try {
+            Integer userPk = getUserPkFromToken(jwtToken);
+            validateChannelAccess(channelPk, userPk);
+
+            messageRepository.findByMessagePkAndChannelPk_ChannelPk(afterMessagePk, channelPk)
+                    .orElseThrow(() -> new NotFoundException("기준 메시지가 해당 채널에 없음"));
+
+            List<Message> messages = messageRepository.findChannelMessagesNewerThanAfterPk(channelPk, afterMessagePk);
+            List<MessageResponse> messageResponses = messages.stream()
+                    .map(this::convertToMessageResponse)
+                    .toList();
+
+            Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
+
+            return MessageListResponse.builder()
+                    .lastReadMessagePk(lastReadMessagePk)
+                    .messages(messageResponses)
+                    .build();
+        } catch (ForbiddenException | NotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("채널 newer 메시지 조회 실패 : {}", e.getMessage());
+            throw new InternalServerErrorException("채널 newer 메시지 조회 중 서버 오류가 발생했습니다. : " + e.getMessage());
+        }
+    }
+
 
     /**
      * DM방의 최신 메시지 40개 조회 (처음 DM방 입장 시)
@@ -424,7 +474,7 @@ public class ChatServiceImpl implements ChatService {
             throw e;
         } catch (Exception e) {
             log.error("DM around 메시지 조회 실패 : {}", e.getMessage());
-            throw new InternalServerErrorException("DM around 메시지 조회 중 서버 오류가 발생했습니다. : "+ e.getMessage());
+            throw new InternalServerErrorException("DM around 메시지 조회 중 서버 오류가 발생했습니다. : " + e.getMessage());
         }
     }
 

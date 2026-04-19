@@ -38,6 +38,9 @@ public interface ChatService {
     // 채널: 기준 messagePk 주변 메시지 조회 (이전 20 + 기준 + 이후 20, 최대 41개)
     MessageListResponse getAroundMessage(Integer channelPk, Long messagePk, String jwtToken);
 
+    // 채널: 기준 messagePk 보다 이후에 온 메시지 40개 오름차순(newer 전용), 기준 메시지 미포함
+    MessageListResponse getNewerMessage(Integer channelPk, Long afterMessagePk, String jwtToken);
+
     // DM 방별 최신 메시지 조회
     MessageListResponse getLatestDmMessage(Integer dmRoomPk, String jwtToken);
 

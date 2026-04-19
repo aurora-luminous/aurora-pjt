@@ -51,6 +51,11 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     List<Message> findChannelMessagesStrictlyNewerThan(@Param("channelPk") Integer channelPk,
                                                       @Param("anchorPk") Long anchorPk);
 
+    // 채널 newer 메시지 쿼리 (내가 마지막으로 본 메세지보다 이후 온 메시지 40개)
+    @Query("SELECT m FROM Message m WHERE m.channelPk.channelPk = :channelPk AND m.messagePk > :afterMessagePk ORDER BY m.messagePk LIMIT 40")
+    List<Message> findChannelMessagesNewerThanAfterPk(@Param("channelPk") Integer channelPk,
+                                                      @Param("afterMessagePk") Long afterMessagePk);
+
     // ================ DM around ==============
 
     // DM 방에서 기준 메시지 1건

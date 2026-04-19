@@ -76,6 +76,11 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
             "ORDER BY m.createdAt DESC LIMIT 1")
     Optional<Message> findLatestMessageInDmRoom(@Param("dmRoomPk") Integer dmRoomPk);
 
+    // DM newer 메시지 쿼리 (내가 마지막으로 본 메세지보다 이후 온 메시지 40개)
+    @Query("SELECT m FROM Message m WHERE m.dmRoomPk.dmRoomPk = :dmRoomPk AND m.messagePk > :afterMessagePk ORDER BY m.messagePk LIMIT 40")
+    List<Message> findDmMessagesNewerThanAfterPk(@Param("dmRoomPk") Integer dmRoomPk,
+                                                 @Param("afterMessagePk") Long afterMessagePk);
+
     // DM용 읽지 않은 메시지 개수 (내가 보낸것 제외)
     @Query("SELECT COUNT(m) FROM Message m " +
             "WHERE m.dmRoomPk.dmRoomPk = :dmRoomPk " +

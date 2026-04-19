@@ -51,6 +51,19 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     List<Message> findChannelMessagesStrictlyNewerThan(@Param("channelPk") Integer channelPk,
                                                       @Param("anchorPk") Long anchorPk);
 
+    // ================ DM around ==============
+
+    // DM 방에서 기준 메시지 1건
+    Optional<Message> findByMessagePkAndDmRoomPk_DmRoomPk(Long messagePk, Integer dmRoomPk);
+
+    // 기준 messagePk보다 작은 PK 중, 큰 쪽부터 최대 20개 (DESC). 서비스에서 reverse 하면 오름차순.
+    @Query("SELECT m FROM Message m WHERE m.dmRoomPk.dmRoomPk = :dmRoomPk AND m.messagePk < :anchorPk ORDER BY m.messagePk DESC LIMIT 20")
+    List<Message> findDmMessagesStrictlyOlderThan(@Param("dmRoomPk") Integer dmRoomPk,
+                                                  @Param("anchorPk") Long anchorPk);
+    // 기준 messagePk보다 큰 PK 중 오름차순 최대 20개
+    @Query("SELECT m FROM Message m WHERE m.dmRoomPk.dmRoomPk = :dmRoomPk AND m.messagePk > :anchorPk ORDER BY m.messagePk LIMIT 20")
+    List<Message> findDmMessagesStrictlyNewerThan(@Param("dmRoomPk") Integer dmRoomPk,
+                                                  @Param("anchorPk") Long anchorPk);
 
     // DM방의 가장 최신 메시지 1개 조회(마지막 메시지 미리보기용)
     @Query("SELECT m FROM Message m " +

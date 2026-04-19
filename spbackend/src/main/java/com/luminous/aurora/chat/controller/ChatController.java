@@ -61,6 +61,19 @@ public class ChatController {
     }
 
     /**
+     * 채널 newer 메시지 조회 (messagePk 이후 최대 40개)
+     * GET /api/jv/chat/channel/{channelPk}/messages/newer?messagePk=
+     */
+    @GetMapping("/channel/{channelPk}/messages/newer")
+    public ResponseEntity<MessageListResponse> getNewerChannelMessages(@PathVariable Integer channelPk,
+                                                                       @RequestParam Long messagePk,
+                                                                       @CookieValue("access_token") String jwtToken) {
+        MessageListResponse response = chatService.getNewerMessage(channelPk, messagePk, jwtToken);
+        log.info("채널 newer 메시지 조회: channelPk = {}, messagePk = {}, count = {}", channelPk, messagePk, response.getMessages().size());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * DM방 최신 메시지 조회 (DM방 입장 시)
      * GET /api/jv/chat/dm/{dmRoomPk}/messages
      */

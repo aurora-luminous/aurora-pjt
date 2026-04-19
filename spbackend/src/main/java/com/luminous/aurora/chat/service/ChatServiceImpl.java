@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -230,6 +231,66 @@ public class ChatServiceImpl implements ChatService {
             throw new InternalServerErrorException("이전 메시지 조회 중 서버 오류가 발생했습니다. " + e.getMessage());
         }
     }
+
+    /**
+     * 채널의 특정 메시지 기준 주변 메시지 조회 (안읽은 메시지 중간에 들어오기 + 검색 메시지 주변메시지에 쓸듯)
+     * <p>
+     * 기준 messagePk 보다 작은 Pk 최대 20개 + 기준 1개 + 큰 20개를 합쳐
+     * 시간(pk) 오름차순으로 반환한다(최대 41개)
+     *
+     * @param channelPk 조회할 채널 Pk
+     * @param messagePk 기준이 되는 메시지 Pk (해당 채널 소속이어야 함)
+     * @param jwtToken 사용자 인증 토큰
+     * @return MessageListResponse - LastReadMessagePk + 메시지 목록
+     * <p>
+     * 호출 되는 곳
+     * - ChatController (REST API) -> GET /api/jv/chat/channel/{channelPk}/messages/around
+     * <p>
+     * 처리 순서
+     * 1. jwt에서 userPk 추출
+     * 2. 채널 접근 권한 검증
+     * 3. 기준 메시지가 해당 채널에 존재하는지 확인
+     * 4. 기준보다 이전/이후 메시지 각각 조회 후 오름차순으로 병합
+     * 5. Message -> MessageResponse 변환
+     */
+    @Override
+    public MessageListResponse getAroundMessage(Integer channelPk, Long messagePk, String jwtToken) {
+        try {
+            Integer userPk = getUserPkFromToken(jwtToken);
+            validateChannelAccess(channelPk, userPk);
+
+            Message anchor = messageRepository.findByMessagePkAndChannelPk_ChannelPk(messagePk, channelPk)
+                    .orElseThrow(() -> new NotFoundException("기준메시지가 해당 채널에 없음"));
+
+            List<Message> older = messageRepository.findChannelMessagesStrictlyOlderThan(channelPk, messagePk);
+            java.util.Collections.reverse(older);
+
+            List<Message> newer = messageRepository.findChannelMessagesStrictlyNewerThan(channelPk, messagePk);
+
+            ArrayList<Message> combined = new ArrayList<>(older.size() + 1 + newer.size());
+
+            combined.addAll(older);
+            combined.add(anchor);
+            combined.addAll(newer);
+
+            Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
+
+            List<MessageResponse> messageResponse = combined.stream()
+                    .map(this::convertToMessageResponse)
+                    .toList();
+
+            return MessageListResponse.builder()
+                    .lastReadMessagePk(lastReadMessagePk)
+                    .messages(messageResponse)
+                    .build();
+        } catch (ForbiddenException | NotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("채널 around 메시지 조회 실패 : {}", e.getMessage());
+            throw new InternalServerErrorException("채널 around 메시지 조회 중 서버 오류가 발생 했습니다 : " + e.getMessage());
+        }
+    }
+
 
     /**
      * DM방의 최신 메시지 40개 조회 (처음 DM방 입장 시)

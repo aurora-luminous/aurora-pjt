@@ -371,6 +371,64 @@ public class ChatServiceImpl implements ChatService {
     }
 
     /**
+     * DM방의 특정 메시지 기준 주변 메시지 조회 (딥링크·검색 결과 포커스 등)
+     * <p>
+     * 기준 messagePk보다 작은 PK 최대 20개 + 기준 1개 + 큰 PK 최대 20개를 합쳐
+     * PK 오름차순으로 반환한다. (최대 41개)
+     *
+     * @param dmRoomPk - 조회할 DM방 PK
+     * @param messagePk - 기준이 되는 메시지 PK (해당 DM방 소속이어야 함)
+     * @param jwtToken - 사용자 인증 토큰
+     * @return MessageListResponse - lastReadMessagePk + 메시지 목록
+     * <p>
+     * 호출되는 곳:
+     * - ChatController (REST API) → GET /api/jv/chat/dm/{dmRoomPk}/messages/around
+     * <p>
+     * 처리 순서:
+     * 1. JWT에서 userPk 추출
+     * 2. DM방 접근 권한 검증
+     * 3. 기준 메시지가 해당 DM방에 존재하는지 확인
+     * 4. 기준보다 이전/이후 메시지 각각 조회 후 오름차순으로 병합
+     * 5. Message → MessageResponse 변환
+     */
+    @Override
+    public MessageListResponse getAroundDmMessage(Integer dmRoomPk, Long messagePk, String jwtToken) {
+        try {
+            Integer userPk = getUserPkFromToken(jwtToken);
+            validateDmRoomAccess(dmRoomPk, userPk);
+
+            Message anchor = messageRepository.findByMessagePkAndDmRoomPk_DmRoomPk(messagePk, dmRoomPk)
+                    .orElseThrow(() -> new NotFoundException("기준 메시지가 해당 DM 방에 없습니다."));
+
+            List<Message> older = messageRepository.findDmMessagesStrictlyOlderThan(dmRoomPk, messagePk);
+            java.util.Collections.reverse(older);
+
+            List<Message> newer = messageRepository.findDmMessagesStrictlyNewerThan(dmRoomPk, messagePk);
+
+            ArrayList<Message> combined = new ArrayList<>(older.size() + 1 + newer.size());
+            combined.addAll(older);
+            combined.add(anchor);
+            combined.addAll(newer);
+
+            List<MessageResponse> messageResponses = combined.stream()
+                    .map(this::convertToMessageResponse)
+                    .toList();
+
+            Long lastReadMessagePk = getDmLastReadMessagePk(dmRoomPk, userPk);
+
+            return MessageListResponse.builder()
+                    .lastReadMessagePk(lastReadMessagePk)
+                    .messages(messageResponses)
+                    .build();
+        } catch (ForbiddenException | NotFoundException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("DM around 메시지 조회 실패 : {}", e.getMessage());
+            throw new InternalServerErrorException("DM around 메시지 조회 중 서버 오류가 발생했습니다. : "+ e.getMessage());
+        }
+    }
+
+    /**
      * 여러 채널의 안 읽은 메시지 존재 여부 일괄 조회
      *
      * @param channelPks - 조회할 채널 PK 목록

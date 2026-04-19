@@ -44,6 +44,9 @@ public interface ChatService {
     // DM 방별 이전 메시지 조회 (스크롤 시)
     MessageListResponse getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, String jwtToken);
 
+    // DM : 기준 messagePk 주변 메시지 조회 (이전 20 + 기준 + 이후 20, 최대 41개)
+    MessageListResponse getAroundDmMessage(Integer dmRoomPk, Long messagePk, String jwtToken);
+
     // 채널 안읽은 메시지 표시용
     void markChannelAsRead(Integer channelPk, Long messagePk, String jwtToken);
 

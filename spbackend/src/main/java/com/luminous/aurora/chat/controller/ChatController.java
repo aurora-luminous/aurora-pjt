@@ -46,6 +46,32 @@ public class ChatController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * 채널 around 메시지 조회
+     * GET /api/jv/chat/channel/{channelPk}/messages/around
+     */
+    @GetMapping("/channel/{channelPk}/messages/around")
+    public ResponseEntity<MessageListResponse> getAroundChannelMessages(@PathVariable Integer channelPk,
+                                                                        @RequestParam Long messagePk,
+                                                                        @CookieValue("access_token") String jwtToken) {
+        MessageListResponse response = chatService.getAroundMessage(channelPk, messagePk, jwtToken);
+        log.info("채널 around 메시지 조회: channelPk = {}, messagePk = {}, count = {}",
+                channelPk, messagePk, response.getMessages().size());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 채널 newer 메시지 조회 (messagePk 이후 최대 40개)
+     * GET /api/jv/chat/channel/{channelPk}/messages/newer?messagePk=
+     */
+    @GetMapping("/channel/{channelPk}/messages/newer")
+    public ResponseEntity<MessageListResponse> getNewerChannelMessages(@PathVariable Integer channelPk,
+                                                                       @RequestParam Long messagePk,
+                                                                       @CookieValue("access_token") String jwtToken) {
+        MessageListResponse response = chatService.getNewerMessage(channelPk, messagePk, jwtToken);
+        log.info("채널 newer 메시지 조회: channelPk = {}, messagePk = {}, count = {}", channelPk, messagePk, response.getMessages().size());
+        return ResponseEntity.ok(response);
+    }
 
     /**
      * DM방 최신 메시지 조회 (DM방 입장 시)
@@ -66,6 +92,32 @@ public class ChatController {
     public ResponseEntity<MessageListResponse> getOlderDmMessages(@PathVariable Integer dmRoomPk, @RequestParam LocalDateTime lastMessageTime, @CookieValue("access_token") String jwtToken) {
         MessageListResponse response = chatService.getOlderDmMessage(dmRoomPk, lastMessageTime, jwtToken);
         log.info("DM방 이전 메시지 조회 성공: dmRoomPk={}, messageCount={}, lastMessageTime={}", dmRoomPk, response.getMessages().size(), lastMessageTime);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * DM around 메시지 조회
+     * GET /api/jv/chat/dm/{dmRoomPk}/messages/around?messagePk=
+     */
+    @GetMapping("/dm/{dmRoomPk}/messages/around")
+    public ResponseEntity<MessageListResponse> getAroundDmMessages(@PathVariable Integer dmRoomPk,
+                                                                   @RequestParam Long messagePk,
+                                                                   @CookieValue("access_token") String jwtToken) {
+        MessageListResponse response = chatService.getAroundDmMessage(dmRoomPk, messagePk, jwtToken);
+        log.info("DM around 메시지 조회 성공: dmRoomPk = {}, messagePk = {}, count = {}", dmRoomPk, messagePk, response.getMessages().size());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * DM newer 메시지 조회 (messagePk 이후 최대 40개)
+     * GET /api/jv/chat/dm/{dmRoomPk}/messages/newer?messagePk=
+     */
+    @GetMapping("/dm/{dmRoomPk}/messages/newer")
+    public ResponseEntity<MessageListResponse> getNewerDmMessages(@PathVariable Integer dmRoomPk,
+                                                                  @RequestParam Long messagePk,
+                                                                  @CookieValue("access_token") String jwtToken) {
+        MessageListResponse response = chatService.getNewerDmMessage(dmRoomPk, messagePk, jwtToken);
+        log.info("DM newer 메시지 조회: dmRoomPk = {}, messagePk = {}, count = {}", dmRoomPk, messagePk, response.getMessages().size());
         return ResponseEntity.ok(response);
     }
 }

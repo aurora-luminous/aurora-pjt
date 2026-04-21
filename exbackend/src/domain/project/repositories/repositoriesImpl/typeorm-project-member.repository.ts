@@ -129,4 +129,23 @@ export class TypeOrmProjectMemberRepository extends ProjectMemberRepository {
       .andWhere('projectPk IN (SELECT project_pk FROM project WHERE server_pk = :serverPk)', { serverPk })
       .execute();
   }
+
+  // 프로젝트 멤버 저장(Manager를 넘겨서 트랜잭션 안끊기게 하는 메서드)
+  async addMember(manager: EntityManager, projectPk: number, userPk: number): Promise<void> {
+    const repo = manager.getRepository(ProjectMember);
+
+    const existing = await repo.findOne({ where: { projectPk, userPk } });
+
+    if (!existing) {
+      await repo.save({
+        projectPk,
+        userPk,
+        pStatus: MemberStatus.ACTIVE,
+        projectRole: MemberRole.MEMBER,
+      })
+    } else if (existing.pStatus !== MemberStatus.ACTIVE) {
+      existing.pStatus = MemberStatus.ACTIVE;
+      await repo.save(existing);
+    }
+  }
 }

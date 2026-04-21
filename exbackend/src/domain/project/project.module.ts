@@ -63,7 +63,9 @@ import { ChannelModule } from '../channel/channel.module';
   exports: [
     ProjectService,
     ProjectMemberService,
-    ProjectNotificationService
+    ProjectNotificationService,
+    ProjectRepository,
+    ProjectMemberRepository,
   ],
 })
 export class ProjectModule {}

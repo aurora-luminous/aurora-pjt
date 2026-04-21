@@ -55,4 +55,7 @@ export abstract class ChannelMemberRepository {
 
   // 유저가 가입중인 서버의 모든 프로젝트의 모든 채널에서 나가기 처리
   abstract deactivateUserInServer(manager: EntityManager, serverPk: number, userPk: number): Promise<void>;
+
+  // 특정 프로젝트의 모든 Public 채널에 유저를 일괄 가입 처리
+  abstract addAllToPublicChannelsInProject(manager: EntityManager, projectPk: number, userPk: number): Promise<void>;
 }

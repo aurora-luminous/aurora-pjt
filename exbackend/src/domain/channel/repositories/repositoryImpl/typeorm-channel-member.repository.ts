@@ -4,7 +4,7 @@ import { Repository, FindOptionsWhere, Brackets } from "typeorm";
 import { ChannelMember } from "../../entities/channel-member.entity";
 import { ChannelMemberRepository } from "../channel-member.repository";
 import { EntityManager } from "typeorm";
-import { MemberStatus } from "src/common/enums";
+import { MemberStatus, MemberRole } from "src/common/enums";
 
 @Injectable()
 export class TypeOrmChannelMemberRepository extends ChannelMemberRepository {
@@ -141,5 +141,33 @@ export class TypeOrmChannelMemberRepository extends ChannelMemberRepository {
       .andWhere('cStatus = :status', { status: MemberStatus.ACTIVE })
       .andWhere('channelPk IN (SELECT c.channel_pk FROM channel c JOIN project p ON c.project_pk = p.project_pk WHERE p.server_pk = :serverPk)', { serverPk })
       .execute();
+  }
+
+  // 특정 프로젝트의 모든 Public 채널에 유저를 일괄 가입 처리
+  async addAllToPublicChannelsInProject(manager: EntityManager, projectPk: number, userPk: number): Promise<void> {
+    // 1. 해당 프로젝트의 모든 PUBLIC 채널 중 유저가 아직 가입하지 않은 채널 PK 목록 조회
+    const subQuery = manager
+      .createQueryBuilder()
+      .select('c.channel_pk')
+      .from('channel', 'c')
+      .leftJoin('channel_member', 'cm', 'cm.channel_pk = c.channel_pk AND cm.user_pk = :userPk', { userPk })
+      .where('c.project_pk = :projectPk', { projectPk })
+      .andWhere('c.access_type = :accessType', { accessType: 'PUBLIC' })
+      .andWhere('c.is_deleted_channel = :isDeleted', { isDeleted: false })
+      .andWhere('cm.channel_member_pk IS NULL');
+
+    const channels = await subQuery.getRawMany();
+    
+    if (channels.length === 0) return;
+
+    // 2. 가입 처리
+    const newMembers = channels.map(c => ({
+      channelPk: c.channel_pk,
+      userPk: userPk,
+      cStatus: MemberStatus.ACTIVE,
+      channelRole: MemberRole.MEMBER,
+    }));
+
+    await manager.getRepository(ChannelMember).insert(newMembers);
   }
 }

@@ -1,92 +1,64 @@
 import {
   Injectable,
   NotFoundException,
-  ConflictException,
   ForbiddenException,
+  InternalServerErrorException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
-import { ConfigService } from '@nestjs/config';
+import { DataSource } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { Server } from '../../entities/server.entity';
-import { ServerMember } from '../../entities/server-member.entity';
-import { User } from '../../../user/entities/user.entity';
-import { UserService } from '../../../user/services/user.service';
 import {
   ServerRoleUtils,
-  ServerRoleType,
-} from '../../../../common/enums/member-role.enum';
-import {
   MemberStatus,
-  ServerMemberStatus,
-  MemberStatusUtils,
-} from '../../../../common/enums/member-status.enum';
-import { Project } from '../../../project/entities/project.entity';
-import { ProjectMember } from '../../../project/entities/project-member.entity';
-import { Channel } from '../../../channel/entities/channel.entity';
-import { ChannelMember } from '../../../channel/entities/channel-member.entity';
-import { ServerRolePermissionService } from '../server-role-permission.service';
+} from '../../../../common/enums';
+import { ServerRepository } from '../../repositories/server.repository';
+import { ServerMemberRepository } from '../../repositories/server-member.repository';
+import { UserRepository } from 'src/domain/user/repositories/user.repository';
+import { ProjectRepository } from 'src/domain/project/repositories/project.repository';
+import { ProjectMemberRepository } from 'src/domain/project/repositories/project-member.repository';
+import { ChannelRepository } from 'src/domain/channel/repositories/channel.repository';
+import { ChannelMemberRepository } from 'src/domain/channel/repositories/channel-member.repository';
+import { ServerMemberService } from '../server-member.service';
 import {
   PendingMemberDto,
   ServerMemberInfoDto,
   ServerMemberDetailDto,
-  UpdateMemberStatusDto,
   JoinServerDto,
   ServerListDto,
 } from '../../dto';
 import { RedisService } from '../../../../common/redis/redis.service'; // RedisService 추가
-import { findActiveEntityById } from '../../../../common/utils/entity-status.util'; // findActiveEntityById import
 
 @Injectable()
-export class ServerInvitationService {
+export class ServerMemberServiceImpl extends ServerMemberService {
   constructor(
-    @InjectRepository(Server)
-    private readonly serverRepository: Repository<Server>,
-    @InjectRepository(ServerMember)
-    private readonly serverMemberRepository: Repository<ServerMember>,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    @InjectRepository(Project)
-    private readonly projectRepository: Repository<Project>,
-    @InjectRepository(ProjectMember)
-    private readonly projectMemberRepository: Repository<ProjectMember>,
-    @InjectRepository(Channel)
-    private readonly channelRepository: Repository<Channel>,
-    @InjectRepository(ChannelMember)
-    private readonly channelMemberRepository: Repository<ChannelMember>,
+    private readonly serverRepository: ServerRepository,
+    private readonly serverMemberRepository: ServerMemberRepository,
+    private readonly userRepository: UserRepository,
+    private readonly projectRepository: ProjectRepository,
+    private readonly projectMemberRepository: ProjectMemberRepository,
+    private readonly channelRepository: ChannelRepository,
+    private readonly channelMemberRepository: ChannelMemberRepository,
     private readonly redisService: RedisService,
-  ) {}
+    private readonly dataSource: DataSource,
+  ) {
+    super();
+  }
 
   // 서버 초대 링크 생성
   async generateInviteHash(
-    serverPk: number,
+    serverUrl: string,
     requestUserPk: number,
   ): Promise<{ inviteHash: string }> {
-    // 1. 서버 존재 확인
-    await findActiveEntityById(
-      this.serverRepository,
-      serverPk,
-      '서버',
-      'serverPk',
-      'isDeletedServer',
-    );
 
-    const server = await this.serverRepository.findOne({
-      where: { serverPk, isDeletedServer: false },
-    });
+    const server = await this.serverRepository.findOne({ serverUrl });
 
     if (!server) {
       throw new NotFoundException(`서버를 찾을 수 없습니다`);
     }
 
+    const serverPk = server.serverPk
+
     // 2. 요청자가 서버 관리자인지 확인
-    const serverMember = await this.serverMemberRepository.findOne({
-      where: {
-        serverPk,
-        userPk: requestUserPk,
-        sStatus: 'Active',
-      },
-    });
+    const serverMember = await this.serverMemberRepository.findOne({ serverPk, userPk: requestUserPk });
 
     if (
       !serverMember ||
@@ -120,48 +92,37 @@ export class ServerInvitationService {
     userPk: number,
   ): Promise<PendingMemberDto> {
     // 1. 서버 존재 확인
-    await findActiveEntityById(
-      this.serverRepository,
-      serverUrl,
-      '서버',
-      'serverUrl',
-      'isDeletedServer',
-    );
 
-    const server = await this.serverRepository.findOne({
-      where: { serverUrl, isDeletedServer: false },
-    });
+    const server = await this.serverRepository.findOne({ serverUrl });
 
     if (!server) {
       throw new NotFoundException(`서버를 찾을 수 없습니다`);
     }
 
+    const serverPk = server.serverPk
+
     // 2. 사용자 존재 확인
-    const user = await this.userRepository.findOne({
-      where: { userPk, isDeleted: false },
-    });
+    const user = await this.userRepository.findByPk(userPk);
 
     if (!user) {
-      throw new NotFoundException(`사용자 ID ${userPk}를 찾을 수 없습니다`);
+      throw new NotFoundException(`사용자 ID를 찾을 수 없습니다`);
     }
 
     // 3. 이미 서버 멤버인지 확인
-    const existingMember = await this.serverMemberRepository.findOne({
-      where: { serverPk: server.serverPk, userPk },
-    });
+    const existingMember = await this.serverMemberRepository.findOne({ serverPk, userPk });
 
     if (existingMember) {
       // Active 상태인 경우 기본 프로젝트와 채널 정보도 함께 반환
       let defaultProject, defaultChannel;
       if (existingMember.sStatus === 'Active') {
         // 기본 "일반" 프로젝트 조회
-        const project = await this.projectRepository.findOne({
-          where: {
+        const project = await this.projectRepository.findOne(
+          {
             serverPk: server.serverPk,
             projectName: '일반',
             isDeletedProject: false,
-          },
-        });
+          }
+        );
 
         if (project) {
           defaultProject = {
@@ -171,11 +132,8 @@ export class ServerInvitationService {
 
           // 해당 프로젝트의 기본 "일반" 채널 조회
           const channel = await this.channelRepository.findOne({
-            where: {
               projectPk: project.projectPk,
               channelName: '일반',
-              isDeletedChannel: false,
-            },
           });
 
           if (channel) {
@@ -200,16 +158,15 @@ export class ServerInvitationService {
     }
 
     // 4. 가입 신청 생성 (Pending 상태)
-    const serverMember = this.serverMemberRepository.create({
+    const serverMember = await this.serverMemberRepository.save({
       serverPk: server.serverPk,
       userPk,
       sStatus: 'Pending',
       serverRole: 'member',
     });
-    const savedMember = await this.serverMemberRepository.save(serverMember);
 
     return {
-      sStatus: savedMember.sStatus,
+      sStatus: serverMember.sStatus,
       userInfo: {
         user_name: user.userName,
         user_email: user.userEmail,
@@ -218,14 +175,9 @@ export class ServerInvitationService {
     };
   }
 
-  // 서버 멤버 조회
+  // 유저가 속한 서버 목록 조회
   async getUserServers(userPk: number): Promise<ServerListDto[]> {
-    const serverMembers = await this.serverMemberRepository.find({
-      where: {
-        userPk: userPk,
-      },
-      relations: ['server'],
-    });
+    const serverMembers = await this.serverMemberRepository.findAll({ userPk }, ['server'] );
 
     return serverMembers
       .filter((member) => !member.server.isDeletedServer)
@@ -254,44 +206,26 @@ export class ServerInvitationService {
 
     const serverPk = parseInt(serverPkString, 10);
 
-    // 3. 서버 존재 확인
-    await findActiveEntityById(
-      this.serverRepository,
-      serverPk,
-      '서버',
-      'serverPk',
-      'isDeletedServer',
-    );
-
-    const server = await this.serverRepository.findOne({
-      where: { serverPk, isDeletedServer: false },
-    });
+    const server = await this.serverRepository.findOne({ serverPk });
 
     if (!server) {
       throw new NotFoundException(`서버를 찾을 수 없습니다`);
     }
 
-    // 4. 사용자 존재 확인 (유효한 사용자인지만 확인)
-    const user = await this.userRepository.findOne({
-      where: { userPk: joinDto.userPk, isDeleted: false },
-    });
+    // 4. 사용자 존재 확인
+    const user = await this.userRepository.findByPk(joinDto.userPk);
 
-    if (!user) {
-      throw new NotFoundException(
-        `사용자 ID ${joinDto.userPk}를 찾을 수 없습니다`,
-      );
-    }
+    if (!user) throw new NotFoundException(`사용자 ID를 찾을 수 없습니다`);
+    
 
     // 5. 서버 멤버 수 조회
-    const memberCount = await this.serverMemberRepository.count({
-      where: { serverPk: server.serverPk, sStatus: 'Active' },
-    });
+    const memberCount = await this.serverMemberRepository.count({ serverPk: server.serverPk });
 
     // 6. 서버 Owner 정보 조회
-    const ownerMember = await this.serverMemberRepository.findOne({
-      where: { serverPk: server.serverPk, serverRole: 'owner' },
-      relations: ['user'],
-    });
+    const ownerMember = await this.serverMemberRepository.findOne(
+      { serverPk: server.serverPk, serverRole: 'owner' },
+      ['user']
+    );
 
     if (!ownerMember || !ownerMember.user) {
       throw new NotFoundException('서버 소유자를 찾을 수 없습니다.');
@@ -311,42 +245,27 @@ export class ServerInvitationService {
     serverPk: number,
     requestUserPk: number,
   ): Promise<PendingMemberDto[]> {
-    // 1. 서버 존재 확인
-    await findActiveEntityById(
-      this.serverRepository,
-      serverPk,
-      '서버',
-      'serverPk',
-      'isDeletedServer',
-    );
 
-    const server = await this.serverRepository.findOne({
-      where: { serverPk, isDeletedServer: false },
-    });
+    const server = await this.serverRepository.findOne({ serverPk, isDeletedServer: false });
 
-    if (!server) {
-      throw new NotFoundException(`서버를 찾을 수 없습니다 (내부 오류).`);
-    }
-
+    if (!server) throw new NotFoundException(`서버를 찾을 수 없습니다 (내부 오류).`);
+    
     // 2. 요청자가 서버 멤버인지 확인
     const requestMember = await this.serverMemberRepository.findOne({
-      where: {
-        serverPk,
-        userPk: requestUserPk,
-        sStatus: 'Active',
-      },
+      serverPk,
+      userPk: requestUserPk,
+      sStatus: 'Active',    
     });
 
-    if (!requestMember) {
-      throw new ForbiddenException('서버 멤버만 멤버 목록을 볼 수 있습니다');
-    }
+    if (!requestMember) throw new ForbiddenException('서버 멤버만 멤버 목록을 볼 수 있습니다');
+    
 
     // 3. 모든 멤버 목록 조회 (모든 상태)
-    const allMembers = await this.serverMemberRepository.find({
-      where: { serverPk },
-      relations: ['user'],
-      order: { serverMemberPk: 'ASC' },
-    });
+    const allMembers = await this.serverMemberRepository.findAll(
+      { serverPk },
+      ['user'],
+      { serverMemberPk: 'ASC' },
+    );
 
     return allMembers.map((member) => ({
       sStatus: member.sStatus,
@@ -364,19 +283,11 @@ export class ServerInvitationService {
     serverUrl: string,
     requestUserPk: number,
   ): Promise<ServerMemberInfoDto[] | ServerMemberDetailDto[]> {
-    // 1. 서버 존재 확인
-    await findActiveEntityById(
-      this.serverRepository,
-      serverUrl,
-      '서버',
-      'serverUrl',
-      'isDeletedServer',
-    );
 
     // 1.5. 유효성이 확인된 서버 객체를 다시 로드
-    const server = await this.serverRepository.findOne({
-      where: { serverUrl, isDeletedServer: false },
-    });
+    const server = await this.serverRepository.findOne(
+      { serverUrl, isDeletedServer: false },
+    );
 
     if (!server) {
       throw new NotFoundException(
@@ -385,24 +296,24 @@ export class ServerInvitationService {
     }
 
     // 2. 요청자의 서버 멤버 정보 확인
-    const requestMember = await this.serverMemberRepository.findOne({
-      where: {
+    const requestMember = await this.serverMemberRepository.findOne(
+      {
         serverPk: server.serverPk,
         userPk: requestUserPk,
         sStatus: 'Active',
       },
-    });
+    );
 
     if (!requestMember) {
       throw new ForbiddenException('서버 멤버만 멤버 목록을 볼 수 있습니다');
     }
 
     // 3. 모든 멤버 목록 조회 (모든 상태)
-    const allMembers = await this.serverMemberRepository.find({
-      where: { serverPk: server.serverPk },
-      relations: ['user'],
-      order: { serverMemberPk: 'ASC' },
-    });
+    const allMembers = await this.serverMemberRepository.findAll(
+      { serverPk: server.serverPk },
+      ['user'],
+      { serverMemberPk: 'ASC' },
+    );
 
     // 4. 권한에 따라 다른 정보 반환
     const isAdmin = ServerRoleUtils.hasAdminPermission(
@@ -437,37 +348,24 @@ export class ServerInvitationService {
     serverUrl: string,
     userPk: number,
   ): Promise<{ message: string }> {
-    // 1. 서버 존재 확인
-    await findActiveEntityById(
-      this.serverRepository,
-      serverUrl,
-      '서버',
-      'serverUrl',
-      'isDeletedServer',
-    );
 
-    const server = await this.serverRepository.findOne({
-      where: { serverUrl, isDeletedServer: false },
-    });
+    const server = await this.serverRepository.findOne({ serverUrl });
 
-    if (!server) {
-      throw new NotFoundException(
-        `서버 URL ${serverUrl}을 찾을 수 없습니다 (내부 오류).`,
-      );
-    }
+    if (!server) throw new NotFoundException( `서버 URL ${serverUrl}을 찾을 수 없습니다`);
+    
 
     // 2. 요청자가 서버 멤버인지 확인
-    const serverMember = await this.serverMemberRepository.findOne({
-      where: {
+    const serverMember = await this.serverMemberRepository.findOne(
+      {
         serverPk: server.serverPk,
         userPk,
         sStatus: 'Active',
       },
-      relations: ['user'],
-    });
+      ['user'],
+    );
 
     if (!serverMember) {
-      throw new NotFoundException('서버의 활성 멤버가 아닙니다');
+      throw new NotFoundException('서버 멤버가 아닙니다');
     }
 
     // 3. 서버 소유자는 나갈 수 없음 (Owner는 서버를 삭제해야 함)
@@ -477,65 +375,43 @@ export class ServerInvitationService {
       );
     }
 
-    // 4. 상태를 Inactive로 변경 (soft delete)
-    await this._updateServerMemberStatus(
-      serverMember.serverMemberPk,
-      'Inactive',
-    );
+    // --- transaction ---
 
-    // 5. 해당 서버 내의 모든 프로젝트와 채널에서 사용자의 멤버십 상태를 Inactive로 변경
-    const projectsInServer = await this.projectRepository.find({
-      where: { serverPk: server.serverPk, isDeletedProject: false },
-      select: ['projectPk'],
-    });
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    for (const project of projectsInServer) {
-      // 프로젝트 멤버십 비활성화
-      const projectMember = await this.projectMemberRepository.findOne({
-        where: { projectPk: project.projectPk, userPk, pStatus: 'Active' },
-      });
-      if (projectMember) {
-        projectMember.pStatus = 'Inactive';
-        await this.projectMemberRepository.save(projectMember);
-      }
+    try {
+      const manager = queryRunner.manager;
 
-      // 채널 멤버십 비활성화
-      const channelMembersInProject = await this.channelMemberRepository
-        .createQueryBuilder('cm')
-        .leftJoin('cm.channel', 'channel')
-        .where('cm.userPk = :userPk', { userPk })
-        .andWhere('channel.projectPk = :projectPk', {
-          projectPk: project.projectPk,
-        })
-        .getMany();
+      // 4. 서버에서 나가기 처리 (Inactive로 변경)
+      serverMember.sStatus = MemberStatus.INACTIVE;
+      await this.serverMemberRepository.save(serverMember);
 
-      if (channelMembersInProject.length > 0) {
-        channelMembersInProject.forEach((cm) => {
-          cm.cStatus = 'Inactive';
-        });
-        await this.channelMemberRepository.save(channelMembersInProject);
-      }
+      // 5. 유저를 서버 내의 가입 중인 모든 프로젝트에서 나가기 처리
+      await this.projectMemberRepository.deactivateUserInServer(
+        manager,
+        server.serverPk,
+        userPk,
+      );
+
+      // 6. 유저를 서버 내의 가입 중인 모든 채널에서 나가기 처리
+      await this.channelMemberRepository.deactivateUserInServer(
+        manager,
+        server.serverPk,
+        userPk,
+      );
+
+      await queryRunner.commitTransaction();
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      console.error('서버 나가기 처리 중 트랜잭션 오류:', err);
+      throw new InternalServerErrorException(`나가기 처리 중 알 수 없는 오류가 발생했습니다.`)
+    } finally {
+      await queryRunner.release();
     }
     // TODO: Spring 서버로 멤버 제거 알림 전송
 
     return { message: '서버에서 나갔습니다' };
-  }
-
-  private async _updateServerMemberStatus(
-    serverMemberPk: number,
-    newStatus: 'Pending' | 'Active' | 'Inactive' | 'Banned',
-  ): Promise<void> {
-    const serverMember = await this.serverMemberRepository.findOne({
-      where: { serverMemberPk },
-    });
-
-    if (!serverMember) {
-      throw new NotFoundException(
-        `서버멤버 ${serverMemberPk} 를 찾을 수 없습니다.`,
-      );
-    }
-
-    serverMember.sStatus = newStatus;
-    await this.serverMemberRepository.save(serverMember);
   }
 }

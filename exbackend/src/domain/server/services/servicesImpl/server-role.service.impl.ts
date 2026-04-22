@@ -3,27 +3,26 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ServerRolePermission } from '../../entities/server-role-permission.entity';
-import { Server } from '../../entities/server.entity';
-import { ServerMember } from '../../entities/server-member.entity';
+import { ServerRepository } from '../../repositories/server.repository';
+import { ServerMemberRepository } from '../../repositories/server-member.repository';
+import { ServerRoleRepository } from '../../repositories/server-role.repository';
 import {
   UpdateRolePermissionDto,
   ServerRolePermissionResponseDto,
   GetServerPermissionsResponseDto,
 } from '../../dto/server-role-permission.dto';
+import { MemberStatus, ServerRole } from '../../../../common/enums';
+import { ServerRolePermissionService } from '../server-role-permission.service';
 
 @Injectable()
-export class ServerRolePermissionService {
+export class ServerRolePermissionServiceImpl extends ServerRolePermissionService {
   constructor(
-    @InjectRepository(ServerRolePermission)
-    private readonly permissionRepository: Repository<ServerRolePermission>,
-    @InjectRepository(Server)
-    private readonly serverRepository: Repository<Server>,
-    @InjectRepository(ServerMember)
-    private readonly serverMemberRepository: Repository<ServerMember>,
-  ) {}
+    private readonly serverRoleRepository: ServerRoleRepository,
+    private readonly serverRepository: ServerRepository,
+    private readonly serverMemberRepository: ServerMemberRepository,
+  ) {
+    super();
+  }
 
   // 서버 권한 조회
   async getServerPermissions(
@@ -31,31 +30,25 @@ export class ServerRolePermissionService {
     requestUserPk: number,
   ): Promise<GetServerPermissionsResponseDto> {
     // 1. 서버 존재 확인
-    const server = await this.serverRepository.findOne({
-      where: { serverUrl: serverUrl, isDeletedServer: false },
-    });
+    const server = await this.serverRepository.findOne({ serverUrl });
 
-    if (!server) {
-      throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다`);
-    }
+    if (!server) throw new NotFoundException(`서버 URL ${serverUrl}을 찾을 수 없습니다`);
+    
 
     // 2. 요청자가 서버 멤버인지 확인
-    const requestMember = await this.serverMemberRepository.findOne({
-      where: {
+    const requestMember = await this.serverMemberRepository.findOne(
+      {
         serverPk: server.serverPk,
         userPk: requestUserPk,
-        sStatus: 'Active',
+        sStatus: MemberStatus.ACTIVE,
       },
-    });
+    );
 
-    if (!requestMember) {
-      throw new ForbiddenException('서버 멤버만 권한을 조회할 수 있습니다');
-    }
+    if (!requestMember) throw new ForbiddenException('서버 멤버만 권한을 조회할 수 있습니다');
+    
 
     // 3. 권한 목록 조회
-    const permissions = await this.permissionRepository.find({
-      where: { serverPk: server.serverPk },
-    });
+    const permissions = await this.serverRoleRepository.findAll({ serverPk: server.serverPk });
 
     return {
       rolePermissions: permissions.map((permission) => ({
@@ -76,47 +69,41 @@ export class ServerRolePermissionService {
     requestUserPk: number,
   ): Promise<ServerRolePermissionResponseDto> {
     // 1. 서버 존재 확인
-    const server = await this.serverRepository.findOne({
-      where: { serverUrl: serverUrl, isDeletedServer: false },
-    });
+    const server = await this.serverRepository.findOne({ serverUrl });
 
-    if (!server) {
-      throw new NotFoundException(`서버 URL ${serverUrl}를 찾을 수 없습니다`);
-    }
+    if (!server) throw new NotFoundException(`서버 URL ${serverUrl}를 찾을 수 없습니다`);
+    
 
     // 2. 요청자가 서버 소유자인지 확인
-    const requestMember = await this.serverMemberRepository.findOne({
-      where: {
+    const requestMember = await this.serverMemberRepository.findOne(
+      {
         serverPk: server.serverPk,
         userPk: requestUserPk,
-        sStatus: 'Active',
+        sStatus: MemberStatus.ACTIVE,
       },
-    });
+    );
 
     if (!requestMember || requestMember.serverRole !== 'owner') {
       throw new ForbiddenException('서버 소유자만 권한을 설정할 수 있습니다');
     }
 
     // 3. 기존 권한 설정 찾기 또는 생성
-    let permission = await this.permissionRepository.findOne({
-      where: { serverPk: server.serverPk, serverRole: updateDto.serverRole },
-    });
+    const permission = await this.serverRoleRepository.findOne(
+      { serverPk: server.serverPk, serverRole: updateDto.serverRole },
+    );
 
-    if (!permission) {
-      permission = this.permissionRepository.create({
-        serverPk: server.serverPk,
-        serverRole: updateDto.serverRole,
-        kickMembers: updateDto.permissions.kickMembers,
-        banMembers: updateDto.permissions.banMembers,
-        manageRoles: updateDto.permissions.manageRoles,
-      });
-    } else {
-      permission.kickMembers = updateDto.permissions.kickMembers;
-      permission.banMembers = updateDto.permissions.banMembers;
-      permission.manageRoles = updateDto.permissions.manageRoles;
-    }
+    const permissionData = {
+      ...(permission && { permissionPk: permission.permissionPk }),
+      serverPk: server.serverPk,
+      serverRole: updateDto.serverRole,
+      kickMembers: updateDto.permissions.kickMembers,
+      banMembers: updateDto.permissions.banMembers,
+      manageRoles: updateDto.permissions.manageRoles,
+    };
 
-    const savedPermission = await this.permissionRepository.save(permission);
+    //저장
+
+    const savedPermission = await this.serverRoleRepository.save(permissionData);
 
     return {
       permissionPk: savedPermission.permissionPk,
@@ -135,23 +122,17 @@ export class ServerRolePermissionService {
     permission: 'kickMembers' | 'banMembers' | 'manageRoles',
   ): Promise<boolean> {
     // 1. 사용자의 서버 멤버십 확인
-    const serverMember = await this.serverMemberRepository.findOne({
-      where: { serverPk, userPk, sStatus: 'Active' },
-    });
+    const serverMember = await this.serverMemberRepository.findOne({ serverPk, userPk });
 
     if (!serverMember) {
       return false;
     }
 
     // 2. 해당 역할의 권한 설정 조회
-    const rolePermission = await this.permissionRepository.findOne({
-      where: { serverPk, serverRole: serverMember.serverRole },
-    });
+    const rolePermission = await this.serverRoleRepository.findOne({ serverPk, serverRole: serverMember.serverRole });
 
-    if (!rolePermission) {
-      return false;
-    }
-
+    if (!rolePermission) return false;
+    
     // 3. 요청된 권한 확인
     return rolePermission[permission];
   }
@@ -161,34 +142,34 @@ export class ServerRolePermissionService {
     const defaultPermissions = [
       {
         serverPk,
-        serverRole: 'owner' as const,
+        serverRole: ServerRole.OWNER,
         kickMembers: true,
         banMembers: true,
         manageRoles: true,
       },
       {
         serverPk,
-        serverRole: 'admin' as const,
+        serverRole: ServerRole.ADMIN,
         kickMembers: true,
         banMembers: true,
         manageRoles: true,
       },
       {
         serverPk,
-        serverRole: 'projectManager' as const,
+        serverRole: ServerRole.PROJECT_MANAGER,
         kickMembers: true,
         banMembers: true,
         manageRoles: false,
       },
       {
         serverPk,
-        serverRole: 'member' as const,
+        serverRole: ServerRole.MEMBER,
         kickMembers: false,
         banMembers: false,
         manageRoles: false,
       },
     ];
 
-    await this.permissionRepository.save(defaultPermissions);
+    await this.serverRoleRepository.saveMany(defaultPermissions);
   }
 }

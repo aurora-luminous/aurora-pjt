@@ -82,7 +82,7 @@ export class TypeOrmServerMemberRepository extends ServerMemberRepository {
     return this.repository.count({
       where: {
         serverPk,
-        ...(sStatus && { sStatus }),
+        sStatus: sStatus ? sStatus: 'Active',
         ...(serverRole && { serverRole }),
       },
     });

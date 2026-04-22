@@ -51,14 +51,6 @@ import { RedisModule } from './common/redis/redis.module';
     UserModule,
     UserActivityModule,
     RedisModule,
-
-    // Workspace 도메인 라우터 설정
-    RouterModule.register([
-      {
-        path: 'servers',
-        module: ServerModule,
-      },
-    ]),
   ],
   controllers: [AppController],
   providers: [],

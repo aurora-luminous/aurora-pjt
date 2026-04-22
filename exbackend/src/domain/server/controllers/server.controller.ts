@@ -14,10 +14,9 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
-import { ServerCreationService } from '../services/server-creation.service';
-import { ServerInvitationService } from '../services/server-invitation.service';
+import { ServerService } from '../services/server.service';
+import { ServerMemberService } from '../services/server-member.service';  
 import { ServerMemberManagementService } from '../services/server-member-management.service';
-import { ServerDeletionService } from '../services/server-deletion.service'; // Import the new service
 import {
   CreateServerDto,
   ServerListDto,
@@ -29,13 +28,12 @@ import { JwtAuthGuard } from '../../auth';
 import { CurrentUser, User } from '../../user'
 
 @ApiTags('servers')
-@Controller()
+@Controller('servers')
 export class ServerController {
   constructor(
-    private readonly serverCreationService: ServerCreationService,
-    private readonly serverInvitationService: ServerInvitationService,
+    private readonly serverService: ServerService,
+    private readonly serverMemberService: ServerMemberService,
     private readonly serverMemberManagementService: ServerMemberManagementService,
-    private readonly serverDeletionService: ServerDeletionService, // Inject the new service
   ) {}
 
   @Post()
@@ -53,7 +51,7 @@ export class ServerController {
       ...createServerDto,
       creatorUserPk: creatorUserPk,
     };
-    await this.serverCreationService.createServer(completeServerDto);
+    await this.serverService.createServer(completeServerDto);
     return { message: '생성 완료' };
   }
 
@@ -69,7 +67,7 @@ export class ServerController {
   async getUserServers(@CurrentUser() user: User): Promise<ServerListDto[]> {
     const requestUserPk = user.userPk;
 
-    return await this.serverCreationService.getUserServers(requestUserPk);
+    return await this.serverService.getUserServers(requestUserPk);
   }
 
   @Post(':serverUrl/invite')
@@ -89,13 +87,11 @@ export class ServerController {
     // 반환 타입 변경
     const requestUserPk = user.userPk;
 
-    // serverUrl로 serverPk 조회
-    const server = await this.serverCreationService.getServerByUrl(serverUrl);
-    const result = await this.serverInvitationService.generateInviteHash(
-      server.serverPk,
+    return await this.serverMemberService.generateInviteHash(
+      serverUrl,
       requestUserPk,
     );
-    return { inviteHash: result.inviteHash };
+
   }
 
   @Get('/join/:inviteHash')
@@ -126,7 +122,7 @@ export class ServerController {
   }> {
     const userPk = user.userPk;
 
-    const result = await this.serverInvitationService.getServerInfoByInvite({
+    const result = await this.serverMemberService.getServerInfoByInvite({
       inviteHash,
       userPk,
     });
@@ -160,7 +156,7 @@ export class ServerController {
   }> {
     const userPk = user.userPk;
 
-    const result = await this.serverInvitationService.joinServerDirect(
+    const result = await this.serverMemberService.joinServerDirect(
       serverUrl,
       userPk,
     );
@@ -192,8 +188,8 @@ export class ServerController {
     const requestUserPk = user.userPk;
 
     // serverUrl로 serverPk 조회
-    const server = await this.serverCreationService.getServerByUrl(serverUrl);
-    const members = await this.serverInvitationService.getPendingMembers(
+    const server = await this.serverService.getServerByUrl(serverUrl);
+    const members = await this.serverMemberManagementService.getPendingMembers(
       server.serverPk,
       requestUserPk,
     );
@@ -233,9 +229,9 @@ export class ServerController {
     const adminUserPk = user.userPk;
 
     // serverUrl로 serverPk 조회
-    const server = await this.serverCreationService.getServerByUrl(serverUrl);
+    const server = await this.serverService.getServerByUrl(serverUrl);
 
-    const result = await this.serverInvitationService.updateMemberStatusByEmail(
+    const result = await this.serverMemberManagementService.updateMemberStatusByEmail(
       server.serverPk,
       updateDto.userEmail,
       updateDto.sStatus,
@@ -264,7 +260,7 @@ export class ServerController {
   ): Promise<ServerMemberInfoDto[] | ServerMemberDetailDto[]> {
     const requestUserPk = user.userPk;
 
-    return await this.serverInvitationService.getServerMembersByUrl(
+    return await this.serverMemberService.getServerMembersByUrl(
       serverUrl,
       requestUserPk,
     );
@@ -291,7 +287,7 @@ export class ServerController {
     const ownerUserPk = user.userPk;
 
     // serverUrl로 serverPk 조회
-    const server = await this.serverCreationService.getServerByUrl(serverUrl);
+    const server = await this.serverService.getServerByUrl(serverUrl);
 
     // 권한 일괄 변경 실행
     const result =
@@ -327,7 +323,7 @@ export class ServerController {
     const adminUserPk = user.userPk;
 
     // serverUrl로 serverPk 조회
-    const server = await this.serverCreationService.getServerByUrl(serverUrl);
+    const server = await this.serverService.getServerByUrl(serverUrl);
 
     // 일괄 강퇴/밴 실행
     const result = await this.serverMemberManagementService.bulkMemberAction(
@@ -360,7 +356,7 @@ export class ServerController {
     @Param('serverUrl') serverUrl: string,
     @CurrentUser() user: User,
   ): Promise<{ message: string }> {
-    return await this.serverInvitationService.leaveServer(
+    return await this.serverMemberService.leaveServer(
       serverUrl,
       user.userPk,
     );
@@ -378,8 +374,7 @@ export class ServerController {
     @Param('serverUrl') serverUrl: string,
     @CurrentUser() user: User,
   ): Promise<{ message: string }> {
-    const server = await this.serverCreationService.getServerByUrl(serverUrl);
-    await this.serverDeletionService.deleteServer(server.serverPk, user.userPk);
+    await this.serverService.deleteServer(serverUrl, user.userPk);
     return { message: '서버가 성공적으로 삭제되었습니다.' };
   }
 }

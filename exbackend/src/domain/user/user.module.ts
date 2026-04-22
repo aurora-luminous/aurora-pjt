@@ -30,6 +30,6 @@ import { TypeOrmUserRepository } from './repositories/repositoryImpl/typeorm-use
       useClass: UserPopulationInterceptor,
     }
   ],
-  exports: [UserService], 
+  exports: [UserService, UserRepository], 
 })
 export class UserModule {}

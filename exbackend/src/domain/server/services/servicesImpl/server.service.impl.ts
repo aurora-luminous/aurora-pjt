@@ -52,7 +52,7 @@ export class ServerServiceImpl extends ServerService {
     }
 
     // 2. 서버 생성
-    const isExistServer = await this.serverRepository.findOne({ serverUrl: createServerDto.serverUrl });
+    const isExistServer = await this.serverRepository.findOne({ serverUrl: createServerDto.serverUrl, isDeletedServer: false });
 
     if (isExistServer) throw new ConflictException(`이미 중복된 URL ${createServerDto.serverUrl}이 존재합니다.`);
 

@@ -146,7 +146,7 @@ export class ServerMemberManagementServiceImpl extends ServerMemberManagementSer
 
     // 업데이트된 멤버 정보를 다시 가져오기
     const updatedMember = await this.serverMemberRepository.findOne(
-      { serverMemberPk },
+      { serverMemberPk, sStatus: MemberStatus.ACTIVE },
       ['user'],
     );
 
@@ -364,12 +364,12 @@ export class ServerMemberManagementServiceImpl extends ServerMemberManagementSer
 
     // 2. 차단할 멤버 확인 (승인된 멤버만)
     const targetMember = await this.serverMemberRepository.findOne(
-      { serverPk, userPk: targetUserPk },
+      { serverPk, userPk: targetUserPk, sStatus: MemberStatus.ACTIVE },
     );
 
     if (!targetMember) {
       throw new NotFoundException(
-        '대상 사용자가 이 서버의 활성 멤버가 아닙니다',
+        '대상 사용자가 이 서버의 멤버가 아닙니다',
       );
     }
 
@@ -387,7 +387,7 @@ export class ServerMemberManagementServiceImpl extends ServerMemberManagementSer
 
     // 요청자 정보 조회 (Owner 여부 확인용)
     const adminMember = await this.serverMemberRepository.findOne(
-      { serverPk, userPk: adminUserPk },
+      { serverPk, userPk: adminUserPk, sStatus: MemberStatus.ACTIVE },
     );
 
     if (!adminMember) {

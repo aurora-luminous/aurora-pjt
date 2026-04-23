@@ -33,7 +33,7 @@ export class TypeOrmServerMemberRepository extends ServerMemberRepository {
         ...(serverMemberPk && { serverMemberPk }),
         ...(serverPk && { serverPk }),
         ...(userPk && { userPk }),
-        sStatus: sStatus ? sStatus: 'Active',
+        ...(sStatus && { sStatus }),
         ...(serverRole && { serverRole }),
     };
 

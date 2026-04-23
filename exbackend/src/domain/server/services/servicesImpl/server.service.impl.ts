@@ -13,6 +13,7 @@ import { ProjectService } from '../../../project/services/project.service';
 import { ServerRoleRepository } from '../../repositories/server-role.repository';
 import { CreateServerDto, ServerResponseDto, ServerListDto } from '../../dto';
 import { ServerService } from '../server.service';
+import { MemberStatus } from 'src/common/enums';
 
 // 트랜잭션 처리 위한 import
 import { DataSource, In } from 'typeorm';
@@ -164,7 +165,7 @@ export class ServerServiceImpl extends ServerService {
     if (!server) throw new NotFoundException(`서버를 찾을 수 없습니다.`);
     const serverPk = server.serverPk;
 
-    const ownerMember = await this.serverMemberRepository.findOne({ serverUrl, userPk });
+    const ownerMember = await this.serverMemberRepository.findOne({ serverUrl, userPk, sStatus: MemberStatus.ACTIVE });
     if (!ownerMember || ownerMember.serverRole !== 'owner') {
       throw new ForbiddenException(`서버 소유자만 서버를 삭제할 수 있습니다.`);
     } 

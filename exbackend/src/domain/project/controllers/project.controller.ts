@@ -27,6 +27,7 @@ import {
   ProjectMemberDto,
   ManageMemberDto,
   UpdateProjectDto,
+  ProjectMemberUserInfoDto,
 } from '../dto';
 
 @ApiTags('projects')
@@ -113,6 +114,27 @@ export class ProjectController {
 
     await this.projectMemberService.inviteMembers(bulkInviteDto);
     return { message: '초대 완료' };
+  }
+
+  // 조회지만 민감한 정보(이메일) 받음 -> post로 통신
+  @Post(':projectPk/member')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: '프로젝트 멤버 검색' })
+  @ApiResponse({
+    status: 200,
+    description: '멤버 검색 성공',
+    type: [ProjectMemberUserInfoDto],
+  })
+  async getProjectMemberSearch(
+    @Param('projectPk', ParseIntPipe) projectPk: number,
+    @Body('searchString') searchString: string,
+  ): Promise<ProjectMemberUserInfoDto[]> {
+
+    return this.projectMemberService.getProjectMemberSearch(
+      projectPk,
+      searchString,
+    );
   }
 
   @Get(':projectPk/members')

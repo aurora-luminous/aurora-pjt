@@ -1,4 +1,4 @@
-import {  InviteToProjectDto, ProjectMemberDto, ManageMemberDto, LastChannelDto, BulkInviteToProjectDto } from '../dto';
+import {  InviteToProjectDto, ProjectMemberDto, ManageMemberDto, LastChannelDto, BulkInviteToProjectDto, ProjectMemberUserInfoDto } from '../dto';
 
 export abstract class ProjectMemberService {
 
@@ -17,6 +17,9 @@ export abstract class ProjectMemberService {
   // 유저의 마지막 접속한 채널 업데이트
   abstract updateLastConnectedChannel(userPk: number, channelPk: number): Promise<void>;
 
+  // 프로젝트 멤버 검색
+  abstract getProjectMemberSearch(projectPk: number, searchString: string): Promise<ProjectMemberUserInfoDto[]>;
+  
   // 프로젝트 내 전체 멤버 조회
   abstract getProjectMembers(projectPk: number, userPk: number): Promise<ProjectMemberDto[]>;
 

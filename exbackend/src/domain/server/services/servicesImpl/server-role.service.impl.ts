@@ -122,7 +122,7 @@ export class ServerRolePermissionServiceImpl extends ServerRolePermissionService
     permission: 'kickMembers' | 'banMembers' | 'manageRoles',
   ): Promise<boolean> {
     // 1. 사용자의 서버 멤버십 확인
-    const serverMember = await this.serverMemberRepository.findOne({ serverPk, userPk });
+    const serverMember = await this.serverMemberRepository.findOne({ serverPk, userPk, sStatus: MemberStatus.ACTIVE });
 
     if (!serverMember) {
       return false;

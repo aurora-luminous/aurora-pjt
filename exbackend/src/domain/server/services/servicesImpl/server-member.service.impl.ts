@@ -58,7 +58,7 @@ export class ServerMemberServiceImpl extends ServerMemberService {
     const serverPk = server.serverPk
 
     // 2. 요청자가 서버 관리자인지 확인
-    const serverMember = await this.serverMemberRepository.findOne({ serverPk, userPk: requestUserPk });
+    const serverMember = await this.serverMemberRepository.findOne({ serverPk, userPk: requestUserPk, sStatus: MemberStatus.ACTIVE });
 
     if (
       !serverMember ||

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Project } from './entities/project.entity';
 import { ProjectMember } from './entities/project-member.entity';
@@ -20,7 +20,7 @@ import { ProjectNotificationService } from './services/project-notification.serv
 import { ProjectNotificationServiceImpl } from './services/servicesImpl/project-notification.service.impl';
 import { ProjectController } from './controllers/project.controller';
 import { ChannelModule } from '../channel/channel.module';
-
+import { ServerModule } from '../server/server.module';
 
 @Module({
   imports: [
@@ -35,6 +35,7 @@ import { ChannelModule } from '../channel/channel.module';
     ]),
     UserModule,
     ChannelModule,
+    forwardRef(() => ServerModule),
   ],
   controllers: [ProjectController],
   providers: [

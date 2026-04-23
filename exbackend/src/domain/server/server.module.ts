@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Server } from './entities/server.entity';
 import { ServerMember } from './entities/server-member.entity';
@@ -31,7 +31,7 @@ import { TypeOrmServerRoleRepository } from './repositories/repositoriesImpl/typ
       ServerRolePermission,
     ]),
     UserModule,
-    ProjectModule,
+    forwardRef(() => ProjectModule),
     ChannelModule,
   ],
   controllers: [ServerController, ServerRolePermissionController],

@@ -1,16 +1,15 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException, Inject, forwardRef } from '@nestjs/common';
 import { ProjectMemberService } from '../project-member.service';
 import { ProjectRepository } from '../../repositories/project.repository';
 import { ProjectMemberRepository } from '../../repositories/project-member.repository';
 import { ChannelRepository } from 'src/domain/channel/repositories/channel.repository';
 import { ChannelMemberRepository } from 'src/domain/channel/repositories/channel-member.repository';
 import { UserService } from '../../../user/services/user.service';
-import { InviteToProjectDto, ProjectMemberDto, ManageMemberDto, LastChannelDto, BulkInviteToProjectDto } from '../../dto';
+import { UserRepository } from '../../../user/repositories/user.repository';
+import { InviteToProjectDto, ProjectMemberDto, ManageMemberDto, LastChannelDto, BulkInviteToProjectDto, ProjectMemberUserInfoDto } from '../../dto';
 import { ChannelMember } from '../../../channel/entities/channel-member.entity';
 import { MemberStatus, MemberRole, ServerRoleUtils, MemberRoleUtils } from 'src/common/enums';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { ServerMember } from '../../../server/entities/server-member.entity';
+import { ServerMemberRepository } from '../../../server/repositories/server-member.repository';
 
 
 @Injectable()
@@ -21,9 +20,9 @@ export class ProjectMemberServiceImpl extends ProjectMemberService {
     private readonly channelRepository: ChannelRepository,
     private readonly channelMemberRepository: ChannelMemberRepository,
     private readonly userService: UserService,
-
-    @InjectRepository(ServerMember)
-    private readonly serverMemberRepository: Repository<ServerMember>,
+    private readonly userRepository: UserRepository,
+    @Inject(forwardRef(() => ServerMemberRepository))
+    private readonly serverMemberRepository: ServerMemberRepository,
   ) {
     super();
   }
@@ -42,9 +41,9 @@ export class ProjectMemberServiceImpl extends ProjectMemberService {
     const targetUser = await this.userService.getUserByEmail(dto.userEmail);
     
     // 서버 멤버인지 확인
-    const serverMember = await this.serverMemberRepository.findOne({ 
-      where: { serverPk: project.serverPk, userPk: targetUser.userPk, sStatus: MemberStatus.ACTIVE } 
-    });
+    const serverMember = await this.serverMemberRepository.findOne(
+      { serverPk: project.serverPk, userPk: targetUser.userPk, sStatus: MemberStatus.ACTIVE } 
+    );
     if (!serverMember) throw new ForbiddenException('서버 멤버만 프로젝트에 초대할 수 있습니다.');
 
     // 이미 프로젝트 멤버인지 확인
@@ -135,6 +134,21 @@ export class ProjectMemberServiceImpl extends ProjectMemberService {
     member.lastConnectedChannel = channelPk;
     member.lastConnectedTime = new Date();
     await this.projectMemberRepository.save(member);
+  }
+
+  // 프로젝트 멤버 조회
+  async getProjectMember(projectPk: number, userEmail: string): Promise<ProjectMemberUserInfoDto> {
+    const targetUser = await this.userRepository.findByEmail(userEmail);
+    if (!targetUser) throw new NotFoundException(`유저를 찾을 수 없습니다.`);
+
+    const sMember = await this.projectMemberRepository.findOne({ projectPk, userPk: targetUser.userPk });
+    if (!sMember) throw new NotFoundException(`프로젝트 멤버가 아닙니다.`);
+
+    return {
+      userName: targetUser.userName,
+      userEmail: targetUser.userEmail,
+      profileImagePath: targetUser.profileImagePath
+    };
   }
 
   // 프로젝트 내 전체 멤버 조회
@@ -281,7 +295,7 @@ export class ProjectMemberServiceImpl extends ProjectMemberService {
     const projectMember = await this.projectMemberRepository.findOne({ projectPk, userPk, pStatus: MemberStatus.ACTIVE });
     if (projectMember && MemberRoleUtils.hasAdminPermission(projectMember.projectRole)) return true;
 
-    const serverMember = await this.serverMemberRepository.findOne({ where: { serverPk, userPk, sStatus: MemberStatus.ACTIVE } });
+    const serverMember = await this.serverMemberRepository.findOne({ serverPk, userPk, sStatus: MemberStatus.ACTIVE });
     return serverMember ? ServerRoleUtils.hasProjectCreatePermission(serverMember.serverRole) : false;
   }
 }

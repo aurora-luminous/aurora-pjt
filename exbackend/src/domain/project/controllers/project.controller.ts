@@ -126,14 +126,14 @@ export class ProjectController {
     description: '멤버 검색 성공',
     type: [ProjectMemberUserInfoDto],
   })
-  async getProjectMember(
+  async getProjectMemberSearch(
     @Param('projectPk', ParseIntPipe) projectPk: number,
-    @Body() targetUser: UserEmailDto
-  ): Promise<ProjectMemberUserInfoDto> {
+    @Body('searchString') searchString: string,
+  ): Promise<ProjectMemberUserInfoDto[]> {
 
-    return this.projectMemberService.getProjectMember(
+    return this.projectMemberService.getProjectMemberSearch(
       projectPk,
-      targetUser.userEmail
+      searchString,
     );
   }
 

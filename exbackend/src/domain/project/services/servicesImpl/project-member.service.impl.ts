@@ -136,19 +136,16 @@ export class ProjectMemberServiceImpl extends ProjectMemberService {
     await this.projectMemberRepository.save(member);
   }
 
-  // 프로젝트 멤버 조회
-  async getProjectMember(projectPk: number, userEmail: string): Promise<ProjectMemberUserInfoDto> {
-    const targetUser = await this.userRepository.findByEmail(userEmail);
-    if (!targetUser) throw new NotFoundException(`유저를 찾을 수 없습니다.`);
+  // 프로젝트 멤버 검색
+  async getProjectMemberSearch(projectPk: number, searchString: string): Promise<ProjectMemberUserInfoDto[]> {
 
-    const sMember = await this.projectMemberRepository.findOne({ projectPk, userPk: targetUser.userPk });
-    if (!sMember) throw new NotFoundException(`프로젝트 멤버가 아닙니다.`);
+    const pMember = await this.projectMemberRepository.findMembersByString(projectPk, searchString);
 
-    return {
-      userName: targetUser.userName,
-      userEmail: targetUser.userEmail,
-      profileImagePath: targetUser.profileImagePath
-    };
+    return pMember.map(m => ({
+      userName: m.user.userName,
+      userEmail: m.user.userEmail,
+      profileImagePath: m.user.profileImagePath,
+    }))
   }
 
   // 프로젝트 내 전체 멤버 조회

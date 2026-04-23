@@ -4,7 +4,7 @@ import { Repository, Not, IsNull } from 'typeorm';
 import { ProjectMember } from '../../entities/project-member.entity';
 import { ProjectMemberRepository } from '../project-member.repository';
 import { MemberStatus, MemberRole } from 'src/common/enums';
-import { EntityManager } from 'typeorm';
+import { EntityManager, Like } from 'typeorm';
 
 @Injectable()
 export class TypeOrmProjectMemberRepository extends ProjectMemberRepository {
@@ -47,6 +47,20 @@ export class TypeOrmProjectMemberRepository extends ProjectMemberRepository {
       },
       relations: ['user'],
     });
+  }
+
+  // 이메일이 포함하는 문자로 프로젝트 참가 중인 멤버 목록 조회
+  async findMembersByString(projectPk: number, searchString: string): Promise<ProjectMember[]> {
+    return this.projectMemberRepository.find({
+      where: {
+        projectPk,
+        pStatus: MemberStatus.ACTIVE,
+        user: {
+          userEmail: Like(`%${searchString}%`),
+        },
+      },
+      relations: ['user'],
+    })
   }
 
   // 유저가 참가 중인 모든 프로젝트들 조회

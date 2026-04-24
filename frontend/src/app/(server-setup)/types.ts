@@ -1,19 +1,19 @@
 // ─── Enums ───────────────────────────────────────────────────────────────────
 
 export enum AccessType {
-  PUBLIC = 'public',
-  PRIVATE = 'private',
+  PUBLIC = "public",
+  PRIVATE = "private",
 }
 
 export enum ChannelKind {
-  TEXT = 'text',
-  VOICE = 'voice',
-  NOTIFICATION = 'notification',
+  TEXT = "text",
+  VOICE = "voice",
+  NOTIFICATION = "notification",
 }
 
 export enum ChannelRole {
-  ADMIN = 'admin',
-  MEMBER = 'member',
+  ADMIN = "admin",
+  MEMBER = "member",
 }
 
 // ─── Server ──────────────────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ export interface ServerRequest {
 }
 
 export interface ServerResponse {
-  message: string | '';
+  message: string | "";
 }
 
 export interface ServerListItem {
@@ -48,20 +48,20 @@ export interface MemberEmail {
 }
 
 export interface MemberInfo {
-  pStatus?: 'Active' | 'Inactive' | 'Pending';
-  serverRole?: 'member' | 'admin' | 'owner';
+  pStatus?: "Active" | "Inactive" | "Pending";
+  serverRole?: "member" | "admin" | "owner";
   userInfo: UserInfo;
 }
 
 export interface ChannelMemberInfo {
-  cStatus?: 'Active' | 'Inactive' | 'Banned';
-  channelRole?: 'member' | 'admin';
+  cStatus?: "Active" | "Inactive" | "Banned";
+  channelRole?: "member" | "admin";
   userInfo: UserInfo;
 }
 
 export interface ProjectMemberInfo {
-  pStatus?: 'Active' | 'Inactive' | 'Banned';
-  projectRole?: 'member' | 'admin';
+  pStatus?: "Active" | "Inactive" | "Banned";
+  projectRole?: "member" | "admin";
   userInfo: UserInfo;
 }
 
@@ -70,7 +70,7 @@ export interface Role {
 }
 
 export interface UserRole extends Role {
-  newRole: 'member' | 'admin';
+  newRole: "member" | "admin";
 }
 
 export interface FailedRole extends Role {
@@ -161,15 +161,15 @@ export interface ServerInfo {
 // ─── Modal ───────────────────────────────────────────────────────────────────
 
 export type ModalType =
-  | 'SERVER_ADD'
-  | 'SERVER_EDIT'
-  | 'SERVER_DELETE'
-  | 'CHANNEL_ADD'
-  | 'PROJECT_ADD'
-  | 'PROJECT_INVITE'
-  | 'PROJECT_MANAGE'
-  | 'CHANNEL_MANAGE'
-  | 'SETTING'
+  | "SERVER_ADD"
+  | "SERVER_EDIT"
+  | "SERVER_DELETE"
+  | "CHANNEL_ADD"
+  | "PROJECT_ADD"
+  | "PROJECT_INVITE"
+  | "PROJECT_MANAGE"
+  | "CHANNEL_MANAGE"
+  | "SETTING"
   | null;
 
 export interface ServerData {
@@ -225,4 +225,8 @@ export interface ModalState {
   data: ModalData | null;
   loading: boolean;
   error: string | null;
+}
+
+export interface SearchString {
+  searchString: string;
 }

@@ -101,6 +101,8 @@ export const ChannelItem: React.FC<ChannelItemProps> = ({
       {showInviteDropdown && (
         <InviteChannelDropDown
           serverUrl={serverUrl}
+          projectPk={projectPk}
+          channelPk={channel.channelPk}
           onClose={() => onChannelInviteDropdown({} as React.MouseEvent, channel.channelName)}
           triggerRef={buttonRef}
         />

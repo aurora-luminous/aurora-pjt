@@ -5,6 +5,7 @@ import type {
   ChannelRequest,
   ChannelPayload,
   ProjectPayload,
+  SearchString,
 } from "../types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useGetUserInfoQuery } from "@/app/(auth)/hooks/useAuthMutations";
@@ -42,6 +43,7 @@ import {
   updateChannelApi,
   getMyChannelsApi,
   updateLastChannelApi,
+  searchProjectMemberApi,
 } from "../api/server.api";
 
 export const useAddServerMutation = () => {
@@ -412,3 +414,13 @@ export const useUpdateChannelMutation = (serverUrl: string, projectPk: number, c
     },
   });
 };
+
+export const useMemberSearchQuery = (body: SearchString, serverUrl: string, projectPk: number) => {
+  return useQuery({
+    queryKey: ["members", "search", serverUrl, projectPk, body.searchString],
+    queryFn: () => searchProjectMemberApi(serverUrl, projectPk, body),
+    enabled: !!serverUrl && !!projectPk && body.searchString.trim().length > 0,
+    staleTime: 1000 * 60 * 5,
+    placeholderData: (prev) => prev
+  })  
+}

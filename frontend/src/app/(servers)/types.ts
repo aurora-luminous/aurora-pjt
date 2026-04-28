@@ -201,17 +201,16 @@ export interface ChannelInfo {
 }
 
 export interface MessageRequest {
-  channelPk: number;
-  dmRoomPk?: number;
   content: string;
+  messageType: string;
 }
 
 export interface ChatMessage {
   messagePk: number;
-  userPk: number;
+  userEmail: string;
   userName: string;
-  channelPk: number;
-  dmRoomPk?: number;
+  userProfileImage: string;
+  messageType: string;
   content: string;
   createdAt: string;
 }

@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Client, IMessage } from "@stomp/stompjs";
+import { Client, IMessage, StompSubscription } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { getAccessToken } from "./tokenStorage";
-import type { ChannelInfo, ChatMessage, MessageRequest, WebSocketState } from "@/app/(servers)/types";
+import type {
+  ChannelInfo,
+  ChatMessage,
+  MessageRequest,
+  WebSocketState,
+} from "@/app/(servers)/types";
 
 // SockJS를 전역으로 설정 (브라우저 환경에서만)
 if (typeof window !== "undefined") {
@@ -19,7 +24,8 @@ let globalState: WebSocketState = {
   error: null,
   subscribedChannels: [],
 };
-const globalMessageHandlers = new Map<number, (message: ChatMessage) => void>();
+const globalChannelListeners = new Map<number, Set<(message: ChatMessage) => void>>();
+const globalChannelSubscriptions = new Map<number, StompSubscription>();
 // 전역 메시지 이벤트 리스너 (모든 채널의 메시지를 받을 수 있음)
 const globalMessageListeners = new Set<(message: ChatMessage) => void>();
 let globalSubscribedChannels: number[] = [];
@@ -154,7 +160,8 @@ export const useWebSocket = () => {
         error: null,
         subscribedChannels: [],
       }));
-      globalMessageHandlers.clear();
+      globalChannelListeners.clear();
+      globalChannelSubscriptions.clear();
     }
   }, []);
 
@@ -166,68 +173,63 @@ export const useWebSocket = () => {
         return () => {};
       }
 
-      // 메시지 핸들러: 개별 핸들러와 전역 리스너 모두 호출
-      const messageHandler = (chatMessage: ChatMessage) => {
-        // 개별 핸들러 호출
-        onMessage(chatMessage);
-        // 전역 리스너들에게도 전파
-        globalMessageListeners.forEach((listener) => listener(chatMessage));
-      };
-
-      // 이미 구독된 채널인 경우, 기존 핸들러에 추가하고 전역 리스너에도 등록
-      if (globalSubscribedChannels.includes(channelPk)) {
-        console.log(`⚠️ 채널 ${channelPk}는 이미 구독 중입니다. 핸들러만 추가합니다.`);
-        // 기존 핸들러를 가져와서 새로운 핸들러도 함께 호출하도록 래핑
-        const existingHandler = globalMessageHandlers.get(channelPk);
-        if (existingHandler) {
-          // 기존 핸들러와 새 핸들러를 모두 호출하는 래퍼 생성
-          const wrappedHandler = (chatMessage: ChatMessage) => {
-            existingHandler(chatMessage);
-            messageHandler(chatMessage);
-          };
-          globalMessageHandlers.set(channelPk, wrappedHandler);
-        } else {
-          globalMessageHandlers.set(channelPk, messageHandler);
-        }
-        // 전역 리스너에도 추가
-        globalMessageListeners.add(onMessage);
-        return () => {
-          globalMessageListeners.delete(onMessage);
-        };
+      // 채널별 리스너 Set 생성/추가
+      let listeners = globalChannelListeners.get(channelPk);
+      if (!listeners) {
+        listeners = new Set();
+        globalChannelListeners.set(channelPk, listeners);
       }
+      listeners.add(onMessage);
 
-      const subscription = globalClient.subscribe(
-        `/topic/channel/${channelPk}`,
-        (message: IMessage) => {
-          try {
-            const chatMessage: ChatMessage = JSON.parse(message.body);
-            console.log(`📨 채널 ${channelPk} 메시지 수신:`, chatMessage);
-            messageHandler(chatMessage);
-          } catch (error) {
-            console.error("❌ 메시지 파싱 실패:", error);
+      // 채널당 실제 STOMP 구독은 1회만 생성
+      if (!globalChannelSubscriptions.has(channelPk)) {
+        const subscription = globalClient.subscribe(
+          `/topic/channel/${channelPk}`,
+          (message: IMessage) => {
+            try {
+              const chatMessage: ChatMessage = JSON.parse(message.body);
+              console.log(`📨 채널 ${channelPk} 메시지 수신:`, chatMessage);
+
+              const channelListeners = globalChannelListeners.get(channelPk);
+              channelListeners?.forEach((listener) => listener(chatMessage));
+              globalMessageListeners.forEach((listener) => listener(chatMessage));
+            } catch (error) {
+              console.error("❌ 메시지 파싱 실패:", error);
+            }
           }
-        }
-      );
+        );
 
-      globalMessageHandlers.set(channelPk, messageHandler);
-      globalSubscribedChannels = [...globalSubscribedChannels, channelPk];
-      updateState((prev) => ({
-        ...prev,
-        subscribedChannels: [...prev.subscribedChannels, channelPk],
-      }));
+        globalChannelSubscriptions.set(channelPk, subscription);
+        globalSubscribedChannels = [...new Set([...globalSubscribedChannels, channelPk])];
+        updateState((prev) => ({
+          ...prev,
+          subscribedChannels: [...new Set([...prev.subscribedChannels, channelPk])],
+        }));
 
-      console.log(`✅ 채널 ${channelPk} 구독 완료`);
+        console.log(`✅ 채널 ${channelPk} 구독 완료`);
+      } else {
+        console.log(`⚠️ 채널 ${channelPk}는 이미 구독 중입니다. 리스너만 추가합니다.`);
+      }
 
       // 구독 해제 함수 반환
       return () => {
-        subscription.unsubscribe();
-        globalMessageHandlers.delete(channelPk);
-        globalSubscribedChannels = globalSubscribedChannels.filter((pk) => pk !== channelPk);
-        updateState((prev) => ({
-          ...prev,
-          subscribedChannels: prev.subscribedChannels.filter((pk) => pk !== channelPk),
-        }));
-        console.log(`🔌 채널 ${channelPk} 구독 해제`);
+        const channelListeners = globalChannelListeners.get(channelPk);
+        if (!channelListeners) return;
+
+        channelListeners.delete(onMessage);
+
+        if (channelListeners.size === 0) {
+          globalChannelListeners.delete(channelPk);
+          const subscription = globalChannelSubscriptions.get(channelPk);
+          subscription?.unsubscribe();
+          globalChannelSubscriptions.delete(channelPk);
+          globalSubscribedChannels = globalSubscribedChannels.filter((pk) => pk !== channelPk);
+          updateState((prev) => ({
+            ...prev,
+            subscribedChannels: prev.subscribedChannels.filter((pk) => pk !== channelPk),
+          }));
+          console.log(`🔌 채널 ${channelPk} 구독 해제`);
+        }
       };
     },
     []
@@ -259,8 +261,8 @@ export const useWebSocket = () => {
       }
 
       const messageRequest: MessageRequest = {
-        channelPk,
         content,
+        messageType: "TEXT",
       };
 
       globalClient.publish({

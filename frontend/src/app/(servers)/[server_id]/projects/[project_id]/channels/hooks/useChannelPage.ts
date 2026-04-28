@@ -41,7 +41,7 @@ export const useChannelPage = () => {
   } = useChannels(serverInfo?.serverUrl, urlProjectPk);
 
   // 웹소켓 훅 사용 (전역 인스턴스 사용)
-  const { sendMessage, isConnected, addMessageListener } = useWebSocket();
+  const { sendMessage, isConnected, subscribeToChannel } = useWebSocket();
 
   // 상태 관리
   const [newMessage, setNewMessage] = useState("");
@@ -285,31 +285,28 @@ export const useChannelPage = () => {
 
   // 웹소켓 메시지 수신 리스너 등록
   useEffect(() => {
-    if (!isConnected) return;
+    if (!isConnected || !currentChannel?.channelPk) return;
 
-    const channelPk = currentChannel?.channelPk;
+    const channelPk = currentChannel.channelPk;
+    const unsubscribe = subscribeToChannel(channelPk, (chatMessage: ChatMessage) => {
+      const newMessage = mapChatMessageToMessage(chatMessage);
 
-    const unsubscribe = addMessageListener((chatMessage: ChatMessage) => {
-      if (channelPk && chatMessage.channelPk === channelPk) {
-        const newMessage = mapChatMessageToMessage(chatMessage);
+      console.log(`📨 채널 ${channelPk} 메시지 수신 및 추가:`, newMessage);
 
-        console.log(`📨 채널 ${channelPk} 메시지 수신 및 추가:`, newMessage);
-
-        setMessages((prev) => {
-          const exists = prev.some((msg) => msg.id === chatMessage.messagePk);
-          if (exists) {
-            console.log(`⚠️ 메시지 ${chatMessage.messagePk}는 이미 존재합니다.`);
-            return prev;
-          }
-          return [...prev, newMessage];
-        });
-      }
+      setMessages((prev) => {
+        const exists = prev.some((msg) => msg.id === chatMessage.messagePk);
+        if (exists) {
+          console.log(`⚠️ 메시지 ${chatMessage.messagePk}는 이미 존재합니다.`);
+          return prev;
+        }
+        return [...prev, newMessage];
+      });
     });
 
     return () => {
       unsubscribe();
     };
-  }, [currentChannel?.channelPk, isConnected, addMessageListener]);
+  }, [currentChannel?.channelPk, isConnected, subscribeToChannel]);
 
   // 실제 채널 이름 가져오기
   const getChannelName = (id: string) => {

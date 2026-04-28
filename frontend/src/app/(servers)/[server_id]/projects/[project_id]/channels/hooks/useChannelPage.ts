@@ -194,9 +194,13 @@ export const useChannelPage = () => {
       return;
     }
 
-    console.log(`✅ 채널 ${currentChannel?.channelPk} 최신 메시지 조회 성공:`, messageResponses.length, "개");
+    console.log(
+      `✅ 채널 ${currentChannel?.channelPk} 최신 메시지 조회 성공:`,
+      messageResponses.messages.length,
+      "개"
+    );
 
-    const loadedMessages: Message[] = [...messageResponses]
+    const loadedMessages: Message[] = [...messageResponses.messages]
       .reverse()
       .map(mapMessageResponseToMessage);
 
@@ -217,15 +221,15 @@ export const useChannelPage = () => {
 
     let oldestMessageTime: string | null = null;
 
-    const oldestMessageResponse = messageResponses?.find(
+    const oldestMessageResponse = messageResponses?.messages.find(
       (msg) => msg.messagePk === oldestMessage.id
     );
 
     if (oldestMessageResponse) {
       oldestMessageTime = oldestMessageResponse.createdAt;
     } else {
-      if (messageResponses && messageResponses.length > 0) {
-        oldestMessageTime = messageResponses[0].createdAt;
+      if (messageResponses && messageResponses.messages.length > 0) {
+        oldestMessageTime = messageResponses.messages[0].createdAt;
       } else {
         console.warn("⚠️ 이전 메시지의 시간을 찾을 수 없습니다.");
         return;
@@ -240,14 +244,18 @@ export const useChannelPage = () => {
         lastMessageTime: oldestMessageTime,
       });
 
-      console.log(`✅ 채널 ${currentChannel.channelPk} 이전 메시지 조회 성공:`, olderMessages.length, "개");
+      console.log(
+        `✅ 채널 ${currentChannel.channelPk} 이전 메시지 조회 성공:`,
+        olderMessages.messages.length,
+        "개"
+      );
 
-      if (olderMessages.length === 0) {
+      if (olderMessages.messages.length === 0) {
         setHasMoreMessages(false);
         return;
       }
 
-      const loadedOlderMessages: Message[] = [...olderMessages]
+      const loadedOlderMessages: Message[] = [...olderMessages.messages]
         .reverse()
         .map(mapMessageResponseToMessage);
 
@@ -267,7 +275,7 @@ export const useChannelPage = () => {
         return [...newMessages, ...prev];
       });
 
-      if (olderMessages.length < 40) {
+      if (olderMessages.messages.length < 40) {
         setHasMoreMessages(false);
       }
     } catch (error) {

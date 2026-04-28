@@ -102,15 +102,19 @@ export interface Message {
   isSystem: boolean;
 }
 
+export interface MessageListResponse {
+  lastReadMessagePk: number | null;
+  messages: MessageResponse[];
+}
+
 export interface MessageResponse {
   messagePk: number;
-  channelPk: number | null;
-  dmRoomPk: number | null;
-  userPk: number;
+  userEmail: string;
   userName: string;
+  userProfileImage: string;
   content: string;
-  createdAt: string;
   messageType: string;
+  createdAt: string;
 }
 
 export interface PrivateMessage {

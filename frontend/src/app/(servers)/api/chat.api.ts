@@ -24,9 +24,9 @@ export const getDmMessagesApi = (dmRoomPk: number): Promise<MessageListResponse>
 export const getOlderDmMessagesApi = (
   dmRoomPk: number,
   lastMessageTime: string
-): Promise<MessageListResponse> =>
+): Promise<MessageResponse[]> =>
   springClient
-    .get<MessageListResponse>(`/chat/dm/${dmRoomPk}/messages/older`, {
+    .get<MessageResponse[]>(`/chat/dm/${dmRoomPk}/messages/older`, {
       params: { lastMessageTime },
     })
-    .then((res: { data: MessageListResponse }) => res.data);
+    .then((res: { data: MessageResponse[] }) => res.data);

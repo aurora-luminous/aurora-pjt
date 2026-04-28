@@ -1,5 +1,5 @@
 import { springClient } from "@/app/lib/axiosClient";
-import type { MessageListResponse } from "../types";
+import type { MessageListResponse, MessageResponse } from "../types";
 
 export const getChannelMessagesApi = (channelPk: number): Promise<MessageListResponse> =>
   springClient
@@ -9,12 +9,12 @@ export const getChannelMessagesApi = (channelPk: number): Promise<MessageListRes
 export const getOlderChannelMessagesApi = (
   channelPk: number,
   lastMessageTime: string
-): Promise<MessageListResponse> =>
+): Promise<MessageResponse[]> =>
   springClient
-    .get<MessageListResponse>(`/chat/channel/${channelPk}/messages/older`, {
+    .get<MessageResponse[]>(`/chat/channel/${channelPk}/messages/older`, {
       params: { lastMessageTime },
     })
-    .then((res: { data: MessageListResponse }) => res.data);
+    .then((res: { data: MessageResponse[] }) => res.data);
 
 export const getDmMessagesApi = (dmRoomPk: number): Promise<MessageListResponse> =>
   springClient

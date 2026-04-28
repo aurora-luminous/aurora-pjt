@@ -246,16 +246,16 @@ export const useChannelPage = () => {
 
       console.log(
         `✅ 채널 ${currentChannel.channelPk} 이전 메시지 조회 성공:`,
-        olderMessages.messages.length,
+        olderMessages.length,
         "개"
       );
 
-      if (olderMessages.messages.length === 0) {
+      if (olderMessages.length === 0) {
         setHasMoreMessages(false);
         return;
       }
 
-      const loadedOlderMessages: Message[] = [...olderMessages.messages]
+      const loadedOlderMessages: Message[] = [...olderMessages]
         .reverse()
         .map(mapMessageResponseToMessage);
 
@@ -275,7 +275,7 @@ export const useChannelPage = () => {
         return [...newMessages, ...prev];
       });
 
-      if (olderMessages.messages.length < 40) {
+      if (olderMessages.length < 40) {
         setHasMoreMessages(false);
       }
     } catch (error) {

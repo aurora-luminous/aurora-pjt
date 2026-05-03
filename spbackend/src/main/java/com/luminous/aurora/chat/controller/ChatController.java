@@ -14,8 +14,8 @@ import java.time.LocalDateTime;
  * 메시지 조회 REST API 컨트롤러
  * <p>
  * 채널/DM 메시지 목록을 조회하는 REST API.
- * 모든 응답은 MessageListResponse로 래핑되어
- * lastReadMessagePk(읽음 위치)와 messages(메시지 목록)를 함께 반환함.
+ * 최신·around·newer 등은 {@link MessageListResponse}(읽음 위치 + 목록),
+ * 과거 무한 스크롤용 {@code .../messages/older} 는 {@link MessagesOnlyResponse}(목록만)을 반환한다.
  */
 @Slf4j
 @RestController

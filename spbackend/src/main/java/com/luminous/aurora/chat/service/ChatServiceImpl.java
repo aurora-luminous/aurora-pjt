@@ -194,7 +194,7 @@ public class ChatServiceImpl implements ChatService {
      * @param channelPk - 조회할 채널 PK
      * @param lastMessageTime - 현재 화면에서 가장 오래된 메시지의 시간
      * @param jwtToken - 사용자 인증 토큰
-     * @return MessageListResponse - lastReadMessagePk + 메시지 목록
+     * @return MessagesOnlyResponse - 메시지 목록만 (최대 40개, 무한 스크롤에는 lastRead 불필요)
      * <p>
      * 호출되는 곳:
      * - ChatController (REST API) → GET /api/jv/chat/channel/{channelPk}/messages/older
@@ -384,7 +384,7 @@ public class ChatServiceImpl implements ChatService {
      * @param dmRoomPk - 조회할 DM방 PK
      * @param lastMessageTime - 현재 화면에서 가장 오래된 메시지의 시간
      * @param jwtToken - 사용자 인증 토큰
-     * @return List<MessageResponse> - 이전 메시지 목록 (최대 40개)
+     * @return MessagesOnlyResponse - 메시지 목록만 (최대 40개, 무한 스크롤에는 lastRead 불필요)
      * <p>
      * 호출되는 곳:
      * - ChatController (REST API) → GET /api/jv/chat/dm/{dmRoomPk}/messages/older

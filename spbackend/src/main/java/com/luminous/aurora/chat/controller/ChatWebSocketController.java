@@ -60,7 +60,8 @@ public class ChatWebSocketController {
 
             }
 
-            Message savedMessage = chatService.saveChannelMessage(messageRequest, channelPk, jwtToken);
+            Integer userPk = extractUserPkFromToken(jwtToken);
+            Message savedMessage = chatService.saveChannelMessage(messageRequest, channelPk, userPk);
 
             // ChatMessage 대신 통합된 MessageResponse 사용
             MessageResponse messageResponse = chatService.convertToMessageResponse(savedMessage);
@@ -114,9 +115,9 @@ public class ChatWebSocketController {
             if (jwtToken == null) {
                 throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
             }
-
+            Integer userPk = extractUserPkFromToken(jwtToken);
             // 메시지 저장 및 chatMessage로 변환
-            Message savedMessage = chatService.saveDmMessage(messageRequest, dmRoomPk, jwtToken);
+            Message savedMessage = chatService.saveDmMessage(messageRequest, dmRoomPk, userPk);
 
             // ChatMessage 대신 통합된 MessageResponse 사용
             MessageResponse messageResponse = chatService.convertToMessageResponse(savedMessage);
@@ -161,8 +162,8 @@ public class ChatWebSocketController {
             if (jwtToken == null) {
                 throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
             }
-
-            chatService.markChannelAsRead(channelPk, readRequest.getMessagePk(), jwtToken);
+            Integer userPk = extractUserPkFromToken(jwtToken);
+            chatService.markChannelAsRead(channelPk, readRequest.getMessagePk(), userPk);
         } catch (Exception e) {
             log.error("채널 읽음 처리 실패: channelPk={}, {}", channelPk, e.getMessage());
         }
@@ -192,8 +193,8 @@ public class ChatWebSocketController {
             if (jwtToken == null) {
                 throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
             }
-
-            chatService.markDmAsRead(dmRoomPk, readRequest.getMessagePk(), jwtToken);
+            Integer userPk = extractUserPkFromToken(jwtToken);
+            chatService.markDmAsRead(dmRoomPk, readRequest.getMessagePk(), userPk);
 
         } catch (Exception e) {
             log.error("DM 읽음 처리 실패: dmRoomPk={}, {}", dmRoomPk, e.getMessage());

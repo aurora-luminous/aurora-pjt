@@ -1,6 +1,7 @@
 package com.luminous.aurora.chat.controller;
 
 import com.luminous.aurora.chat.dto.MessageListResponse;
+import com.luminous.aurora.chat.dto.MessagesOnlyResponse;
 import com.luminous.aurora.chat.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,8 +41,8 @@ public class ChatController {
      * GET /api/jv/chat/channel/{channelPk}/messages/older
      */
     @GetMapping("/channel/{channelPk}/messages/older")
-    public ResponseEntity<MessageListResponse> getOlderChannelMessages(@PathVariable Integer channelPk, @RequestParam LocalDateTime lastMessageTime, @CookieValue("access_token") String jwtToken) {
-        MessageListResponse response = chatService.getOlderMessage(channelPk, lastMessageTime, jwtToken);
+    public ResponseEntity<MessagesOnlyResponse> getOlderChannelMessages(@PathVariable Integer channelPk, @RequestParam LocalDateTime lastMessageTime, @CookieValue("access_token") String jwtToken) {
+        MessagesOnlyResponse response = chatService.getOlderMessage(channelPk, lastMessageTime, jwtToken);
         log.info("채널 이전 메시지 조회 성공: channelPk={}, messageCount={}, lastMessageTime={}", channelPk, response.getMessages().size(), lastMessageTime);
         return ResponseEntity.ok(response);
     }
@@ -89,8 +90,8 @@ public class ChatController {
      * GET /api/jv/chat/dm/{dmRoomPk}/messages/older
      */
     @GetMapping("/dm/{dmRoomPk}/messages/older")
-    public ResponseEntity<MessageListResponse> getOlderDmMessages(@PathVariable Integer dmRoomPk, @RequestParam LocalDateTime lastMessageTime, @CookieValue("access_token") String jwtToken) {
-        MessageListResponse response = chatService.getOlderDmMessage(dmRoomPk, lastMessageTime, jwtToken);
+    public ResponseEntity<MessagesOnlyResponse> getOlderDmMessages(@PathVariable Integer dmRoomPk, @RequestParam LocalDateTime lastMessageTime, @CookieValue("access_token") String jwtToken) {
+        MessagesOnlyResponse response = chatService.getOlderDmMessage(dmRoomPk, lastMessageTime, jwtToken);
         log.info("DM방 이전 메시지 조회 성공: dmRoomPk={}, messageCount={}, lastMessageTime={}", dmRoomPk, response.getMessages().size(), lastMessageTime);
         return ResponseEntity.ok(response);
     }

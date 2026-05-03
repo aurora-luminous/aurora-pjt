@@ -401,7 +401,7 @@ public class ChatServiceImpl implements ChatService {
             List<MessageResponse> messageResponses = messages.stream()
                     .map(this::convertToMessageResponse)
                     .toList();
-            
+
             return MessagesOnlyResponse.builder()
                     .messages(messageResponses)
                     .build();

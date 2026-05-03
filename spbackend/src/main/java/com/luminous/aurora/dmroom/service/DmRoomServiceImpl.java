@@ -8,7 +8,6 @@ import com.luminous.aurora.common.error.exception.NotFoundException;
 import com.luminous.aurora.dmroom.dto.DmRoomCreateResponse;
 import com.luminous.aurora.dmroom.entity.DmRoom;
 import com.luminous.aurora.dmroom.repository.DmRoomRepository;
-import com.luminous.aurora.jwt.JwtTokenProvider;
 import com.luminous.aurora.member.entity.DmMember;
 import com.luminous.aurora.member.repository.DmMemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +25,6 @@ public class DmRoomServiceImpl implements DmRoomService {
     private final DmRoomRepository dmRoomRepository;
     private final DmMemberRepository dmMemberRepository;
     private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
 
     /**
      * DM방 생성
@@ -35,7 +33,7 @@ public class DmRoomServiceImpl implements DmRoomService {
      * - dmRoomController -> POST /api/jv/dm/rooms
      * <p>
      * 처리 순서:
-     * 1. JWT에서 요청자 이메일 추출 -> User 조회
+     * 1. userPk로 요청자 User 조회
      * 2. 자기 자신에게 DM 시도 시 -> 400 BadRequest
      * 3. targetUserEmail로 상대방 User 조회 -> 없으면 404
      * 4. 두 유저가 이미 같은 DM방에 있는지 확인 -> 있으면 409
@@ -44,11 +42,12 @@ public class DmRoomServiceImpl implements DmRoomService {
      */
     @Override
     @Transactional
-    public DmRoomCreateResponse createDmRoom(String targetUserEmail, String jwtToken) {
+    public DmRoomCreateResponse createDmRoom(String targetUserEmail, Integer userPk) {
         // 1. 요청자 조회
-        String myEmail = jwtTokenProvider.getUserEmailFromToken(jwtToken);
-        Users myUser = userRepository.findByUserEmail(myEmail)
+        Users myUser = userRepository.findById(userPk)
                 .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
+
+        String myEmail = myUser.getUserEmail();
 
         // 2. 자기 자신에게 DM 불가
         if (myEmail.equals(targetUserEmail)) {
@@ -99,17 +98,16 @@ public class DmRoomServiceImpl implements DmRoomService {
      * - DmRoomController → GET /api/jv/dm/rooms/by-user
      *
      * 처리 순서:
-     * 1. JWT 에서 요청자 이메일 추출 -> Users 조회
+     * 1. userPk로 요청자 User 조회
      * 2. targetUserEmail로 상대방 Users 조회 -> 없으면 404
      * 3. 두 유저가 같은 DM 방에 있는지 확인 -> 없으면 404
      * 4. DmRoomCreate 반환
      *
      */
     @Override
-    public DmRoomCreateResponse getDmRoomByUser(String targetUserEmail, String jwtToken) {
-        String myEmail = jwtTokenProvider.getUserEmailFromToken(jwtToken);
+    public DmRoomCreateResponse getDmRoomByUser(String targetUserEmail, Integer userPk) {
 
-        Users myUser = userRepository.findByUserEmail(myEmail)
+        Users myUser = userRepository.findById(userPk)
                 .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
 
         Users targetUser = userRepository.findByUserEmail(targetUserEmail)

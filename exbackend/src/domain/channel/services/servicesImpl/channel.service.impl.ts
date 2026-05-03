@@ -292,6 +292,8 @@ export class ChannelServiceImpl extends ChannelService {
     const channel = await this.channelRepository.findOne({ channelPk });
     if (!channel) throw new NotFoundException('채널을 찾을 수 없습니다.');
 
+    if (channel.isDefault) throw new ForbiddenException(`프로젝트의 기본 채널은 삭제할 수 없습니다.`);
+
     const member = await this.channelMemberRepository.findOne({
       channelPk,
       userPk,

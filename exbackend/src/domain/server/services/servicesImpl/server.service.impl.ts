@@ -106,6 +106,7 @@ export class ServerServiceImpl extends ServerService {
         serverUrl: member.server.serverUrl,
         serverName: member.server.serverName,
         serverRole: member.serverRole,
+        isDefault: true,
       }));
   }
 

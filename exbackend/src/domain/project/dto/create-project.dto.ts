@@ -23,4 +23,7 @@ export class CreateProjectDto {
   @IsInt()
   @IsPositive()
   creatorUserPk: number;
+
+  @ApiProperty({ description: '기본 프로젝트 여부' })
+  isDefault?: boolean;
 }

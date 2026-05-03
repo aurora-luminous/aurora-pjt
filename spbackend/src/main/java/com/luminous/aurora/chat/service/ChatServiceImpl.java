@@ -17,7 +17,6 @@ import com.luminous.aurora.common.error.exception.NotFoundException;
 import com.luminous.aurora.dmroom.entity.DmRoom;
 import com.luminous.aurora.dmroom.repository.DmRoomRepository;
 import com.luminous.aurora.internal.dto.ChannelUnreadResponse;
-import com.luminous.aurora.jwt.JwtTokenProvider;
 import com.luminous.aurora.member.entity.ChannelMember;
 import com.luminous.aurora.member.entity.DmMember;
 import com.luminous.aurora.member.repository.ChannelMemberRepository;
@@ -41,7 +40,6 @@ public class ChatServiceImpl implements ChatService {
 
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
     private final MemberService memberService;
     private final ChannelRepository channelRepository;
     private final DmRoomRepository dmRoomRepository;
@@ -53,22 +51,20 @@ public class ChatServiceImpl implements ChatService {
      *
      * @param request - 메시지 내용 (content, messageType)
      * @param channelPk - 대상 채널 PK (WebSocket PathVariable에서 전달)
-     * @param jwtToken - 사용자 인증 토큰
+     * @param userPk 메시지를 보낸 사용자 PK
      * <p>
      * 호출되는 곳:
      * - ChatWebSocketController.sendChannelMessage()
      * <p>
      * 처리 순서:
-     * 1. JWT에서 userPk 추출
-     * 2. 채널 접근 권한 검증
-     * 3. Channel, Users 엔티티 조회
-     * 4. Message 엔티티 생성 및 DB 저장
+     * 1. 채널 접근 권한 검증
+     * 2. Channel, Users 엔티티 조회
+     * 3. Message 엔티티 생성 및 DB 저장
      */
     @Override
     @Transactional
-    public Message saveChannelMessage(MessageRequest request, Integer channelPk, String jwtToken) {
+    public Message saveChannelMessage(MessageRequest request, Integer channelPk, Integer userPk) {
         try {
-            Integer userPk = getUserPkFromToken(jwtToken);
             validateChannelAccess(channelPk, userPk);
 
             Channel channel = channelRepository.findById(channelPk)
@@ -100,22 +96,20 @@ public class ChatServiceImpl implements ChatService {
      *
      * @param request - 메시지 내용 (content, messageType)
      * @param dmRoomPk - 대상 DM방 PK (WebSocket PathVariable에서 전달)
-     * @param jwtToken - 사용자 인증 토큰
+     * @param userPk 메시지를 보낸 사용자 PK
      * <p>
      * 호출되는 곳:
      * - ChatWebSocketController.sendDmMessage()
      * <p>
-     * 처리 순서:
-     * 1. JWT에서 userPk 추출
-     * 2. DM방 접근 권한 검증
-     * 3. DmRoom, Users 엔티티 조회
-     * 4. Message 엔티티 생성 및 DB 저장
+     * 처리 순서
+     * 1. DM방 접근 권한 검증
+     * 2. DmRoom, Users 엔티티 조회
+     * 3. Message 엔티티 생성 및 DB 저장
      */
     @Override
     @Transactional
-    public Message saveDmMessage(MessageRequest request, Integer dmRoomPk, String jwtToken) {
+    public Message saveDmMessage(MessageRequest request, Integer dmRoomPk, Integer userPk) {
         try {
-            Integer userPk = getUserPkFromToken(jwtToken);
             validateDmRoomAccess(dmRoomPk, userPk);
 
             DmRoom dmRoom = dmRoomRepository.findById(dmRoomPk)
@@ -148,24 +142,22 @@ public class ChatServiceImpl implements ChatService {
      * 채널의 최신 메시지 40개 조회 (처음 채널 입장 시)
      *
      * @param channelPk - 조회할 채널 PK
-     * @param jwtToken - 사용자 인증 토큰
+     * @param userPk 조회하는 사용자 PK
      * @return MessageListResponse - lastReadMessagePk + 메시지 목록
      * <p>
      * 호출되는 곳:
      * - ChatController (REST API) → GET /api/jv/chat/channel/{channelPk}/messages
      * <p>
      * 처리 순서:
-     * 1. JWT에서 userPk 추출
-     * 2. 채널 접근 권한 검증
-     * 3. MessageRepository에서 최신 40개 조회
-     * 4. Message → MessageResponse DTO 변환
+     * 1. 채널 접근 권한 검증
+     * 2. MessageRepository에서 최신 40개 조회
+     * 3. Message → MessageResponse DTO 변환
      * <p>
      * 사용 시점: 사용자가 채널에 처음 들어갈 때
      */
     @Override
-    public MessageListResponse getLatestMessage(Integer channelPk, String jwtToken) {
+    public MessageListResponse getLatestMessage(Integer channelPk, Integer userPk) {
         try {
-            Integer userPk = getUserPkFromToken(jwtToken);
             validateChannelAccess(channelPk, userPk);
 
             List<Message> messages = messageRepository.findLatestMessagesByChannelPk(channelPk);
@@ -193,24 +185,22 @@ public class ChatServiceImpl implements ChatService {
      *
      * @param channelPk - 조회할 채널 PK
      * @param lastMessageTime - 현재 화면에서 가장 오래된 메시지의 시간
-     * @param jwtToken - 사용자 인증 토큰
+     * @param userPk 조회하는 사용자 PK
      * @return MessagesOnlyResponse - 메시지 목록만 (최대 40개, 무한 스크롤에는 lastRead 불필요)
      * <p>
      * 호출되는 곳:
      * - ChatController (REST API) → GET /api/jv/chat/channel/{channelPk}/messages/older
      * <p>
      * 처리 순서:
-     * 1. JWT에서 userPk 추출
-     * 2. 채널 접근 권한 검증
-     * 3. lastMessageTime 이전의 메시지 40개 조회
-     * 4. Message → MessageResponse DTO 변환
+     * 1. 채널 접근 권한 검증
+     * 2. lastMessageTime 이전의 메시지 40개 조회
+     * 3. Message → MessageResponse DTO 변환
      * <p>
      * 사용 시점: 사용자가 채팅창을 위로 스크롤할 때 (무한 스크롤)
      */
     @Override
-    public MessagesOnlyResponse getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, String jwtToken) {
+    public MessagesOnlyResponse getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, Integer userPk) {
         try {
-            Integer userPk = getUserPkFromToken(jwtToken);
             validateChannelAccess(channelPk, userPk);
 
             List<Message> messages = messageRepository.findOlderMessagesByChannelPk(channelPk, lastMessageTime);
@@ -238,23 +228,21 @@ public class ChatServiceImpl implements ChatService {
      *
      * @param channelPk 조회할 채널 Pk
      * @param messagePk 기준이 되는 메시지 Pk (해당 채널 소속이어야 함)
-     * @param jwtToken 사용자 인증 토큰
+     * @param userPk 조회하는 사용자 PK
      * @return MessageListResponse - LastReadMessagePk + 메시지 목록
      * <p>
      * 호출 되는 곳
      * - ChatController (REST API) -> GET /api/jv/chat/channel/{channelPk}/messages/around
      * <p>
      * 처리 순서
-     * 1. jwt에서 userPk 추출
-     * 2. 채널 접근 권한 검증
-     * 3. 기준 메시지가 해당 채널에 존재하는지 확인
-     * 4. 기준보다 이전/이후 메시지 각각 조회 후 오름차순으로 병합
-     * 5. Message -> MessageResponse 변환
+     * 1. 채널 접근 권한 검증
+     * 2. 기준 메시지가 해당 채널에 존재하는지 확인
+     * 3. 기준보다 이전/이후 메시지 각각 조회 후 오름차순으로 병합
+     * 4. Message -> MessageResponse 변환
      */
     @Override
-    public MessageListResponse getAroundMessage(Integer channelPk, Long messagePk, String jwtToken) {
+    public MessageListResponse getAroundMessage(Integer channelPk, Long messagePk, Integer userPk) {
         try {
-            Integer userPk = getUserPkFromToken(jwtToken);
             validateChannelAccess(channelPk, userPk);
 
             Message anchor = messageRepository.findByMessagePkAndChannelPk_ChannelPk(messagePk, channelPk)
@@ -297,23 +285,21 @@ public class ChatServiceImpl implements ChatService {
      *
      * @param channelPk - 조회할 채널 PK
      * @param afterMessagePk - 커서로 쓰는 메시지 PK (해당 채널에 존재해야 함)
-     * @param jwtToken - 사용자 인증 토큰
+     * @param userPk 조회하는 사용자 PK
      * @return MessageListResponse - lastReadMessagePk + 메시지 목록
      * <p>
      * 호출되는 곳:
      * - ChatController (REST API) → GET /api/jv/chat/channel/{channelPk}/messages/newer
      * <p>
      * 처리 순서:
-     * 1. JWT에서 userPk 추출
-     * 2. 채널 접근 권한 검증
-     * 3. 커서 메시지가 해당 채널에 존재하는지 확인
-     * 4. 이후 메시지 최대 40개 조회
-     * 5. Message → MessageResponse 변환
+     * 1. 채널 접근 권한 검증
+     * 2. 커서 메시지가 해당 채널에 존재하는지 확인
+     * 3. 이후 메시지 최대 40개 조회
+     * 4. Message → MessageResponse 변환
      */
     @Override
-    public MessageListResponse getNewerMessage(Integer channelPk, Long afterMessagePk, String jwtToken) {
+    public MessageListResponse getNewerMessage(Integer channelPk, Long afterMessagePk, Integer userPk) {
         try {
-            Integer userPk = getUserPkFromToken(jwtToken);
             validateChannelAccess(channelPk, userPk);
 
             messageRepository.findByMessagePkAndChannelPk_ChannelPk(afterMessagePk, channelPk)
@@ -343,7 +329,7 @@ public class ChatServiceImpl implements ChatService {
      * DM방의 최신 메시지 40개 조회 (처음 DM방 입장 시)
      *
      * @param dmRoomPk - 조회할 DM방 PK
-     * @param jwtToken - 사용자 인증 토큰
+     * @param userPk 조회하는 사용자 PK
      * @return MessageListResponse - lastReadMessagePk + 메시지 목록
      * <p>
      * 호출되는 곳:
@@ -352,9 +338,8 @@ public class ChatServiceImpl implements ChatService {
      * 사용 시점: 사용자가 DM방에 처음 들어갈 때
      */
     @Override
-    public MessageListResponse getLatestDmMessage(Integer dmRoomPk, String jwtToken) {
+    public MessageListResponse getLatestDmMessage(Integer dmRoomPk, Integer userPk) {
         try {
-            Integer userPk = getUserPkFromToken(jwtToken);
             validateDmRoomAccess(dmRoomPk, userPk);
 
             List<Message> messages = messageRepository.findLatestMessagesByDmRoomPk(dmRoomPk);
@@ -383,7 +368,7 @@ public class ChatServiceImpl implements ChatService {
      *
      * @param dmRoomPk - 조회할 DM방 PK
      * @param lastMessageTime - 현재 화면에서 가장 오래된 메시지의 시간
-     * @param jwtToken - 사용자 인증 토큰
+     * @param userPk 조회하는 사용자 PK
      * @return MessagesOnlyResponse - 메시지 목록만 (최대 40개, 무한 스크롤에는 lastRead 불필요)
      * <p>
      * 호출되는 곳:
@@ -392,9 +377,8 @@ public class ChatServiceImpl implements ChatService {
      * 사용 시점: 사용자가 DM 채팅창을 위로 스크롤할 때
      */
     @Override
-    public MessagesOnlyResponse getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, String jwtToken) {
+    public MessagesOnlyResponse getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, Integer userPk) {
         try {
-            Integer userPk = getUserPkFromToken(jwtToken);
             validateDmRoomAccess(dmRoomPk, userPk);
 
             List<Message> messages = messageRepository.findOlderMessagesByDmRoomPk(dmRoomPk, lastMessageTime);
@@ -422,23 +406,21 @@ public class ChatServiceImpl implements ChatService {
      *
      * @param dmRoomPk - 조회할 DM방 PK
      * @param messagePk - 기준이 되는 메시지 PK (해당 DM방 소속이어야 함)
-     * @param jwtToken - 사용자 인증 토큰
+     * @param userPk 조회하는 사용자 PK
      * @return MessageListResponse - lastReadMessagePk + 메시지 목록
      * <p>
      * 호출되는 곳:
      * - ChatController (REST API) → GET /api/jv/chat/dm/{dmRoomPk}/messages/around
      * <p>
      * 처리 순서:
-     * 1. JWT에서 userPk 추출
-     * 2. DM방 접근 권한 검증
-     * 3. 기준 메시지가 해당 DM방에 존재하는지 확인
-     * 4. 기준보다 이전/이후 메시지 각각 조회 후 오름차순으로 병합
-     * 5. Message → MessageResponse 변환
+     * 1. DM방 접근 권한 검증
+     * 2. 기준 메시지가 해당 DM방에 존재하는지 확인
+     * 3. 기준보다 이전/이후 메시지 각각 조회 후 오름차순으로 병합
+     * 4. Message → MessageResponse 변환
      */
     @Override
-    public MessageListResponse getAroundDmMessage(Integer dmRoomPk, Long messagePk, String jwtToken) {
+    public MessageListResponse getAroundDmMessage(Integer dmRoomPk, Long messagePk, Integer userPk) {
         try {
-            Integer userPk = getUserPkFromToken(jwtToken);
             validateDmRoomAccess(dmRoomPk, userPk);
 
             Message anchor = messageRepository.findByMessagePkAndDmRoomPk_DmRoomPk(messagePk, dmRoomPk)
@@ -480,23 +462,21 @@ public class ChatServiceImpl implements ChatService {
      *
      * @param dmRoomPk - 조회할 DM방 PK
      * @param afterMessagePk - 커서로 쓰는 메시지 PK (해당 DM방에 존재해야 함)
-     * @param jwtToken - 사용자 인증 토큰
+     * @param userPk 조회하는 사용자 PK
      * @return MessageListResponse - lastReadMessagePk + 메시지 목록
      * <p>
      * 호출되는 곳:
      * - ChatController (REST API) → GET /api/jv/chat/dm/{dmRoomPk}/messages/newer
      * <p>
      * 처리 순서:
-     * 1. JWT에서 userPk 추출
-     * 2. DM방 접근 권한 검증
-     * 3. 커서 메시지가 해당 DM방에 존재하는지 확인
-     * 4. 이후 메시지 최대 40개 조회
-     * 5. Message → MessageResponse 변환
+     * 1. DM방 접근 권한 검증
+     * 2. 커서 메시지가 해당 DM방에 존재하는지 확인
+     * 3. 이후 메시지 최대 40개 조회
+     * 4. Message → MessageResponse 변환
      */
     @Override
-    public MessageListResponse getNewerDmMessage(Integer dmRoomPk, Long afterMessagePk, String jwtToken) {
+    public MessageListResponse getNewerDmMessage(Integer dmRoomPk, Long afterMessagePk, Integer userPk) {
         try {
-            Integer userPk = getUserPkFromToken(jwtToken);
             validateDmRoomAccess(dmRoomPk, userPk);
 
             messageRepository.findByMessagePkAndDmRoomPk_DmRoomPk(afterMessagePk, dmRoomPk)
@@ -600,17 +580,16 @@ public class ChatServiceImpl implements ChatService {
      *
      * @param channelPk - 읽음 처리할 채널 PK
      * @param messagePk - 마지막으로 읽은 메시지 PK
-     * @param jwtToken - 사용자 인증 토큰
+     * @param userPk 요청 사용자 PK
      * <p>
      * 호출되는 곳:
      * - ChatWebSocketController → /app/chat/channel/{channelPk}/read
      * <p>
      * 처리 순서:
-     * 1. JWT에서 userPk 추출
-     * 2. 채널 접근 권한 검증
-     * 3. ChannelMember 엔티티 조회 (channelPk + userPk)
-     * 4. 해당 messagePk의 Message 엔티티 조회
-     * 5. ChannelMember.lastReadMessage 업데이트 및 저장
+     * 1. 채널 접근 권한 검증
+     * 2. ChannelMember 엔티티 조회 (channelPk + userPk)
+     * 3. 해당 messagePk의 Message 엔티티 조회
+     * 4. ChannelMember.lastReadMessage 업데이트 및 저장
      * <p>
      * 용도: 프론트에서 사용자가 채널 메시지를 읽었을 때,
      * 마지막으로 읽은 메시지 PK를 전송하여 읽음 위치를 기록
@@ -620,9 +599,8 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     @Transactional
-    public void markChannelAsRead(Integer channelPk, Long messagePk, String jwtToken) {
+    public void markChannelAsRead(Integer channelPk, Long messagePk, Integer userPk) {
         try {
-            Integer userPk = getUserPkFromToken(jwtToken);
             validateChannelAccess(channelPk, userPk);
 
             ChannelMember channelMember = channelMemberRepository.findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk)
@@ -648,17 +626,16 @@ public class ChatServiceImpl implements ChatService {
      *
      * @param dmRoomPk - 읽음 처리할 DM방 PK
      * @param messagePk - 마지막으로 읽은 메시지 PK
-     * @param jwtToken - 사용자 인증 토큰
+     * @param userPk 요청 사용자 PK
      * <p>
      * 호출되는 곳:
      * - ChatWebSocketController → /app/chat/dm/{dmRoomPk}/read
      * <p>
      * 처리 순서:
-     * 1. JWT에서 userPk 추출
-     * 2. DM방 접근 권한 검증
-     * 3. DmMember 엔티티 조회 (dmRoomPk + userPk)
-     * 4. 해당 messagePk의 Message 엔티티 조회
-     * 5. DmMember.lastReadMessage 업데이트 및 저장
+     * 1. DM방 접근 권한 검증
+     * 2. DmMember 엔티티 조회 (dmRoomPk + userPk)
+     * 3. 해당 messagePk의 Message 엔티티 조회
+     * 4. DmMember.lastReadMessage 업데이트 및 저장
      * <p>
      * 용도: 프론트에서 사용자가 DM 메시지를 읽었을 때,
      * 마지막으로 읽은 메시지 PK를 전송하여 읽음 위치를 기록
@@ -669,9 +646,8 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     @Transactional
-    public void markDmAsRead(Integer dmRoomPk, Long messagePk, String jwtToken) {
+    public void markDmAsRead(Integer dmRoomPk, Long messagePk, Integer userPk) {
         try {
-            Integer userPk = getUserPkFromToken(jwtToken);
             validateDmRoomAccess(dmRoomPk, userPk);
 
             DmMember dmMember = dmMemberRepository.findByDmRoom_DmRoomPkAndUser_UserPk(dmRoomPk, userPk)
@@ -735,25 +711,6 @@ public class ChatServiceImpl implements ChatService {
         }
     }
 
-    /**
-     이 아래는 Private 유틸 함수
-     */
-
-    /**
-     * JWT 토큰에서 userPk 추출
-     *
-     * @param jwtToken - JWT 토큰 문자열
-     * @return Integer - 사용자 PK
-     * <p>
-     * 처리 순서:
-     * 1. JwtTokenProvider로 토큰에서 userEmail 추출
-     * 2. UserRepository에서 userEmail로 userPk 조회
-     */
-    private Integer getUserPkFromToken(String jwtToken) {
-        String userEmail = jwtTokenProvider.getUserEmailFromToken(jwtToken);
-        return userRepository.findUserPkByUserEmail(userEmail)
-                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
-    }
 
     /**
      * 채널에서 현재 사용자의 lastReadMessagePk 조회

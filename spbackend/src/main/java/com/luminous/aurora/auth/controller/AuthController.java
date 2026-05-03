@@ -5,10 +5,10 @@ import com.luminous.aurora.auth.dto.AuthInfo;
 import com.luminous.aurora.auth.dto.LoginRequest;
 import com.luminous.aurora.auth.dto.SignUpRequest;
 import com.luminous.aurora.auth.dto.TokenResponse;
+import com.luminous.aurora.auth.entity.Users;
 import com.luminous.aurora.auth.service.AuthService;
 import com.luminous.aurora.auth.service.TokenService;
 import com.luminous.aurora.common.error.exception.UnauthorizedException;
-import com.luminous.aurora.jwt.JwtTokenProvider;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,7 +30,6 @@ public class AuthController {
 
     private final AuthService authService;
     private final TokenService tokenService;
-    private final JwtTokenProvider jwtTokenProvider;
 
     @Value("${cookie.secure}")
     private boolean cookieSecure;
@@ -77,16 +77,9 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<String> logout(@CookieValue(value = "access_token", required = false) String token) {
-        log.info("로그아웃 요청");
+    public ResponseEntity<String> logout(@AuthenticationPrincipal Users user) {
 
-        if (!StringUtils.hasText(token)) {
-            throw new UnauthorizedException("토큰이 없습니다.");
-        }
-
-        // 토큰에서 userEmail 추출
-        String userEmail = jwtTokenProvider.getUserEmailFromToken(token);
-        authService.logout(userEmail);
+        authService.logout(user.getUserEmail());
 
         // 쿠키 삭제
         ResponseCookie accessCookie = ResponseCookie.from("access_token","")
@@ -135,11 +128,10 @@ public class AuthController {
     }
 
     @GetMapping("/info")
-    public ResponseEntity<AuthInfo> getUserInfo(@CookieValue("access_token") String token) {
+    public ResponseEntity<AuthInfo> getUserInfo(@AuthenticationPrincipal Users user) {
         log.info("사용자 정보 조회 요청");
-            String userEmail = jwtTokenProvider.getUserEmailFromToken(token);
-            AuthInfo userInfo = authService.getUserInfo(userEmail);
-            return ResponseEntity.ok(userInfo);
+        AuthInfo userInfo = authService.getUserInfo(user.getUserEmail());
+        return ResponseEntity.ok(userInfo);
 
     }
 

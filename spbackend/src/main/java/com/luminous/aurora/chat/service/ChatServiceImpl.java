@@ -7,6 +7,7 @@ import com.luminous.aurora.channel.repository.ChannelRepository;
 import com.luminous.aurora.chat.dto.MessageListResponse;
 import com.luminous.aurora.chat.dto.MessageRequest;
 import com.luminous.aurora.chat.dto.MessageResponse;
+import com.luminous.aurora.chat.dto.MessagesOnlyResponse;
 import com.luminous.aurora.chat.entity.Message;
 import com.luminous.aurora.chat.repository.MessageRepository;
 import com.luminous.aurora.common.error.exception.BadRequestException;
@@ -24,7 +25,6 @@ import com.luminous.aurora.member.repository.DmMemberRepository;
 import com.luminous.aurora.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -208,7 +208,7 @@ public class ChatServiceImpl implements ChatService {
      * 사용 시점: 사용자가 채팅창을 위로 스크롤할 때 (무한 스크롤)
      */
     @Override
-    public MessageListResponse getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, String jwtToken) {
+    public MessagesOnlyResponse getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, String jwtToken) {
         try {
             Integer userPk = getUserPkFromToken(jwtToken);
             validateChannelAccess(channelPk, userPk);
@@ -218,10 +218,7 @@ public class ChatServiceImpl implements ChatService {
                     .map(this::convertToMessageResponse)
                     .toList();
 
-            Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
-
-            return MessageListResponse.builder()
-                    .lastReadMessagePk(lastReadMessagePk)
+            return MessagesOnlyResponse.builder()
                     .messages(messageResponses)
                     .build();
 
@@ -395,7 +392,7 @@ public class ChatServiceImpl implements ChatService {
      * 사용 시점: 사용자가 DM 채팅창을 위로 스크롤할 때
      */
     @Override
-    public MessageListResponse getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, String jwtToken) {
+    public MessagesOnlyResponse getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, String jwtToken) {
         try {
             Integer userPk = getUserPkFromToken(jwtToken);
             validateDmRoomAccess(dmRoomPk, userPk);
@@ -404,11 +401,8 @@ public class ChatServiceImpl implements ChatService {
             List<MessageResponse> messageResponses = messages.stream()
                     .map(this::convertToMessageResponse)
                     .toList();
-
-            Long lastReadMessagePk = getDmLastReadMessagePk(dmRoomPk, userPk);
-
-            return MessageListResponse.builder()
-                    .lastReadMessagePk(lastReadMessagePk)
+            
+            return MessagesOnlyResponse.builder()
                     .messages(messageResponses)
                     .build();
 

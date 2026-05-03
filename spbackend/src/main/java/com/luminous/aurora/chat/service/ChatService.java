@@ -3,6 +3,7 @@ package com.luminous.aurora.chat.service;
 import com.luminous.aurora.chat.dto.MessageListResponse;
 import com.luminous.aurora.chat.dto.MessageRequest;
 import com.luminous.aurora.chat.dto.MessageResponse;
+import com.luminous.aurora.chat.dto.MessagesOnlyResponse;
 import com.luminous.aurora.chat.entity.Message;
 import com.luminous.aurora.internal.dto.ChannelUnreadResponse;
 
@@ -33,7 +34,7 @@ public interface ChatService {
     MessageListResponse getLatestMessage(Integer channelPk, String jwtToken);
 
     // 채널별 이전 메시지 조회 (스크롤 시)
-    MessageListResponse getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, String jwtToken);
+    MessagesOnlyResponse getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, String jwtToken);
 
     // 채널: 기준 messagePk 주변 메시지 조회 (이전 20 + 기준 + 이후 20, 최대 41개)
     MessageListResponse getAroundMessage(Integer channelPk, Long messagePk, String jwtToken);
@@ -45,7 +46,7 @@ public interface ChatService {
     MessageListResponse getLatestDmMessage(Integer dmRoomPk, String jwtToken);
 
     // DM 방별 이전 메시지 조회 (스크롤 시)
-    MessageListResponse getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, String jwtToken);
+    MessagesOnlyResponse getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, String jwtToken);
 
     // DM : 기준 messagePk 주변 메시지 조회 (이전 20 + 기준 + 이후 20, 최대 41개)
     MessageListResponse getAroundDmMessage(Integer dmRoomPk, Long messagePk, String jwtToken);

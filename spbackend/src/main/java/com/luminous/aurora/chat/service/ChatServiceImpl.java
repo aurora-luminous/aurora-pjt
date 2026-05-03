@@ -7,6 +7,7 @@ import com.luminous.aurora.channel.repository.ChannelRepository;
 import com.luminous.aurora.chat.dto.MessageListResponse;
 import com.luminous.aurora.chat.dto.MessageRequest;
 import com.luminous.aurora.chat.dto.MessageResponse;
+import com.luminous.aurora.chat.dto.MessagesOnlyResponse;
 import com.luminous.aurora.chat.entity.Message;
 import com.luminous.aurora.chat.repository.MessageRepository;
 import com.luminous.aurora.common.error.exception.BadRequestException;
@@ -24,7 +25,6 @@ import com.luminous.aurora.member.repository.DmMemberRepository;
 import com.luminous.aurora.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -194,7 +194,7 @@ public class ChatServiceImpl implements ChatService {
      * @param channelPk - 조회할 채널 PK
      * @param lastMessageTime - 현재 화면에서 가장 오래된 메시지의 시간
      * @param jwtToken - 사용자 인증 토큰
-     * @return MessageListResponse - lastReadMessagePk + 메시지 목록
+     * @return MessagesOnlyResponse - 메시지 목록만 (최대 40개, 무한 스크롤에는 lastRead 불필요)
      * <p>
      * 호출되는 곳:
      * - ChatController (REST API) → GET /api/jv/chat/channel/{channelPk}/messages/older
@@ -208,7 +208,7 @@ public class ChatServiceImpl implements ChatService {
      * 사용 시점: 사용자가 채팅창을 위로 스크롤할 때 (무한 스크롤)
      */
     @Override
-    public MessageListResponse getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, String jwtToken) {
+    public MessagesOnlyResponse getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, String jwtToken) {
         try {
             Integer userPk = getUserPkFromToken(jwtToken);
             validateChannelAccess(channelPk, userPk);
@@ -218,10 +218,7 @@ public class ChatServiceImpl implements ChatService {
                     .map(this::convertToMessageResponse)
                     .toList();
 
-            Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
-
-            return MessageListResponse.builder()
-                    .lastReadMessagePk(lastReadMessagePk)
+            return MessagesOnlyResponse.builder()
                     .messages(messageResponses)
                     .build();
 
@@ -387,7 +384,7 @@ public class ChatServiceImpl implements ChatService {
      * @param dmRoomPk - 조회할 DM방 PK
      * @param lastMessageTime - 현재 화면에서 가장 오래된 메시지의 시간
      * @param jwtToken - 사용자 인증 토큰
-     * @return List<MessageResponse> - 이전 메시지 목록 (최대 40개)
+     * @return MessagesOnlyResponse - 메시지 목록만 (최대 40개, 무한 스크롤에는 lastRead 불필요)
      * <p>
      * 호출되는 곳:
      * - ChatController (REST API) → GET /api/jv/chat/dm/{dmRoomPk}/messages/older
@@ -395,7 +392,7 @@ public class ChatServiceImpl implements ChatService {
      * 사용 시점: 사용자가 DM 채팅창을 위로 스크롤할 때
      */
     @Override
-    public MessageListResponse getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, String jwtToken) {
+    public MessagesOnlyResponse getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, String jwtToken) {
         try {
             Integer userPk = getUserPkFromToken(jwtToken);
             validateDmRoomAccess(dmRoomPk, userPk);
@@ -405,10 +402,7 @@ public class ChatServiceImpl implements ChatService {
                     .map(this::convertToMessageResponse)
                     .toList();
 
-            Long lastReadMessagePk = getDmLastReadMessagePk(dmRoomPk, userPk);
-
-            return MessageListResponse.builder()
-                    .lastReadMessagePk(lastReadMessagePk)
+            return MessagesOnlyResponse.builder()
                     .messages(messageResponses)
                     .build();
 

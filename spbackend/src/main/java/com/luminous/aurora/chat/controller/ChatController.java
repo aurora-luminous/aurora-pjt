@@ -1,6 +1,7 @@
 package com.luminous.aurora.chat.controller;
 
 import com.luminous.aurora.chat.dto.MessageListResponse;
+import com.luminous.aurora.chat.dto.MessagesOnlyResponse;
 import com.luminous.aurora.chat.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,8 +14,8 @@ import java.time.LocalDateTime;
  * 메시지 조회 REST API 컨트롤러
  * <p>
  * 채널/DM 메시지 목록을 조회하는 REST API.
- * 모든 응답은 MessageListResponse로 래핑되어
- * lastReadMessagePk(읽음 위치)와 messages(메시지 목록)를 함께 반환함.
+ * 최신·around·newer 등은 {@link MessageListResponse}(읽음 위치 + 목록),
+ * 과거 무한 스크롤용 {@code .../messages/older} 는 {@link MessagesOnlyResponse}(목록만)을 반환한다.
  */
 @Slf4j
 @RestController
@@ -40,8 +41,8 @@ public class ChatController {
      * GET /api/jv/chat/channel/{channelPk}/messages/older
      */
     @GetMapping("/channel/{channelPk}/messages/older")
-    public ResponseEntity<MessageListResponse> getOlderChannelMessages(@PathVariable Integer channelPk, @RequestParam LocalDateTime lastMessageTime, @CookieValue("access_token") String jwtToken) {
-        MessageListResponse response = chatService.getOlderMessage(channelPk, lastMessageTime, jwtToken);
+    public ResponseEntity<MessagesOnlyResponse> getOlderChannelMessages(@PathVariable Integer channelPk, @RequestParam LocalDateTime lastMessageTime, @CookieValue("access_token") String jwtToken) {
+        MessagesOnlyResponse response = chatService.getOlderMessage(channelPk, lastMessageTime, jwtToken);
         log.info("채널 이전 메시지 조회 성공: channelPk={}, messageCount={}, lastMessageTime={}", channelPk, response.getMessages().size(), lastMessageTime);
         return ResponseEntity.ok(response);
     }
@@ -89,8 +90,8 @@ public class ChatController {
      * GET /api/jv/chat/dm/{dmRoomPk}/messages/older
      */
     @GetMapping("/dm/{dmRoomPk}/messages/older")
-    public ResponseEntity<MessageListResponse> getOlderDmMessages(@PathVariable Integer dmRoomPk, @RequestParam LocalDateTime lastMessageTime, @CookieValue("access_token") String jwtToken) {
-        MessageListResponse response = chatService.getOlderDmMessage(dmRoomPk, lastMessageTime, jwtToken);
+    public ResponseEntity<MessagesOnlyResponse> getOlderDmMessages(@PathVariable Integer dmRoomPk, @RequestParam LocalDateTime lastMessageTime, @CookieValue("access_token") String jwtToken) {
+        MessagesOnlyResponse response = chatService.getOlderDmMessage(dmRoomPk, lastMessageTime, jwtToken);
         log.info("DM방 이전 메시지 조회 성공: dmRoomPk={}, messageCount={}, lastMessageTime={}", dmRoomPk, response.getMessages().size(), lastMessageTime);
         return ResponseEntity.ok(response);
     }

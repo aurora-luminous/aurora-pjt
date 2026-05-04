@@ -30,6 +30,10 @@ export class Project {
   @Column({ type: 'boolean', default: false })
   isDeletedProject: boolean;
 
+  @ApiProperty({ description: '기본 프로젝트 여부 (삭제 불가)', default: false })
+  @Column({ type: 'boolean', default: false })
+  isDefault: boolean;
+
   // 관계 설정
   @ManyToOne(() => Server, (server) => server.projects)
   @JoinColumn({ name: 'server_pk' })

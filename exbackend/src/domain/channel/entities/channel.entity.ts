@@ -36,6 +36,10 @@ export class Channel {
   @Column({ type: 'boolean', default: false })
   isDeletedChannel: boolean;
 
+  @ApiProperty({ description: '기본 채널 여부 (삭제 불가)', default: false })
+  @Column({ type: 'boolean', default: false })
+  isDefault: boolean;
+
   @ApiProperty({ description: '채널 접근 유형', enum: ['PUBLIC', 'PRIVATE'] })
   @Column({ type: 'varchar', length: 10 })
   accessType: 'PUBLIC' | 'PRIVATE';

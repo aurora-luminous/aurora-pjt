@@ -98,6 +98,7 @@ export class ProjectServiceImpl extends ProjectService {
       const savedProject = await queryRunner.manager.save(Project, {
         serverPk: server.serverPk,
         projectName: dto.projectName,
+        isDefault: dto.isDefault ?? false,
       });
     
       // 5. 생성자를 프로젝트 admin으로 추가
@@ -114,6 +115,7 @@ export class ProjectServiceImpl extends ProjectService {
         channelName: '일반',
         channelKind: defaultKind,
         accessType: defaultAccess,
+        isDefault: true,
       });
     
       // 7. 생성자를 채널 멤버로 추가
@@ -199,6 +201,8 @@ export class ProjectServiceImpl extends ProjectService {
     if (!project) {
       throw new NotFoundException(`프로젝트 ID ${projectPk}를 찾을 수 없거나 이미 삭제되었습니다.`);
     }
+
+    if (project.isDefault) throw new ForbiddenException(`서버의 기본 프로젝트는 삭제할 수 없습니다.`);
 
     const projectMember = await this.projectMemberRepository.findOne({
       projectPk,

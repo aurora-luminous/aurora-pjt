@@ -98,7 +98,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // 처리되지 않은 모든 예외를 500 에러로 처리
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDto> handleAllException(Exception e) {
-        log.error("처리되지 않은 예외", e); 
+        log.error("처리되지 않은 예외", e);
         ErrorResponseDto response = new ErrorResponseDto(
                 "예상치 못한 오류가 발생했습니다.",
                 "INTERNAL_SERVER_ERROR",

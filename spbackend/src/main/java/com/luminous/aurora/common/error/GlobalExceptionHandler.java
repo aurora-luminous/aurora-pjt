@@ -1,6 +1,7 @@
 package com.luminous.aurora.common.error;
 
 import com.luminous.aurora.common.error.exception.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
@@ -96,6 +98,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     // 처리되지 않은 모든 예외를 500 에러로 처리
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDto> handleAllException(Exception e) {
+        log.error("처리되지 않은 예외", e); 
         ErrorResponseDto response = new ErrorResponseDto(
                 "예상치 못한 오류가 발생했습니다.",
                 "INTERNAL_SERVER_ERROR",

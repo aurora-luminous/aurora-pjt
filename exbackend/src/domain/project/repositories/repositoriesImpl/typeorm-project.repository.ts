@@ -21,17 +21,19 @@ export class TypeOrmProjectRepository extends ProjectRepository {
       serverPk?: number;
       projectName?: string;
       isDeletedProject?: boolean;
+      isDefault?: boolean;
     },
     relations?: string[]
   ): Promise<Project | null> {
 
-    const { projectPk, serverPk, projectName, isDeletedProject } = options;
+    const { projectPk, serverPk, projectName, isDeletedProject, isDefault } = options;
 
     return this.projectRepository.findOne({
       where: {
         ...(projectPk && { projectPk }),
         ...(serverPk && { serverPk }),
         ...(projectName && { projectName }),
+        ...(isDefault && { isDefault }),
         isDeletedProject: isDeletedProject !== undefined ? isDeletedProject : false,
       },
       relations: relations || [],

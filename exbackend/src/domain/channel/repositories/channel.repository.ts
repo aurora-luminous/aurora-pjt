@@ -5,7 +5,7 @@ export abstract class ChannelRepository {
 
   // 단일 채널 조회 (프로젝트, 채널멤버 정보 옵션)
   abstract findOne(
-    options: { channelPk?: number; projectPk?: number; channelName?: string },
+    options: { channelPk?: number; projectPk?: number; channelName?: string, isDefault?: boolean },
     relations? : string[]
   ): Promise<Channel | null>
 

@@ -46,5 +46,5 @@ export abstract class ProjectMemberRepository {
   abstract deactivateAllByServer(manager: EntityManager, serverPk: number): Promise<void>;
 
   // 프로젝트 멤버 저장(manager 넘기는 용)
-  abstract addMember(manager: EntityManager, projectPk: number, userPk: number): Promise<void>;
+  abstract addMember(manager: EntityManager, projectPk: number, userPk: number, lastConnectedChannel?: number): Promise<void>;
 }

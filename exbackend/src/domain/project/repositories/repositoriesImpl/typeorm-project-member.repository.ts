@@ -145,7 +145,7 @@ export class TypeOrmProjectMemberRepository extends ProjectMemberRepository {
   }
 
   // 프로젝트 멤버 저장(Manager를 넘겨서 트랜잭션 안끊기게 하는 메서드)
-  async addMember(manager: EntityManager, projectPk: number, userPk: number): Promise<void> {
+  async addMember(manager: EntityManager, projectPk: number, userPk: number, lastConnectedChannel?: number): Promise<void> {
     const repo = manager.getRepository(ProjectMember);
 
     const existing = await repo.findOne({ where: { projectPk, userPk } });
@@ -156,9 +156,18 @@ export class TypeOrmProjectMemberRepository extends ProjectMemberRepository {
         userPk,
         pStatus: MemberStatus.ACTIVE,
         projectRole: MemberRole.MEMBER,
+        ...(lastConnectedChannel && {
+          lastConnectedChannel,
+          lastConnectedTime: new Date()
+        }),
       })
     } else if (existing.pStatus !== MemberStatus.ACTIVE) {
       existing.pStatus = MemberStatus.ACTIVE;
+      if(lastConnectedChannel) {
+        existing.lastConnectedChannel = lastConnectedChannel;
+        existing.lastConnectedTime = new Date();
+      }
+
       await repo.save(existing);
     }
   }

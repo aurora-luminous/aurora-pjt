@@ -2,12 +2,14 @@ package com.luminous.aurora.userstate.service;
 
 import com.luminous.aurora.chat.entity.Message;
 import com.luminous.aurora.chat.repository.MessageRepository;
+import com.luminous.aurora.common.error.exception.ForbiddenException;
 import com.luminous.aurora.member.dto.ChannelMemberResponse;
 import com.luminous.aurora.member.dto.DmRoomResponse;
 import com.luminous.aurora.member.entity.ChannelMember;
 import com.luminous.aurora.member.entity.DmMember;
 import com.luminous.aurora.member.repository.ChannelMemberRepository;
 import com.luminous.aurora.member.repository.DmMemberRepository;
+import com.luminous.aurora.member.service.MemberService;
 import com.luminous.aurora.userstate.entity.UserState;
 import com.luminous.aurora.userstate.entity.UserStatus;
 import com.luminous.aurora.userstate.repository.UserStateRedisRepository;
@@ -32,6 +34,7 @@ public class UserStateServiceImpl implements UserStateService {
     private final ChannelMemberRepository channelMemberRepository;
     private final DmMemberRepository dmMemberRepository;
     private final MessageRepository messageRepository;
+    private final MemberService memberService;
 
     // ====기본 상태 관리 ====
     @Override
@@ -118,7 +121,11 @@ public class UserStateServiceImpl implements UserStateService {
     // ========== 채널 멤버 조회 ==========
 
     @Override
-    public List<ChannelMemberResponse> getChannelMemberWithStatus(Integer channelPk) {
+    public List<ChannelMemberResponse> getChannelMemberWithStatus(Integer channelPk, Integer userPk) {
+
+        // 채널 멤버가 아니면 403
+        validateChannelAccess(channelPk, userPk);
+
         // 1. 채널 Active 멤버 조회
         List<ChannelMember> members = channelMemberRepository.findByChannelPkAndCStatus(channelPk,"Active");
 
@@ -127,9 +134,9 @@ public class UserStateServiceImpl implements UserStateService {
         Map<Integer, UserStatus> statusCache = new HashMap<>();
 
         for (ChannelMember member : members) {
-            Integer userPk = member.getUser().getUserPk();
-            UserStatus status = getUserStatus(userPk);
-            statusCache.put(userPk, status);
+            Integer memberUserPk = member.getUser().getUserPk();
+            UserStatus status = getUserStatus(memberUserPk);
+            statusCache.put(memberUserPk, status);
             statusGroups.computeIfAbsent(status, k -> new ArrayList<>()).add(member);
         }
 
@@ -232,5 +239,16 @@ public class UserStateServiceImpl implements UserStateService {
                 })
                 .filter(response -> response != null)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 채널 접근 권한 검증
+     *
+     * @throws ForbiddenException 권한 없으면 403
+     */
+    private void validateChannelAccess(Integer channelPk, Integer userPk) {
+        if (!memberService.hasChannelAccess(channelPk, userPk)) {
+            throw new ForbiddenException("해당 채널에 접근할 권한이 없습니다.");
+        }
     }
 }

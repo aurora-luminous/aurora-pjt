@@ -1,10 +1,8 @@
 package com.luminous.aurora.userstate.controller;
 
 import com.luminous.aurora.auth.entity.Users;
-import com.luminous.aurora.common.error.exception.ForbiddenException;
 import com.luminous.aurora.member.dto.ChannelMemberResponse;
 import com.luminous.aurora.member.dto.DmRoomResponse;
-import com.luminous.aurora.member.service.MemberService;
 import com.luminous.aurora.userstate.dto.*;
 import com.luminous.aurora.userstate.entity.UserStatus;
 import com.luminous.aurora.userstate.service.UserStateService;
@@ -24,7 +22,6 @@ import java.util.List;
 public class UserStateController {
 
     private final UserStateService userStateService;
-    private final MemberService memberService;
 
     //사용자 상태 조회
     @GetMapping("/status")
@@ -61,27 +58,14 @@ public class UserStateController {
 
     /**
      * 채널 멤버 조회 (권한별 + 상태별 + 가나다순)
-     * - IDOR 방지 : 채널 멤버인지 검증 후 조회
-     * - 미멤버 요청 시 403 Forbidden
      */
     @GetMapping("/channel/{channelPk}/members")
     public ResponseEntity<List<ChannelMemberResponse>> getChannelMembers(
             @PathVariable Integer channelPk,
             @AuthenticationPrincipal Users user) {
-        try {
+        List<ChannelMemberResponse> members = userStateService.getChannelMemberWithStatus(channelPk, user.getUserPk());
 
-            // 채널 멤버가 아니면 403
-            if (!memberService.hasChannelAccess(channelPk, user.getUserPk())) {
-                throw new ForbiddenException("해당 채널에 접근할 권한이 없습니다.");
-            }
-            List<ChannelMemberResponse> members = userStateService.getChannelMemberWithStatus(channelPk);
-
-            return ResponseEntity.ok(members);
-        } catch (ForbiddenException e) {
-            throw e;
-        } catch (Exception e) {
-            return ResponseEntity.status(401).build();
-        }
+        return ResponseEntity.ok(members);
     }
 
 

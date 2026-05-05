@@ -16,16 +16,17 @@ export class TypeOrmChannelRepository extends ChannelRepository {
   }
 
   async findOne(
-    options: { channelPk?: number; projectPk?: number; channelName?: string },
+    options: { channelPk?: number; projectPk?: number; channelName?: string ,isDefault?: boolean },
     relations? : string[]
   ): Promise<Channel | null> {
-    const { channelPk, projectPk, channelName } = options;
+    const { channelPk, projectPk, channelName, isDefault } = options;
 
     return this.channelRepository.findOne({
       where: {
         ...(channelPk && { channelPk }), // ** 1
         ...(projectPk && { projectPk }),
         ...(channelName && { channelName }),
+        ...(isDefault && { isDefault }),
         isDeletedChannel: false,
       },
       relations: relations || []

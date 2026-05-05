@@ -100,22 +100,24 @@ export class ProjectServiceImpl extends ProjectService {
         projectName: dto.projectName,
         isDefault: dto.isDefault ?? false,
       });
-    
-      // 5. 생성자를 프로젝트 admin으로 추가
-      await queryRunner.manager.save(ProjectMember, {
-        projectPk: savedProject.projectPk,
-        userPk: dto.creatorUserPk,
-        pStatus: 'Active' as ProjectMember['pStatus'],
-        projectRole: 'admin' as ProjectMember['projectRole'],
-      });
-    
-      // 6. 기본 "일반" 채널 생성
+      
+      // 5. 기본 "일반" 채널 생성
       const savedChannel = await queryRunner.manager.save(Channel, {
         projectPk: savedProject.projectPk,
         channelName: '일반',
         channelKind: defaultKind,
         accessType: defaultAccess,
         isDefault: true,
+      });
+
+      // 6. 생성자를 프로젝트 admin으로 추가
+      await queryRunner.manager.save(ProjectMember, {
+        projectPk: savedProject.projectPk,
+        userPk: dto.creatorUserPk,
+        pStatus: 'Active' as ProjectMember['pStatus'],
+        projectRole: 'admin' as ProjectMember['projectRole'],
+        lastConnectedChannel: savedChannel.channelPk,
+        lastConnectedTime: new Date(),
       });
     
       // 7. 생성자를 채널 멤버로 추가

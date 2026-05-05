@@ -52,7 +52,10 @@ export class ProjectMember {
   projectRole: 'member' | 'admin';
 
   @ApiProperty({ description: '마지막 접속 채널 (외래키)', required: false })
-  @Column({ nullable: true })
+  @Column({
+     nullable: true ,
+     default: 0,
+    })
   lastConnectedChannel: number;
 
   @ApiProperty({ description: '마지막 접속 시간', required: false })

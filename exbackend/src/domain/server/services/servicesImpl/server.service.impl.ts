@@ -83,6 +83,7 @@ export class ServerServiceImpl extends ServerService {
       serverPk: server.serverPk,
       projectName: '일반',
       creatorUserPk: createServerDto.creatorUserPk,
+      isDefault: true,
     });
 
     return {

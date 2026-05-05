@@ -659,12 +659,21 @@ export class ServerMemberManagementServiceImpl extends ServerMemberManagementSer
       // 1. 기본 "일반" 프로젝트 찾기
       const defaultProject = await this.projectRepository.findOne({
         serverPk,
-        projectName: '일반',
-        isDeletedProject: false,
+        isDefault: true,
       });
 
       if (!defaultProject) {
         throw new NotFoundException(`서버에 기본 "일반" 프로젝트가 없습니다.`);
+      }
+
+      // 기본 "일반" 채널 찾기
+      const defaultChannel = await this.channelRepository.findOne({
+        projectPk: defaultProject.projectPk,
+        isDefault: true,
+      })
+
+      if (!defaultChannel) {
+        throw new NotFoundException(`서버에 기본 "일반" 채널이 없습니다.`);
       }
 
       // 2. 프로젝트 멤버 추가
@@ -672,6 +681,7 @@ export class ServerMemberManagementServiceImpl extends ServerMemberManagementSer
         queryRunner.manager,
         defaultProject.projectPk,
         userPk,
+        defaultChannel.channelPk,
       );
 
       // 3. 일반 프로젝트의 모든 public 채널에 자동 추가

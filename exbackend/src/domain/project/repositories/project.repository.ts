@@ -10,6 +10,7 @@ export abstract class ProjectRepository {
       serverPk?: number;
       projectName?: string;
       isDeletedProject?: boolean;
+      isDefault?: boolean;
     },
     relations?: string[]
   ): Promise<Project | null>;

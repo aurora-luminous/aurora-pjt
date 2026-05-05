@@ -10,9 +10,7 @@ import com.luminous.aurora.chat.dto.MessageResponse;
 import com.luminous.aurora.chat.dto.MessagesOnlyResponse;
 import com.luminous.aurora.chat.entity.Message;
 import com.luminous.aurora.chat.repository.MessageRepository;
-import com.luminous.aurora.common.error.exception.BadRequestException;
 import com.luminous.aurora.common.error.exception.ForbiddenException;
-import com.luminous.aurora.common.error.exception.InternalServerErrorException;
 import com.luminous.aurora.common.error.exception.NotFoundException;
 import com.luminous.aurora.dmroom.entity.DmRoom;
 import com.luminous.aurora.dmroom.repository.DmRoomRepository;
@@ -64,31 +62,25 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public Message saveChannelMessage(MessageRequest request, Integer channelPk, Integer userPk) {
-        try {
-            validateChannelAccess(channelPk, userPk);
+        validateChannelAccess(channelPk, userPk);
 
-            Channel channel = channelRepository.findById(channelPk)
-                    .orElseThrow(() -> new NotFoundException("채널을 찾을 수 없습니다."));
+        Channel channel = channelRepository.findById(channelPk)
+                .orElseThrow(() -> new NotFoundException("채널을 찾을 수 없습니다."));
 
-            Users user = userRepository.findById(userPk)
-                    .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
+        Users user = userRepository.findById(userPk)
+                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
 
-            Message message = Message.builder()
-                    .channelPk(channel)
-                    .userPk(user)
-                    .content(request.getContent())
-                    .messageType(request.getMessageType() != null ? request.getMessageType() : "TEXT")
-                    .build();
+        Message message = Message.builder()
+                .channelPk(channel)
+                .userPk(user)
+                .content(request.getContent())
+                .messageType(request.getMessageType() != null ? request.getMessageType() : "TEXT")
+                .build();
 
-            Message savedMessage = messageRepository.save(message);
+        Message savedMessage = messageRepository.save(message);
 
-            return savedMessage;
-        } catch (ForbiddenException | NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("메시지 저장 실패 : {}", e.getMessage());
-            throw new InternalServerErrorException("메시지 저장 중 서버 오류가 발생했습니다. : " + e.getMessage());
-        }
+        return savedMessage;
+
     }
 
     /**
@@ -109,33 +101,26 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public Message saveDmMessage(MessageRequest request, Integer dmRoomPk, Integer userPk) {
-        try {
-            validateDmRoomAccess(dmRoomPk, userPk);
+        validateDmRoomAccess(dmRoomPk, userPk);
 
-            DmRoom dmRoom = dmRoomRepository.findById(dmRoomPk)
-                    .orElseThrow(() -> new NotFoundException("DM 방을 찾을 수 없습니다."));
+        DmRoom dmRoom = dmRoomRepository.findById(dmRoomPk)
+                .orElseThrow(() -> new NotFoundException("DM 방을 찾을 수 없습니다."));
 
-            Users user = userRepository
-                    .findById(userPk)
-                    .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
+        Users user = userRepository
+                .findById(userPk)
+                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
 
-            Message message = Message.builder()
-                    .dmRoomPk(dmRoom)
-                    .userPk(user)
-                    .content(request.getContent())
-                    .messageType(request.getMessageType() != null ? request.getMessageType() : "TEXT")
-                    .build();
+        Message message = Message.builder()
+                .dmRoomPk(dmRoom)
+                .userPk(user)
+                .content(request.getContent())
+                .messageType(request.getMessageType() != null ? request.getMessageType() : "TEXT")
+                .build();
 
-            Message savedMessage = messageRepository.save(message);
-            log.info("DM 메시지 저장: dmRoomPk = {}, userPk = {}", dmRoomPk, userPk);
+        Message savedMessage = messageRepository.save(message);
+        log.info("DM 메시지 저장: dmRoomPk = {}, userPk = {}", dmRoomPk, userPk);
 
-            return savedMessage;
-        } catch (ForbiddenException | NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("DM 메시지 저장 실패 : {}", e.getMessage());
-            throw new InternalServerErrorException("메시지 저장 중 서버 오류가 발생했습니다.: " + e.getMessage());
-        }
+        return savedMessage;
     }
 
     /**
@@ -157,27 +142,19 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public MessageListResponse getLatestMessage(Integer channelPk, Integer userPk) {
-        try {
-            validateChannelAccess(channelPk, userPk);
+        validateChannelAccess(channelPk, userPk);
 
-            List<Message> messages = messageRepository.findLatestMessagesByChannelPk(channelPk);
-            List<MessageResponse> messageResponses = messages.stream()
-                    .map(this::convertToMessageResponse)
-                    .toList();
+        List<Message> messages = messageRepository.findLatestMessagesByChannelPk(channelPk);
+        List<MessageResponse> messageResponses = messages.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
 
-            Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
+        Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
 
-            return MessageListResponse.builder()
-                    .lastReadMessagePk(lastReadMessagePk)
-                    .messages(messageResponses)
-                    .build();
-
-        } catch (ForbiddenException | NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("최신 메시지 조회 실패 : {}", e.getMessage());
-            throw new InternalServerErrorException("최신 메시지 조회 중 서버 오류가 발생했습니다. : " + e.getMessage());
-        }
+        return MessageListResponse.builder()
+                .lastReadMessagePk(lastReadMessagePk)
+                .messages(messageResponses)
+                .build();
     }
 
     /**
@@ -200,24 +177,16 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public MessagesOnlyResponse getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, Integer userPk) {
-        try {
-            validateChannelAccess(channelPk, userPk);
+        validateChannelAccess(channelPk, userPk);
 
-            List<Message> messages = messageRepository.findOlderMessagesByChannelPk(channelPk, lastMessageTime);
-            List<MessageResponse> messageResponses = messages.stream()
-                    .map(this::convertToMessageResponse)
-                    .toList();
+        List<Message> messages = messageRepository.findOlderMessagesByChannelPk(channelPk, lastMessageTime);
+        List<MessageResponse> messageResponses = messages.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
 
-            return MessagesOnlyResponse.builder()
-                    .messages(messageResponses)
-                    .build();
-
-        } catch (ForbiddenException | NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("이전 메시지 조회 실패 : {}", e.getMessage());
-            throw new InternalServerErrorException("이전 메시지 조회 중 서버 오류가 발생했습니다. " + e.getMessage());
-        }
+        return MessagesOnlyResponse.builder()
+                .messages(messageResponses)
+                .build();
     }
 
     /**
@@ -242,39 +211,32 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public MessageListResponse getAroundMessage(Integer channelPk, Long messagePk, Integer userPk) {
-        try {
-            validateChannelAccess(channelPk, userPk);
+        validateChannelAccess(channelPk, userPk);
 
-            Message anchor = messageRepository.findByMessagePkAndChannelPk_ChannelPk(messagePk, channelPk)
-                    .orElseThrow(() -> new NotFoundException("기준메시지가 해당 채널에 없음"));
+        Message anchor = messageRepository.findByMessagePkAndChannelPk_ChannelPk(messagePk, channelPk)
+                .orElseThrow(() -> new NotFoundException("기준메시지가 해당 채널에 없음"));
 
-            List<Message> older = messageRepository.findChannelMessagesStrictlyOlderThan(channelPk, messagePk);
-            java.util.Collections.reverse(older);
+        List<Message> older = messageRepository.findChannelMessagesStrictlyOlderThan(channelPk, messagePk);
+        java.util.Collections.reverse(older);
 
-            List<Message> newer = messageRepository.findChannelMessagesStrictlyNewerThan(channelPk, messagePk);
+        List<Message> newer = messageRepository.findChannelMessagesStrictlyNewerThan(channelPk, messagePk);
 
-            ArrayList<Message> combined = new ArrayList<>(older.size() + 1 + newer.size());
+        ArrayList<Message> combined = new ArrayList<>(older.size() + 1 + newer.size());
 
-            combined.addAll(older);
-            combined.add(anchor);
-            combined.addAll(newer);
+        combined.addAll(older);
+        combined.add(anchor);
+        combined.addAll(newer);
 
-            Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
+        Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
 
-            List<MessageResponse> messageResponse = combined.stream()
-                    .map(this::convertToMessageResponse)
-                    .toList();
+        List<MessageResponse> messageResponse = combined.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
 
-            return MessageListResponse.builder()
-                    .lastReadMessagePk(lastReadMessagePk)
-                    .messages(messageResponse)
-                    .build();
-        } catch (ForbiddenException | NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("채널 around 메시지 조회 실패 : {}", e.getMessage());
-            throw new InternalServerErrorException("채널 around 메시지 조회 중 서버 오류가 발생 했습니다 : " + e.getMessage());
-        }
+        return MessageListResponse.builder()
+                .lastReadMessagePk(lastReadMessagePk)
+                .messages(messageResponse)
+                .build();
     }
 
     /**
@@ -299,29 +261,22 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public MessageListResponse getNewerMessage(Integer channelPk, Long afterMessagePk, Integer userPk) {
-        try {
-            validateChannelAccess(channelPk, userPk);
+        validateChannelAccess(channelPk, userPk);
 
-            messageRepository.findByMessagePkAndChannelPk_ChannelPk(afterMessagePk, channelPk)
-                    .orElseThrow(() -> new NotFoundException("기준 메시지가 해당 채널에 없음"));
+        messageRepository.findByMessagePkAndChannelPk_ChannelPk(afterMessagePk, channelPk)
+                .orElseThrow(() -> new NotFoundException("기준 메시지가 해당 채널에 없음"));
 
-            List<Message> messages = messageRepository.findChannelMessagesNewerThanAfterPk(channelPk, afterMessagePk);
-            List<MessageResponse> messageResponses = messages.stream()
-                    .map(this::convertToMessageResponse)
-                    .toList();
+        List<Message> messages = messageRepository.findChannelMessagesNewerThanAfterPk(channelPk, afterMessagePk);
+        List<MessageResponse> messageResponses = messages.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
 
-            Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
+        Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
 
-            return MessageListResponse.builder()
-                    .lastReadMessagePk(lastReadMessagePk)
-                    .messages(messageResponses)
-                    .build();
-        } catch (ForbiddenException | NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("채널 newer 메시지 조회 실패 : {}", e.getMessage());
-            throw new InternalServerErrorException("채널 newer 메시지 조회 중 서버 오류가 발생했습니다. : " + e.getMessage());
-        }
+        return MessageListResponse.builder()
+                .lastReadMessagePk(lastReadMessagePk)
+                .messages(messageResponses)
+                .build();
     }
 
 
@@ -339,28 +294,20 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public MessageListResponse getLatestDmMessage(Integer dmRoomPk, Integer userPk) {
-        try {
-            validateDmRoomAccess(dmRoomPk, userPk);
+        validateDmRoomAccess(dmRoomPk, userPk);
 
-            List<Message> messages = messageRepository.findLatestMessagesByDmRoomPk(dmRoomPk);
-            List<MessageResponse> messageResponses = messages.stream()
-                    .map(this::convertToMessageResponse)
-                    .toList();
+        List<Message> messages = messageRepository.findLatestMessagesByDmRoomPk(dmRoomPk);
+        List<MessageResponse> messageResponses = messages.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
 
-            Long lastReadMessagePk = getDmLastReadMessagePk(dmRoomPk, userPk);
+        Long lastReadMessagePk = getDmLastReadMessagePk(dmRoomPk, userPk);
 
-            return MessageListResponse
-                    .builder()
-                    .lastReadMessagePk(lastReadMessagePk)
-                    .messages(messageResponses)
-                    .build();
-
-        } catch (ForbiddenException | NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("최신 DM 메시지 조회 실패 : {}", e.getMessage());
-            throw new InternalServerErrorException("최신 DM 메시지 조회 중 서버 오류가 발생했습니다 : " + e.getMessage());
-        }
+        return MessageListResponse
+                .builder()
+                .lastReadMessagePk(lastReadMessagePk)
+                .messages(messageResponses)
+                .build();
     }
 
     /**
@@ -378,24 +325,16 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public MessagesOnlyResponse getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, Integer userPk) {
-        try {
-            validateDmRoomAccess(dmRoomPk, userPk);
+        validateDmRoomAccess(dmRoomPk, userPk);
 
-            List<Message> messages = messageRepository.findOlderMessagesByDmRoomPk(dmRoomPk, lastMessageTime);
-            List<MessageResponse> messageResponses = messages.stream()
-                    .map(this::convertToMessageResponse)
-                    .toList();
+        List<Message> messages = messageRepository.findOlderMessagesByDmRoomPk(dmRoomPk, lastMessageTime);
+        List<MessageResponse> messageResponses = messages.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
 
-            return MessagesOnlyResponse.builder()
-                    .messages(messageResponses)
-                    .build();
-
-        } catch (ForbiddenException | NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("이전 DM 메시지 조회 실패: {}", e.getMessage());
-            throw new InternalServerErrorException("이전 DM 메시지 조회 중 서버 오류가 발생했습니다: " + e.getMessage());
-        }
+        return MessagesOnlyResponse.builder()
+                .messages(messageResponses)
+                .build();
     }
 
     /**
@@ -420,38 +359,31 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public MessageListResponse getAroundDmMessage(Integer dmRoomPk, Long messagePk, Integer userPk) {
-        try {
-            validateDmRoomAccess(dmRoomPk, userPk);
+        validateDmRoomAccess(dmRoomPk, userPk);
 
-            Message anchor = messageRepository.findByMessagePkAndDmRoomPk_DmRoomPk(messagePk, dmRoomPk)
-                    .orElseThrow(() -> new NotFoundException("기준 메시지가 해당 DM 방에 없습니다."));
+        Message anchor = messageRepository.findByMessagePkAndDmRoomPk_DmRoomPk(messagePk, dmRoomPk)
+                .orElseThrow(() -> new NotFoundException("기준 메시지가 해당 DM 방에 없습니다."));
 
-            List<Message> older = messageRepository.findDmMessagesStrictlyOlderThan(dmRoomPk, messagePk);
-            java.util.Collections.reverse(older);
+        List<Message> older = messageRepository.findDmMessagesStrictlyOlderThan(dmRoomPk, messagePk);
+        java.util.Collections.reverse(older);
 
-            List<Message> newer = messageRepository.findDmMessagesStrictlyNewerThan(dmRoomPk, messagePk);
+        List<Message> newer = messageRepository.findDmMessagesStrictlyNewerThan(dmRoomPk, messagePk);
 
-            ArrayList<Message> combined = new ArrayList<>(older.size() + 1 + newer.size());
-            combined.addAll(older);
-            combined.add(anchor);
-            combined.addAll(newer);
+        ArrayList<Message> combined = new ArrayList<>(older.size() + 1 + newer.size());
+        combined.addAll(older);
+        combined.add(anchor);
+        combined.addAll(newer);
 
-            List<MessageResponse> messageResponses = combined.stream()
-                    .map(this::convertToMessageResponse)
-                    .toList();
+        List<MessageResponse> messageResponses = combined.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
 
-            Long lastReadMessagePk = getDmLastReadMessagePk(dmRoomPk, userPk);
+        Long lastReadMessagePk = getDmLastReadMessagePk(dmRoomPk, userPk);
 
-            return MessageListResponse.builder()
-                    .lastReadMessagePk(lastReadMessagePk)
-                    .messages(messageResponses)
-                    .build();
-        } catch (ForbiddenException | NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("DM around 메시지 조회 실패 : {}", e.getMessage());
-            throw new InternalServerErrorException("DM around 메시지 조회 중 서버 오류가 발생했습니다. : " + e.getMessage());
-        }
+        return MessageListResponse.builder()
+                .lastReadMessagePk(lastReadMessagePk)
+                .messages(messageResponses)
+                .build();
     }
 
     /**
@@ -476,30 +408,22 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public MessageListResponse getNewerDmMessage(Integer dmRoomPk, Long afterMessagePk, Integer userPk) {
-        try {
-            validateDmRoomAccess(dmRoomPk, userPk);
+        validateDmRoomAccess(dmRoomPk, userPk);
 
-            messageRepository.findByMessagePkAndDmRoomPk_DmRoomPk(afterMessagePk, dmRoomPk)
-                    .orElseThrow(() -> new NotFoundException("기준 메시지가 해당 DM 방에 없습니다."));
+        messageRepository.findByMessagePkAndDmRoomPk_DmRoomPk(afterMessagePk, dmRoomPk)
+                .orElseThrow(() -> new NotFoundException("기준 메시지가 해당 DM 방에 없습니다."));
 
-            List<Message> messages = messageRepository.findDmMessagesNewerThanAfterPk(dmRoomPk, afterMessagePk);
-            List<MessageResponse> messageResponses = messages.stream()
-                    .map(this::convertToMessageResponse)
-                    .toList();
+        List<Message> messages = messageRepository.findDmMessagesNewerThanAfterPk(dmRoomPk, afterMessagePk);
+        List<MessageResponse> messageResponses = messages.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
 
-            Long lastReadMessagePk = getDmLastReadMessagePk(dmRoomPk, userPk);
+        Long lastReadMessagePk = getDmLastReadMessagePk(dmRoomPk, userPk);
 
-            return MessageListResponse.builder()
-                    .lastReadMessagePk(lastReadMessagePk)
-                    .messages(messageResponses)
-                    .build();
-
-        } catch (ForbiddenException | NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("DM newer 메시지 조회 실패 : {}", e.getMessage());
-            throw new InternalServerErrorException("DM newer 메시지 조회 중 서버 오류가 발생했습니다. : " + e.getMessage());
-        }
+        return MessageListResponse.builder()
+                .lastReadMessagePk(lastReadMessagePk)
+                .messages(messageResponses)
+                .build();
     }
 
     /**
@@ -530,43 +454,37 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public List<ChannelUnreadResponse> getChannelsUnreadStatus(List<Integer> channelPks, Integer userPk) {
-        try {
-            return channelPks.stream().map(channelPk -> {
-                Optional<ChannelMember> memberOpt = channelMemberRepository.findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk);
+        return channelPks.stream().map(channelPk -> {
+            Optional<ChannelMember> memberOpt = channelMemberRepository.findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk);
 
-                if (memberOpt.isEmpty()) {
-                    // 멤버가 아니면 → unread 없음 (볼 권한 자체가 없으니)
-                    return ChannelUnreadResponse.builder()
-                            .channelPk(channelPk)
-                            .hasUnread(false)
-                            .build();
-                }
-
-                ChannelMember member = memberOpt.get();
-                boolean hasUnread;
-
-                if (member.getLastReadMessage() == null) {
-                    // 한 번도 읽은 적 없음 → 채널에 메시지가 1개라도 있으면 unread
-                    hasUnread = messageRepository.existsByChannelPk_ChannelPk(channelPk);
-                } else {
-                    // 읽은 적 있음 → lastReadMessage 이후에 다른 사람이 보낸 메시지가 있는지 확인
-
-                    hasUnread = messageRepository.existsUnreadMessages(
-                            channelPk,
-                            member.getLastReadMessage().getMessagePk(),
-                            userPk);
-                }
-
+            if (memberOpt.isEmpty()) {
+                // 멤버가 아니면 → unread 없음 (볼 권한 자체가 없으니)
                 return ChannelUnreadResponse.builder()
                         .channelPk(channelPk)
-                        .hasUnread(hasUnread)
+                        .hasUnread(false)
                         .build();
-            }).collect(Collectors.toList());
+            }
 
-        } catch (Exception e) {
-            log.error("채널 일괄 안 읽음 상태 조회 실패: {}", e.getMessage());
-            throw new InternalServerErrorException("채널 안 읽음 상태 조회 중 서버 오류가 발생했습니다: " + e.getMessage());
-        }
+            ChannelMember member = memberOpt.get();
+            boolean hasUnread;
+
+            if (member.getLastReadMessage() == null) {
+                // 한 번도 읽은 적 없음 → 채널에 메시지가 1개라도 있으면 unread
+                hasUnread = messageRepository.existsByChannelPk_ChannelPk(channelPk);
+            } else {
+                // 읽은 적 있음 → lastReadMessage 이후에 다른 사람이 보낸 메시지가 있는지 확인
+
+                hasUnread = messageRepository.existsUnreadMessages(
+                        channelPk,
+                        member.getLastReadMessage().getMessagePk(),
+                        userPk);
+            }
+
+            return ChannelUnreadResponse.builder()
+                    .channelPk(channelPk)
+                    .hasUnread(hasUnread)
+                    .build();
+        }).collect(Collectors.toList());
     }
 
     /**
@@ -600,25 +518,18 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public void markChannelAsRead(Integer channelPk, Long messagePk, Integer userPk) {
-        try {
-            validateChannelAccess(channelPk, userPk);
+        validateChannelAccess(channelPk, userPk);
 
-            ChannelMember channelMember = channelMemberRepository.findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk)
-                    .orElseThrow(() -> new NotFoundException("채널 멤버를 찾을 수 없습니다."));
+        ChannelMember channelMember = channelMemberRepository.findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk)
+                .orElseThrow(() -> new NotFoundException("채널 멤버를 찾을 수 없습니다."));
 
-            Message message = messageRepository.findById(messagePk)
-                    .orElseThrow(() -> new NotFoundException("메시지를 찾을 수 없습니다."));
+        Message message = messageRepository.findById(messagePk)
+                .orElseThrow(() -> new NotFoundException("메시지를 찾을 수 없습니다."));
 
-            channelMember.setLastReadMessage(message);
-            channelMemberRepository.save(channelMember);
+        channelMember.setLastReadMessage(message);
+        channelMemberRepository.save(channelMember);
 
-            log.info("채널 읽음 처리: channelPk={}, userPk={}, messagePk={}", channelPk, userPk, messagePk);
-        } catch (ForbiddenException | NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("채널 읽음 처리 실패: {}", e.getMessage());
-            throw new InternalServerErrorException("채널 읽음 처리 중 서버 오류가 발생했습니다: " + e.getMessage());
-        }
+        log.info("채널 읽음 처리: channelPk={}, userPk={}, messagePk={}", channelPk, userPk, messagePk);
     }
 
     /**
@@ -647,24 +558,18 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public void markDmAsRead(Integer dmRoomPk, Long messagePk, Integer userPk) {
-        try {
-            validateDmRoomAccess(dmRoomPk, userPk);
+        validateDmRoomAccess(dmRoomPk, userPk);
 
-            DmMember dmMember = dmMemberRepository.findByDmRoom_DmRoomPkAndUser_UserPk(dmRoomPk, userPk)
-                    .orElseThrow(() -> new NotFoundException("DM 멤버를 찾을 수 없습니다."));
+        DmMember dmMember = dmMemberRepository.findByDmRoom_DmRoomPkAndUser_UserPk(dmRoomPk, userPk)
+                .orElseThrow(() -> new NotFoundException("DM 멤버를 찾을 수 없습니다."));
 
-            Message message = messageRepository.findById(messagePk)
-                    .orElseThrow(() -> new NotFoundException("메시지를 찾을 수 없습니다."));
+        Message message = messageRepository.findById(messagePk)
+                .orElseThrow(() -> new NotFoundException("메시지를 찾을 수 없습니다."));
 
-            dmMember.setLastReadMessage(message);
-            dmMemberRepository.save(dmMember);
+        dmMember.setLastReadMessage(message);
+        dmMemberRepository.save(dmMember);
 
-            log.info("DM 읽음 처리 : dmRoomPK ={}, userPk={}, messagePk={}", dmRoomPk, userPk, messagePk);
-        } catch (ForbiddenException | NotFoundException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new InternalServerErrorException("DM 읽음 처리 중 서버 오류가 발생했습니다: " + e.getMessage());
-        }
+        log.info("DM 읽음 처리 : dmRoomPK ={}, userPk={}, messagePk={}", dmRoomPk, userPk, messagePk);
     }
 
     /**
@@ -690,25 +595,17 @@ public class ChatServiceImpl implements ChatService {
      */
     @Override
     public MessageResponse convertToMessageResponse(Message message) {
-        try {
-            Users user = message.getUserPk();
+        Users user = message.getUserPk();
 
-            return MessageResponse.builder()
-                    .messagePk(message.getMessagePk())
-                    .userEmail(user.getUserEmail())
-                    .userName(user.getUserName())
-                    .userProfileImage(user.getProfileImagePath())
-                    .content(message.getContent())
-                    .createdAt(message.getCreatedAt())
-                    .messageType(message.getMessageType())
-                    .build();
-
-        } catch (NotFoundException | BadRequestException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("MessageResponse 변환 실패: {}", e.getMessage());
-            throw new InternalServerErrorException("MessageResponse 변환 중 서버 오류가 발생했습니다: " + e.getMessage());
-        }
+        return MessageResponse.builder()
+                .messagePk(message.getMessagePk())
+                .userEmail(user.getUserEmail())
+                .userName(user.getUserName())
+                .userProfileImage(user.getProfileImagePath())
+                .content(message.getContent())
+                .createdAt(message.getCreatedAt())
+                .messageType(message.getMessageType())
+                .build();
     }
 
 

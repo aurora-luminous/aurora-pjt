@@ -43,7 +43,7 @@ services:
 
   backend-ex:
     build:
-      context: ./ex
+      context: ./exbackend
       dockerfile: Dockerfile
     image: ${EX_IMAGE_REPO}:${TAG}
     ports:

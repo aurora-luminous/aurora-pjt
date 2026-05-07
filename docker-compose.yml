@@ -43,7 +43,7 @@ services:
 
   backend-ex:
     build:
-      context: ./exbackend
+      context: ./ex
       dockerfile: Dockerfile
     image: ${EX_IMAGE_REPO}:${TAG}
     ports:
@@ -53,17 +53,13 @@ services:
 
       DB_HOST: ${DB_HOST}
       DB_PORT: ${DB_PORT}
-      DB_USERNAME: ${DB_USERNAME}
+      DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
-      REDIS_HOST: ${REDIS_HOST}
-      REDIS_PORT: ${REDIS_PORT}
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
-      INTERNAL_SECRET: ${INTERNAL_SECRET}
 
       SERVER_URL: ${SERVER_URL:-http://localhost:3001}
-      SPRING_BASE_URL: ${SPRING_BASE_URL:-http://backend-sp:8080}
+      SPRING_CHAT_SERVER_URL: ${SPRING_CHAT_SERVER_URL:-http://localhost:8080}
     depends_on:
       postgres:
         condition: service_healthy
@@ -72,7 +68,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres
+    image: postgres:18
     environment:
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_USERNAME}
@@ -80,7 +76,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB || exit 1"]
       interval: 5s

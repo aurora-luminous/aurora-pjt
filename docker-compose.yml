@@ -8,7 +8,6 @@ services:
       - 3000:3000
     environment:
       - NODE_ENV=production
-      - NODE_OPTIONS=--trace-uncaught --trace-warnings
     command: npm start
     networks:
       - aurora-network
@@ -32,6 +31,7 @@ services:
       - REDIS_PORT=${REDIS_PORT}
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
+      - INTERNAL_SECRET=${INTERNAL_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -68,7 +68,7 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres
+    image: postgres:18
     environment:
       - POSTGRES_DB=${DB_NAME}
       - POSTGRES_USER=${DB_USERNAME}
@@ -76,7 +76,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB || exit 1"]
       interval: 5s

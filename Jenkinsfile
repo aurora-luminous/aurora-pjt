@@ -147,7 +147,7 @@ INTERNAL_SECRET=${env.INTERNAL_SECRET}
                     for (int i = 1; i <= maxRetry; i++) {
                         def status = sh(
                             returnStdout: true,
-                            script: "curl -sf -o /dev/null -w '%{http_code}' ${target.url} || echo '000'"
+                            script: "curl -s -o /dev/null -w '%{http_code}' ${target.url} || echo '000'"
                         ).trim()
 
                         if (status ==~ /2\d\d|302|404/) {

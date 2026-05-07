@@ -107,22 +107,62 @@ INTERNAL_SECRET=${env.INTERNAL_SECRET}
                     def serviceName = (env.ACTUAL_TARGET == 'fe') ? 'frontend' : "backend-${env.ACTUAL_TARGET}"
                     
                     sh """
-                        # 1. 파일 복사
+		                    # 1. 파일 복사
                         cp .ci.env ${env.OPERATING_DIR}/.ci.env
                         cp ${env.COMPOSE_FILE} ${env.OPERATING_DIR}/${env.COMPOSE_FILE}
                         
                         # 2. 이동 및 배포
                         cd ${env.OPERATING_DIR}
-                        docker compose -p ${env.COMPOSE_PROJECT_NAME} --env-file .env --env-file .ci.env up -d postgres redis
+                        docker compose -p ${env.COMPOSE_PROJECT_NAME} --env-file .env --env-file .ci.env up -d postgres redis nginx
                         docker compose -p ${env.COMPOSE_PROJECT_NAME} --env-file .env --env-file .ci.env pull ${serviceName}
                         docker compose -p ${env.COMPOSE_PROJECT_NAME} --env-file .env --env-file .ci.env up -d --no-deps --force-recreate ${serviceName}
 
-                        # 3. Nginx Reload
+												# 3. Nginx Reload	
                         NGINX_ID=\$(docker ps -q -f name=${env.COMPOSE_PROJECT_NAME}-nginx-1)
                         if [ -n "\$NGINX_ID" ]; then
                             docker exec -T "\$NGINX_ID" nginx -s reload || true
                         fi
                     """
+                }
+            }
+        }
+
+        stage('Health Check') {
+            options { timeout(time: 3, unit: 'MINUTES') }
+            steps {
+                script {
+                    def healthMap = [
+                        fe : [url: 'http://localhost:3000', name: 'Frontend'],
+                        sp : [url: 'http://localhost:8080', name: 'Backend-SP'],
+                        ex : [url: 'http://localhost:3001', name: 'Backend-EX'],
+                    ]
+
+                    def target = healthMap[env.ACTUAL_TARGET]
+                    def maxRetry = 30
+                    def interval = 5
+
+                    echo "🔍 ${target.name} 헬스 체크 시작 (최대 ${maxRetry * interval}초)"
+
+                    def healthy = false
+                    for (int i = 1; i <= maxRetry; i++) {
+                        def status = sh(
+                            returnStdout: true,
+                            script: "curl -sf -o /dev/null -w '%{http_code}' ${target.url} || echo '000'"
+                        ).trim()
+
+                        if (status ==~ /2\d\d|302|404/) {
+                            echo "✅ ${target.name} 헬스 체크 성공 (HTTP ${status})"
+                            healthy = true
+                            break
+                        }
+
+                        echo "⏳ 대기 중... (${i}/${maxRetry}) - HTTP ${status}"
+                        sleep interval
+                    }
+
+                    if (!healthy) {
+                        error("❌ ${target.name} 헬스 체크 실패 — ${maxRetry * interval}초 내 응답 없음")
+                    }
                 }
             }
         }

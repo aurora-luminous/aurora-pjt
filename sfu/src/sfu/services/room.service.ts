@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as mediasoup from 'mediasoup';
 import {
-  Worker,
   Router,
   WebRtcTransport,
   Producer,
@@ -9,6 +8,7 @@ import {
 } from 'mediasoup/types';
 import { ConfigService } from '@nestjs/config';
 import { WebSocket } from 'ws';
+import { MediasoupService } from './mediasoup.service';
 
 // SfuGateway에서 정의한 AuthenticatedSocket 인터페이스와 일치하도록 정의
 interface AuthenticatedSocket extends WebSocket {
@@ -38,75 +38,28 @@ interface MediaRoom {
   channelPk: number;
   router: Router;
   peers: Map<number, Peer>; // key: userId, value: Peer
-  // 특정 Producer가 있을 때 다른 Peer들에게 알리기 위한 소켓 목록
-  // 이 예시에서는 Peer 객체에 socket이 포함되므로 별도로 필요하지 않을 수 있음
-  // 그러나 특정 유저가 A 채널에 들어갔을 때, 같은 채널의 A 유저가 비디오를 켰으면
-  // SFU 서버는 B유저에게 알리고, B 유저는 producerid 를 알 수 있어서
-  // 그 producerid를 구독해서 비디오를 받아 올 수 있음
 }
 
 @Injectable()
 export class RoomService {
   private readonly logger = new Logger(RoomService.name);
   private rooms: Map<number, MediaRoom> = new Map(); // key: channelPk, value: MediaRoom
-  private mediasoupWorker: Worker; // 단일 MediaSoup Worker 인스턴스
 
-  constructor(private readonly configService: ConfigService) {
-    this.createWorker(); // 서비스 초기화 시 Worker 생성
-  }
-
-  // ======================================================================================
-  // Mediasoup Worker 생성 및 관리
-  // ======================================================================================
-  private async createWorker() {
-    this.mediasoupWorker = await mediasoup.createWorker({
-      logLevel:
-        this.configService.get<any>('MEDIASOUP_WORKER_LOG_LEVEL') || 'warn',
-      logTags: this.configService.get<any[]>('MEDIASOUP_WORKER_LOG_TAGS') || [
-        'info',
-        'ice',
-        'dtls',
-        'rtp',
-        'srtp',
-        'rtcp',
-      ],
-      rtcMinPort:
-        this.configService.get<number>('MEDIASOUP_RTC_MIN_PORT') || 10000,
-      rtcMaxPort:
-        this.configService.get<number>('MEDIASOUP_RTC_MAX_PORT') ||
-        10000 + 1000,
-    });
-
-    this.mediasoupWorker.on('died', () => {
-      this.logger.error('Mediasoup worker가 죽었습니다, 2초 뒤 퇴장합니다...');
-      setTimeout(() => process.exit(1), 2000); // 워커 사망 시 프로세스 종료
-    });
-
-    this.logger.log('Mediasoup worker가 생성됨');
-  }
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly mediasoupService: MediasoupService,
+  ) {}
 
   // ======================================================================================
   // 룸(Router) 관리
   // ======================================================================================
   private async findOrCreateRoom(channelPk: number): Promise<MediaRoom> {
     if (this.rooms.has(channelPk)) {
-      return this.rooms.get(channelPk)!; // non-null 단언 추가
+      return this.rooms.get(channelPk)!;
     }
 
-    // 새 Router 생성
-    const mediaCodecs = this.configService.get<any[]>(
-      'MEDIASOUP_ROUTER_MEDIA_CODECS',
-    ) || [
-      { kind: 'audio', mimeType: 'audio/opus', clockRate: 48000, channels: 2 },
-      {
-        kind: 'video',
-        mimeType: 'video/VP8',
-        clockRate: 90000,
-        parameters: { 'x-google-start-bitrate': 1000 },
-      },
-      // 다른 코덱 필요 시 추가
-    ];
-    const router = await this.mediasoupWorker.createRouter({ mediaCodecs });
+    // MediasoupService를 통해 공통 Router 가져오기
+    const router = await this.mediasoupService.getOrCreateRouter(channelPk);
 
     const newRoom: MediaRoom = {
       channelPk,
@@ -114,7 +67,7 @@ export class RoomService {
       peers: new Map(),
     };
     this.rooms.set(channelPk, newRoom);
-    this.logger.log(`새로운 채널의 MediaSoup 라우터가 생성됨: ${channelPk}`);
+    this.logger.log(`채널 ${channelPk}의 MediaRoom(Router 연동)이 준비됨`);
     return newRoom;
   }
 
@@ -271,16 +224,9 @@ export class RoomService {
       );
     }
 
-    const transport = await room.router.createWebRtcTransport({
-      listenIps: this.configService
-        .get<string[]>('MEDIASOUP_LISTEN_IPS')
-        ?.map((ip) => ({ ip, announcedIp: undefined })) || [
-        { ip: '127.0.0.1', announcedIp: undefined },
-      ],
-      enableUdp: true,
-      enableTcp: true,
-      preferUdp: true,
-    });
+    const transport = await room.router.createWebRtcTransport(
+      this.mediasoupService.getWebRtcTransportOptions()
+    );
 
     peer.transports.set(transport.id, transport);
     this.logger.log(
@@ -333,6 +279,7 @@ export class RoomService {
     transportId: string,
     kind: 'audio' | 'video',
     rtpParameters: any,
+    appData: any = {},
   ): Promise<{ id: string }> {
     const room = this.rooms.get(channelPk);
     const peer = room?.peers.get(userId);
@@ -348,7 +295,7 @@ export class RoomService {
       throw new Error(`Transport ${transportId}를 찾을 수 없습니다.`);
     }
 
-    const producer = await transport.produce({ kind, rtpParameters });
+    const producer = await transport.produce({ kind, rtpParameters, appData });
     peer.producers.set(producer.id, producer);
     this.logger.log(
       `피어 ${userId}를 위해 룸 ${channelPk}에 Producer ${producer.id} (${kind}) 생성됨`,
@@ -475,6 +422,78 @@ export class RoomService {
 
     await consumer.resume();
     this.logger.log(`룸 ${channelPk}의 Consumer ${consumerId} 재개됨`);
+  }
+
+  // ======================================================================================
+  // Consumer 일시정지
+  // ======================================================================================
+  async pauseConsumer(
+    channelPk: number,
+    userId: number,
+    consumerId: string,
+  ): Promise<void> {
+    const room = this.rooms.get(channelPk);
+    const peer = room?.peers.get(userId);
+
+    if (!room || !peer) {
+      throw new Error(`룸 ${channelPk} 또는 피어 ${userId}를 찾을 수 없습니다`);
+    }
+
+    const consumer = peer.consumers.get(consumerId);
+    if (!consumer) {
+      throw new Error(`Consumer ${consumerId} 를 찾을 수 없습니다.`);
+    }
+
+    await consumer.pause();
+    this.logger.log(`룸 ${channelPk}의 Consumer ${consumerId} 일시정지됨`);
+  }
+
+  // ======================================================================================
+  // Producer 일시정지
+  // ======================================================================================
+  async pauseProducer(
+    channelPk: number,
+    userId: number,
+    producerId: string,
+  ): Promise<void> {
+    const room = this.rooms.get(channelPk);
+    const peer = room?.peers.get(userId);
+
+    if (!room || !peer) {
+      throw new Error(`룸 ${channelPk} 또는 피어 ${userId}를 찾을 수 없습니다`);
+    }
+
+    const producer = peer.producers.get(producerId);
+    if (!producer) {
+      throw new Error(`Producer ${producerId} 를 찾을 수 없습니다.`);
+    }
+
+    await producer.pause();
+    this.logger.log(`룸 ${channelPk}의 Producer ${producerId} 일시정지됨`);
+  }
+
+  // ======================================================================================
+  // Producer 재개
+  // ======================================================================================
+  async resumeProducer(
+    channelPk: number,
+    userId: number,
+    producerId: string,
+  ): Promise<void> {
+    const room = this.rooms.get(channelPk);
+    const peer = room?.peers.get(userId);
+
+    if (!room || !peer) {
+      throw new Error(`룸 ${channelPk} 또는 피어 ${userId}를 찾을 수 없습니다`);
+    }
+
+    const producer = peer.producers.get(producerId);
+    if (!producer) {
+      throw new Error(`Producer ${producerId} 를 찾을 수 없습니다.`);
+    }
+
+    await producer.resume();
+    this.logger.log(`룸 ${channelPk}의 Producer ${producerId} 재개됨`);
   }
 
   // ======================================================================================

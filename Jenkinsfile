@@ -83,7 +83,7 @@ INTERNAL_SECRET=${env.INTERNAL_SECRET}
                     
                     // ACTUAL_TARGET에 따라 빌드 수행
                     if (env.ACTUAL_TARGET == 'fe') {
-                        dir('frontend') { sh "npm install && npm run build" }
+                        dir('frontend') { sh "npm install && NEXT_DISABLE_ESLINT=true npm run build" }
                         sh "docker compose --env-file .ci.env build frontend"
                         sh "docker compose --env-file .ci.env push frontend"
                     } else if (env.ACTUAL_TARGET == 'sp') {

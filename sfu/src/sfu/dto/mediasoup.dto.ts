@@ -161,3 +161,31 @@ export class PauseConsumerDto {
   @IsString()
   consumerId: string;
 }
+
+/**
+ * Producer Pause DTO (미디어 전송 일시정지)
+ */
+export class PauseProducerDto {
+  @ApiProperty({ description: '채널 PK' })
+  @IsNotEmpty()
+  channelPk: number;
+
+  @ApiProperty({ description: 'Producer ID' })
+  @IsNotEmpty()
+  @IsString()
+  producerId: string;
+}
+
+/**
+ * Producer Resume DTO (미디어 전송 재개)
+ */
+export class ResumeProducerDto {
+  @ApiProperty({ description: '채널 PK' })
+  @IsNotEmpty()
+  channelPk: number;
+
+  @ApiProperty({ description: 'Producer ID' })
+  @IsNotEmpty()
+  @IsString()
+  producerId: string;
+}

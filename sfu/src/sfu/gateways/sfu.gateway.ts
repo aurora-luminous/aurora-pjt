@@ -25,7 +25,7 @@ interface AuthenticatedSocket extends WebSocket {
   clientId?: string; // 클라이언트 WebSocket 연결의 고유 ID (client.id 대체)
 }
 
-@WebSocketGateway(3002, { path: '/voice' }) // ws://localhost:3002/voice
+@WebSocketGateway(Number(process.env.SFU_WS_PORT) || 3002, { path: '/voice' })
 export class SfuGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
@@ -449,7 +449,7 @@ export class SfuGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    const { channelPk, transportId, kind, rtpParameters } = data;
+    const { channelPk, transportId, kind, rtpParameters, appData } = data;
     const userId = client.userId;
 
     if (!userId) {
@@ -470,6 +470,7 @@ export class SfuGateway implements OnGatewayConnection, OnGatewayDisconnect {
         transportId,
         kind,
         rtpParameters,
+        appData,
       );
 
       this.logger.log(
@@ -588,6 +589,126 @@ export class SfuGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.send(JSON.stringify({ event: 'consumer-resumed', consumerId }));
     } catch (error) {
       this.logger.error(`Consumer 재개 실패: ${error.message}`);
+      client.send(JSON.stringify({ event: 'error', message: error.message }));
+    }
+  }
+
+  // Consumer Pause (미디어 수신 일시정지)
+  async handlePauseConsumer(data: any, client: AuthenticatedSocket) {
+    if (!data || !data.channelPk || !data.consumerId) {
+      this.logger.error(
+        `유효하지 않은 pause-consumer 데이터: ${client.clientId}`,
+      );
+      client.send(
+        JSON.stringify({ event: 'error', message: '유효하지 않은 데이터' }),
+      );
+      return;
+    }
+
+    const { channelPk, consumerId } = data;
+    const userId = client.userId;
+
+    if (!userId) {
+      this.logger.error(`인가되지 않은 사용자 (clientId: ${client.clientId})`);
+      client.send(
+        JSON.stringify({
+          event: 'error',
+          message: '사용자 인증이 되지 않았습니다.',
+        }),
+      );
+      return;
+    }
+
+    try {
+      await this.roomService.pauseConsumer(channelPk, userId, consumerId);
+
+      this.logger.log(
+        `Consumer가 일시정지됨: 사용자 ${userId} (clientId: ${client.clientId})`,
+      );
+
+      client.send(JSON.stringify({ event: 'consumer-paused', consumerId }));
+    } catch (error) {
+      this.logger.error(`Consumer 일시정지 실패: ${error.message}`);
+      client.send(JSON.stringify({ event: 'error', message: error.message }));
+    }
+  }
+
+  // Producer Pause (미디어 전송 일시정지)
+  async handlePauseProducer(data: any, client: AuthenticatedSocket) {
+    if (!data || !data.channelPk || !data.producerId) {
+      this.logger.error(
+        `유효하지 않은 pause-producer 데이터: ${client.clientId}`,
+      );
+      client.send(
+        JSON.stringify({ event: 'error', message: '유효하지 않은 데이터' }),
+      );
+      return;
+    }
+
+    const { channelPk, producerId } = data;
+    const userId = client.userId;
+
+    if (!userId) {
+      this.logger.error(`인가되지 않은 사용자 (clientId: ${client.clientId})`);
+      client.send(
+        JSON.stringify({
+          event: 'error',
+          message: '사용자 인증이 되지 않았습니다.',
+        }),
+      );
+      return;
+    }
+
+    try {
+      await this.roomService.pauseProducer(channelPk, userId, producerId);
+
+      this.logger.log(
+        `Producer가 일시정지됨: 사용자 ${userId} (clientId: ${client.clientId})`,
+      );
+
+      client.send(JSON.stringify({ event: 'producer-paused', producerId }));
+    } catch (error) {
+      this.logger.error(`Producer 일시정지 실패: ${error.message}`);
+      client.send(JSON.stringify({ event: 'error', message: error.message }));
+    }
+  }
+
+  // Producer Resume (미디어 전송 재개)
+  async handleResumeProducer(data: any, client: AuthenticatedSocket) {
+    if (!data || !data.channelPk || !data.producerId) {
+      this.logger.error(
+        `유효하지 않은 resume-producer 데이터: ${client.clientId}`,
+      );
+      client.send(
+        JSON.stringify({ event: 'error', message: '유효하지 않은 데이터' }),
+      );
+      return;
+    }
+
+    const { channelPk, producerId } = data;
+    const userId = client.userId;
+
+    if (!userId) {
+      this.logger.error(`인가되지 않은 사용자 (clientId: ${client.clientId})`);
+      client.send(
+        JSON.stringify({
+          event: 'error',
+          message: '사용자 인증이 되지 않았습니다.',
+        }),
+      );
+      return;
+    }
+
+    try {
+      await this.roomService.resumeProducer(channelPk, userId, producerId);
+
+      this.logger.log(
+        `Producer가 재개됨: 사용자 ${userId} (clientId: ${client.clientId})`,
+      );
+
+      client.send(JSON.stringify({ event: 'producer-resumed', producerId }));
+    } catch (error) {
+      this.logger.error(`Producer 재개 실패: ${error.message}`);
       client.send(JSON.stringify({ event: 'error', message: error.message }));
     }
   }
@@ -717,6 +838,15 @@ export class SfuGateway implements OnGatewayConnection, OnGatewayDisconnect {
           return;
         case 'resume-consumer':
           await this.handleResumeConsumer(data, client);
+          return;
+        case 'pause-consumer':
+          await this.handlePauseConsumer(data, client);
+          return;
+        case 'pause-producer':
+          await this.handlePauseProducer(data, client);
+          return;
+        case 'resume-producer':
+          await this.handleResumeProducer(data, client);
           return;
         case 'close-producer':
           await this.handleCloseProducer(data, client);

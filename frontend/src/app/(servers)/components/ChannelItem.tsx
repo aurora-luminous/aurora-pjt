@@ -66,6 +66,7 @@ export const ChannelItem: React.FC<ChannelItemProps> = ({
             : "text-gray-300 hover:bg-gray-600 hover:text-white"
         }`}
         onContextMenu={(e) => onContextMenu(e, channel.channelName)}
+        onClick={handleChannelClick}
       >
         <Link
           href={createChannelLink(channel)}

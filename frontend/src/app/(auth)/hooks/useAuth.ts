@@ -8,6 +8,7 @@ import { getLastChannelApi } from "../api/auth.api";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import type { AuthFormData } from "../types";
+import { useServerFlow } from "@/app/(server-setup)/hooks/useServerFlow";
 
 export const useAuth = (type: "login" | "register" = "register") => {
   const router = useRouter();
@@ -17,6 +18,7 @@ export const useAuth = (type: "login" | "register" = "register") => {
   const loginMutation = useLoginMutation();
   const logoutMutation = useLogoutMutation();
   const queryClient = useQueryClient();
+  const { handleServerConnection } = useServerFlow();
 
   const handleRegister = async (data: AuthFormData) => {
     try {
@@ -31,7 +33,9 @@ export const useAuth = (type: "login" | "register" = "register") => {
         password: data.password,
       });
 
-      router.push(redirectPath ? decodeURIComponent(redirectPath) : "/server-connect");
+      router.push(
+        redirectPath ? decodeURIComponent(redirectPath) : "/server-connect",
+      );
     } catch (error) {
       throw error;
     }
@@ -48,6 +52,8 @@ export const useAuth = (type: "login" | "register" = "register") => {
 
     try {
       const lastChannel = await getLastChannelApi();
+      handleServerConnection(lastChannel.serverUrl, lastChannel.serverUrl);
+
       router.push(
         lastChannel.serverUrl +
           "/projects/" +
@@ -56,7 +62,9 @@ export const useAuth = (type: "login" | "register" = "register") => {
           lastChannel.channelPk,
       );
     } catch {
-      router.push(redirectPath ? decodeURIComponent(redirectPath) : "/server-connect");
+      router.push(
+        redirectPath ? decodeURIComponent(redirectPath) : "/server-connect",
+      );
     }
   };
 
@@ -76,10 +84,11 @@ export const useAuth = (type: "login" | "register" = "register") => {
     return {};
   };
 
-  const { formData, errors, isLoading, updateField, handleSubmit } = useAuthForm({
-    initialData: getInitialData(),
-    onSubmit: type === "register" ? handleRegister : handleLogin,
-  });
+  const { formData, errors, isLoading, updateField, handleSubmit } =
+    useAuthForm({
+      initialData: getInitialData(),
+      onSubmit: type === "register" ? handleRegister : handleLogin,
+    });
 
   return {
     formData,

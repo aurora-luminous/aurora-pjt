@@ -7,6 +7,7 @@ const TOKEN_KEYS = {
   ACCESS_TOKEN: "accessToken",
   REFRESH_TOKEN: "refreshToken",
   REMEMBER_ME: "rememberMe",
+  CURRENT_SERVER_INFO: "currentServerInfo",
 } as const;
 
 /**
@@ -15,7 +16,7 @@ const TOKEN_KEYS = {
 export const setTokens = (
   accessToken: string,
   refreshToken: string,
-  rememberMe: boolean = false
+  rememberMe: boolean = false,
 ) => {
   const storage = rememberMe ? localStorage : sessionStorage;
 
@@ -26,7 +27,7 @@ export const setTokens = (
   localStorage.setItem(TOKEN_KEYS.REMEMBER_ME, rememberMe.toString());
 
   console.log(
-    `💾 토큰 저장 완료 (${rememberMe ? "localStorage" : "sessionStorage"})`
+    `💾 토큰 저장 완료 (${rememberMe ? "localStorage" : "sessionStorage"})`,
   );
 };
 
@@ -71,7 +72,7 @@ export const updateAccessToken = (accessToken: string) => {
   console.log(
     `🔄 액세스 토큰 업데이트 완료 (${
       rememberMe ? "localStorage" : "sessionStorage"
-    })`
+    })`,
   );
 };
 
@@ -86,6 +87,7 @@ export const clearTokens = () => {
 
   sessionStorage.removeItem(TOKEN_KEYS.ACCESS_TOKEN);
   sessionStorage.removeItem(TOKEN_KEYS.REFRESH_TOKEN);
+  sessionStorage.removeItem(TOKEN_KEYS.CURRENT_SERVER_INFO);
 
   console.log("🗑️ 모든 토큰 제거 완료");
 };

@@ -1,13 +1,13 @@
 package com.luminous.aurora.chat.controller;
 
-import com.luminous.aurora.auth.repository.UserRepository;
+import com.luminous.aurora.auth.entity.Users;
 import com.luminous.aurora.chat.dto.MessageRequest;
 import com.luminous.aurora.chat.dto.MessageResponse;
 import com.luminous.aurora.chat.dto.ReadRequest;
 import com.luminous.aurora.chat.dto.UnreadNotification;
 import com.luminous.aurora.chat.entity.Message;
 import com.luminous.aurora.chat.service.ChatService;
-import com.luminous.aurora.jwt.JwtTokenProvider;
+import com.luminous.aurora.common.error.exception.UnauthorizedException;
 import com.luminous.aurora.member.entity.DmMember;
 import com.luminous.aurora.member.repository.DmMemberRepository;
 import com.luminous.aurora.userstate.dto.UserStatusChangeRequest;
@@ -19,12 +19,20 @@ import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
 
+/**
+ * STOMP 메시지 핸들러.
+ * <p>
+ * 사용자 식별은 예전 세션 {@code jwt_token} 저장 방식이 아니라,
+ * STOMP {@code CONNECT} 시 {@link com.luminous.aurora.config.StompAuthChannelInterceptor}가
+ * 세션에 세팅한 {@link org.springframework.security.core.Authentication}의 principal
+ * ({@link Users})를 {@link AuthenticationPrincipal}로 주입받는다.
+ */
 @Slf4j
 @Controller
 @RequiredArgsConstructor
@@ -32,10 +40,16 @@ public class ChatWebSocketController {
 
     private final ChatService chatService;
     private final SimpMessagingTemplate messagingTemplate;
-    private final UserRepository userRepository;
-    private final JwtTokenProvider jwtTokenProvider;
     private final UserStateService userStateService;
     private final DmMemberRepository dmMemberRepository;
+
+    private static Integer requireUserPk(Users user) {
+        if (user == null) {
+            throw new UnauthorizedException("인증 정보를 찾을 수 없습니다.");
+        }
+
+        return user.getUserPk();
+    }
 
     /**
      * 채널 메시지 전송
@@ -51,16 +65,9 @@ public class ChatWebSocketController {
     @SendTo("/topic/channel/{channelPk}")
     public MessageResponse sendChannelMessage(@Payload MessageRequest messageRequest,
                                               @DestinationVariable Integer channelPk,
-                                              SimpMessageHeaderAccessor headerAccessor) {
+                                              @AuthenticationPrincipal Users user) {
         try {
-            // 세션에서 JWT 토큰 추출
-            String jwtToken = extractJwtFromSession(headerAccessor);
-            if (jwtToken == null) {
-                throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
-
-            }
-
-            Integer userPk = extractUserPkFromToken(jwtToken);
+            Integer userPk = requireUserPk(user);
             Message savedMessage = chatService.saveChannelMessage(messageRequest, channelPk, userPk);
 
             // ChatMessage 대신 통합된 MessageResponse 사용
@@ -87,35 +94,30 @@ public class ChatWebSocketController {
 
     /**
      * DM 메시지 전송 (WebSocket)
-     *
+     * <p>
      * 프론트 요청: /app/chat/dm/{dmRoomPk}
      * Payload: { "content": "...", "messageType": "TEXT" }
-     *
+     * <p>
      * 처리 순서:
-     * 1. JWT 토큰 추출 및 검증
+     * 1. STOMP 세션 Principal({@link Users})로 발신자 식별
      * 2. 메시지 저장 (ChatService.saveDmMessage)
      * 3. Message → MessageResponse DTO 변환
      * 4. DM방 존재 검증 (멤버 조회)
      * 5. DM방 멤버 전원의 유저 토픽으로 각각 전송
-     *
+     * <p>
      * 브로드캐스트 방식:
      * - /topic/user/{userEmail}/dm 으로 멤버별 개별 전송
      * - 본인 포함 전원에게 전송 (프론트에서 본인 메시지 렌더링에 활용)
      * - 메시지 수신 자체가 unread 알림 역할 → 별도 unread 알림 불필요
-     *
+     * <p>
      * 구독: /topic/user/{userEmail}/dm (로그인 시 1회 구독)
      */
     @MessageMapping("/chat/dm/{dmRoomPk}")
     public void sendDmMessage(@Payload MessageRequest messageRequest,
                               @DestinationVariable Integer dmRoomPk,
-                              SimpMessageHeaderAccessor headerAccessor) {
+                              @AuthenticationPrincipal Users user) {
         try {
-            // 세션에서 JWT 토큰 추출
-            String jwtToken = extractJwtFromSession(headerAccessor);
-            if (jwtToken == null) {
-                throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
-            }
-            Integer userPk = extractUserPkFromToken(jwtToken);
+            Integer userPk = requireUserPk(user);
             // 메시지 저장 및 chatMessage로 변환
             Message savedMessage = chatService.saveDmMessage(messageRequest, dmRoomPk, userPk);
 
@@ -156,13 +158,9 @@ public class ChatWebSocketController {
     @MessageMapping("/chat/channel/{channelPk}/read")
     public void markChannelAsRead(@Payload ReadRequest readRequest,
                                   @DestinationVariable Integer channelPk,
-                                  SimpMessageHeaderAccessor headerAccessor) {
+                                  @AuthenticationPrincipal Users user) {
         try {
-            String jwtToken = extractJwtFromSession(headerAccessor);
-            if (jwtToken == null) {
-                throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
-            }
-            Integer userPk = extractUserPkFromToken(jwtToken);
+            Integer userPk = requireUserPk(user);
             chatService.markChannelAsRead(channelPk, readRequest.getMessagePk(), userPk);
         } catch (Exception e) {
             log.error("채널 읽음 처리 실패: channelPk={}, {}", channelPk, e.getMessage());
@@ -187,13 +185,9 @@ public class ChatWebSocketController {
     @MessageMapping("/chat/dm/{dmRoomPk}/read")
     public void markDmAsRead(@Payload ReadRequest readRequest,
                              @DestinationVariable Integer dmRoomPk,
-                             SimpMessageHeaderAccessor headerAccessor) {
+                             @AuthenticationPrincipal Users user) {
         try {
-            String jwtToken = extractJwtFromSession(headerAccessor);
-            if (jwtToken == null) {
-                throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
-            }
-            Integer userPk = extractUserPkFromToken(jwtToken);
+            Integer userPk = requireUserPk(user);
             chatService.markDmAsRead(dmRoomPk, readRequest.getMessagePk(), userPk);
 
         } catch (Exception e) {
@@ -201,35 +195,15 @@ public class ChatWebSocketController {
         }
     }
 
-    // 세션에서 JWT 토큰 추출
-    private String extractJwtFromSession(SimpMessageHeaderAccessor headerAccessor) {
-        return (String) headerAccessor.getSessionAttributes().get("jwt_token");
-    }
-
-    // JWT 토큰에서 userPk 추출
-    private Integer extractUserPkFromToken(String jwtToken) {
-        // JWT에서 userEmail 추출 후 userPk 조회
-        String userEmail = jwtTokenProvider.getUserEmailFromToken(jwtToken);
-        return userRepository.findUserPkByUserEmail(userEmail)
-                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-    }
-
     /**
      * 사용자 상태 변경 요청 처리
      */
     @MessageMapping("/userstate/change")
     public void changeUserStatus(@Payload UserStatusChangeRequest request,
-                                 SimpMessageHeaderAccessor headerAccessor) {
-        String userEmail = null;
+                                 @AuthenticationPrincipal Users user) {
         try {
-            // JWT 토큰 검증 및 userPk 추출
-            String jwtToken = extractJwtFromSession(headerAccessor);
-            if (jwtToken == null) {
-                throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
-            }
-
-            userEmail = jwtTokenProvider.getUserEmailFromToken(jwtToken);
-            Integer userPk = extractUserPkFromToken(jwtToken);
+            Integer userPk = requireUserPk(user);
+            String userEmail = user.getUserEmail();
 
             // 상태 변경
             userStateService.setUserStatus(userPk, request.getStatus());
@@ -258,7 +232,7 @@ public class ChatWebSocketController {
 
         } catch (Exception e) {
             log.error("사용자 상태 변경 실패: userEmail={}, status={}",
-                    userEmail, request.getStatus(), e);
+                    user != null ? user.getUserEmail() : null, request.getStatus(), e);
         }
     }
 
@@ -266,13 +240,9 @@ public class ChatWebSocketController {
      * 비활동 감지 (프론트에서 x분 비활동시 호출)
      */
     @MessageMapping("/userstate/away")
-    public void setAutoAway(SimpMessageHeaderAccessor headerAccessor) {
+    public void setAutoAway(@AuthenticationPrincipal Users user) {
         try {
-            String jwtToken = extractJwtFromSession(headerAccessor);
-            if (jwtToken == null) {
-                throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
-            }
-            Integer userPk = extractUserPkFromToken(jwtToken);
+            Integer userPk = requireUserPk(user);
             userStateService.setUserAway(userPk);
 
             log.info("자동 자리 비움 설정");
@@ -285,14 +255,9 @@ public class ChatWebSocketController {
      * 활동 감지 (프론트에서 마우스/키보드 움직임 감지 시 호출)
      */
     @MessageMapping("/userstate/active")
-    public void setActive(SimpMessageHeaderAccessor headerAccessor) {
+    public void setActive(@AuthenticationPrincipal Users user) {
         try {
-            String jwtToken = extractJwtFromSession(headerAccessor);
-            if (jwtToken == null) {
-                throw new RuntimeException("JWT 토큰을 찾을 수 없습니다.");
-            }
-
-            Integer userPk = extractUserPkFromToken(jwtToken);
+            Integer userPk = requireUserPk(user);
             userStateService.setUserOnline(userPk);
 
             log.info("활동 재개");

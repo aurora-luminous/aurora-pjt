@@ -1,7 +1,9 @@
 package com.luminous.aurora.config;
 
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
@@ -9,7 +11,10 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 @Configuration
 @EnableWebSocketMessageBroker
+@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final StompAuthChannelInterceptor stompAuthChannelInterceptor;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
@@ -34,4 +39,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .setInterceptors(new HttpHandshakeInterceptor()); // 인터셉터 등록
     }
 
+    /**
+     * Client → Server 메시지 채널에 STOMP 인증 인터셉터 등록 (#225).
+     * <p>
+     * {@link StompAuthChannelInterceptor}가 STOMP CONNECT 시점에
+     * Authorization 헤더 검증 + Principal 세팅을 수행한다.
+     * 이후 컨트롤러는 {@code @AuthenticationPrincipal Users user} 또는 {@code Principal}로
+     * 사용자 정보에 접근한다.
+     */
+    @Override
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        registration.interceptors(stompAuthChannelInterceptor);
+    }
 }

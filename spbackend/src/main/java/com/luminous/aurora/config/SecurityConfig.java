@@ -37,8 +37,7 @@ public class SecurityConfig {
                         .requestMatchers("/").permitAll() // 루트경로 허용
                         .requestMatchers("/api/jv/login","/api/jv/signup","/api/jv/refresh").permitAll() // 인증관련 api 전부 허용
                         .requestMatchers("/api/jv/internal/**").permitAll() // 내부경로 허용
-                        .requestMatchers("/ws/info").permitAll() // 웹소켓 연결을 위한 SockJS 허용
-                        .requestMatchers("/ws/**").authenticated() // Websocket 연결은 인증
+                        .requestMatchers("/ws/**").permitAll() // Websocket 연결은 허용 / 인증 책임은 StompAuthChannelInterceptor로 이관
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

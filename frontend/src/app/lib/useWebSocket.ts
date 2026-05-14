@@ -87,6 +87,11 @@ export const useWebSocket = () => {
     
     const client = new Client({
       webSocketFactory: () => socket,
+      // 브라우저 WebSocket/SockJS는 HTTP 업그레이드에 임의 헤더를 붙일 수 없음.
+      // STOMP CONNECT 프레임 헤더로 Bearer 전달 (백엔드가 STOMP 헤더에서 읽도록 구성된 경우).
+      connectHeaders: {
+        Authorization: `Bearer ${accessToken}`,
+      },
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
@@ -268,6 +273,7 @@ export const useWebSocket = () => {
       globalClient.publish({
         destination: `/app/chat/channel/${channelPk}`,
         body: JSON.stringify(messageRequest),
+        headers: { "content-type": "application/json" },
       });
 
       console.log(`📤 채널 ${channelPk} 메시지 전송:`, content);

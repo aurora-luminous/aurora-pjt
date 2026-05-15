@@ -3,11 +3,14 @@ package com.luminous.aurora.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -49,5 +52,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(stompAuthChannelInterceptor);
+    }
+
+    /**
+     * @MessageMapping 메서드에 넘길 인자 리졸버를 등록한다.
+     * addArgumentResolvers 로 넣은 리졸버는 기본 목록에서 Payload 리졸버 바로 앞에 끼워 넣어진다.
+     * 그래서 @AuthenticationPrincipal Users 는 JSON 본문이 아니라 STOMP 세션 principal 로만 채운다.
+     */
+    @Override
+    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> argumentResolvers) {
+        argumentResolvers.add(new StompAuthenticationPrincipalArgumentResolver());
     }
 }

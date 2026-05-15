@@ -47,7 +47,11 @@ public class ChatWebSocketController {
         if (user == null) {
             throw new UnauthorizedException("인증 정보를 찾을 수 없습니다.");
         }
-
+        
+        Integer userPk = user.getUserPk();
+        if (userPk == null) {
+            throw new UnauthorizedException("인증 정보를 찾을 수 없습니다.");
+        }
         return user.getUserPk();
     }
 

@@ -47,7 +47,7 @@ public class AuthController {
      * <p>
      * 응답 구성 (#225):
      * - Body: {@link AccessTokenResponse} — access token만 포함
-     * - Cookie: {@code refresh_token} (HttpOnly, 7일)
+     * - Cookie: {@code refresh_token} (HttpOnly, 30일)
      * <p>
      * access token은 더 이상 쿠키로 발급하지 않는다.
      * 클라이언트가 body에서 받아 메모리에 보관하고,
@@ -95,7 +95,7 @@ public class AuthController {
      * refresh_token 쿠키를 검증 후 새 access token + 새 refresh token을 발급한다.
      * <p>
      * 응답 구성 (#225):
-     * - Body: 새 access token ({@link AccessTokenResponse})
+     * - Body: 새 access token ({@link AccessTokenResponse}) — 클라이언트는 메모리 access 를 반드시 교체
      * - Cookie: 새 refresh_token (회전)
      * <p>
      * refresh token rotation: TokenService.refreshToken은 항상 새 refresh token을 함께 발급하고

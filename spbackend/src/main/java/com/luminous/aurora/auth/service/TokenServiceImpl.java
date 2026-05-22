@@ -33,7 +33,7 @@ public class TokenServiceImpl implements TokenService {
         String refreshToken = jwtTokenProvider.generateRefreshToken(userEmail);
 
         // Redis에 토큰 저장
-        tokenRedisRepository.saveToken(userEmail, accessToken, accessTokenValidity);
+        tokenRedisRepository.saveToken(userEmail + ":access", accessToken, accessTokenValidity);
         tokenRedisRepository.saveToken(userEmail + ":refresh", refreshToken, refreshTokenValidity);
 
         log.info("토큰 생성 완료: userEmail = {}", userEmail);
@@ -53,7 +53,7 @@ public class TokenServiceImpl implements TokenService {
             }
 
             // Redis에 토큰이 존재하는지 확인 (로그아웃 체크)
-            return tokenRedisRepository.hasToken(userEmail);
+            return tokenRedisRepository.hasToken(userEmail + ":access");
         } catch (Exception e) {
             log.error("토큰 검증 실패 : {}", e.getMessage());
             return false;
@@ -62,7 +62,7 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public void logout(String userEmail) {
-        tokenRedisRepository.deleteToken(userEmail);
+        tokenRedisRepository.deleteToken(userEmail + ":access");
         tokenRedisRepository.deleteToken(userEmail + ":refresh");
         log.info("로그아웃 완료 : userEmail = {}", userEmail);
     }
@@ -88,9 +88,10 @@ public class TokenServiceImpl implements TokenService {
         if (storedRefresh == null) {
             throw new UnauthorizedException("유효하지 않은 Refresh Token 입니다");
         }
+        String accessKey = userEmail+ ":access";
         // 4-1) Redis에 refresh가 있는데 요청과 다름 -> 이미 회전된(옛날) refresh 재사용 가능성
         if (!storedRefresh.equals(refreshToken)) {
-            tokenRedisRepository.deleteToken(userEmail);
+            tokenRedisRepository.deleteToken(accessKey);
             tokenRedisRepository.deleteToken(refreshKey);
             // 정상적인 방법으로는 재사용 안되기 때문에 해킹의심 or 여러 장소에서 같은 아이디 사용 or 비정상적 사용패턴이므로 체크
             log.warn("Refresh Token 재사용 의심: userEmail ={}", userEmail);

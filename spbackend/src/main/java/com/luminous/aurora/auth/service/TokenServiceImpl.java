@@ -85,7 +85,15 @@ public class TokenServiceImpl implements TokenService {
 
         // 4) 키가 있는지만 확인하는게 아니라(기존방식) 저장된 문자열과 쿠키로 온 refresh가 같은지 확인 (rotation 핵심)
         String storedRefresh = tokenRedisRepository.getToken(refreshKey);
-        if (storedRefresh == null || !storedRefresh.equals(refreshToken)) {
+        if (storedRefresh == null) {
+            throw new UnauthorizedException("유효하지 않은 Refresh Token 입니다");
+        }
+        // 4-1) Redis에 refresh가 있는데 요청과 다름 -> 이미 회전된(옛날) refresh 재사용 가능성
+        if (!storedRefresh.equals(refreshToken)) {
+            tokenRedisRepository.deleteToken(userEmail);
+            tokenRedisRepository.deleteToken(refreshKey);
+            // 정상적인 방법으로는 재사용 안되기 때문에 해킹의심 or 여러 장소에서 같은 아이디 사용 or 비정상적 사용패턴이므로 체크
+            log.warn("Refresh Token 재사용 의심: userEmail ={}", userEmail);
             throw new UnauthorizedException("유효하지 않은 Refresh Token 입니다");
         }
 

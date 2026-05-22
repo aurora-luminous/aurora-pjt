@@ -69,13 +69,27 @@ public class TokenServiceImpl implements TokenService {
 
     @Override
     public TokenResponse refreshToken(String refreshToken) {
-        String userEmail = jwtTokenProvider.getUserEmailFromToken(refreshToken);
 
-        // refresh token이 redis에 있는지 확인
-        if (!tokenRedisRepository.hasToken(userEmail + ":refresh")) {
+        // 1) JWT 자체 유효성 (서명,만료) 만료/위조면 여기서 false
+        if (!jwtTokenProvider.validateToken(refreshToken)) {
             throw new UnauthorizedException("유효하지 않은 Refresh Token 입니다.");
         }
-        // 있다면 새로운 토큰 생성
+        // 2) 클레임에서 사용자 식별
+        String userEmail = jwtTokenProvider.getUserEmailFromToken(refreshToken);
+        String refreshKey = userEmail + ":refresh";
+
+        // 3) Redis 에 refresh 키가 없으면 로그아웃,만료,이미 회전된 세션
+        if (!tokenRedisRepository.hasToken(refreshKey)) {
+            throw new UnauthorizedException("유효하지 않은 Refresh Token 입니다.");
+        }
+
+        // 4) 키가 있는지만 확인하는게 아니라(기존방식) 저장된 문자열과 쿠키로 온 refresh가 같은지 확인 (rotation 핵심)
+        String storedRefresh = tokenRedisRepository.getToken(refreshKey);
+        if (storedRefresh == null || !storedRefresh.equals(refreshToken)) {
+            throw new UnauthorizedException("유효하지 않은 Refresh Token 입니다");
+        }
+
+        // 5) 검증 통과 -> access,refresh 둘다 새로 발급 + Redis 덮어쓰기
         return generateTokens(userEmail);
     }
 }

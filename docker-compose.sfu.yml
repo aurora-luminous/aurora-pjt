@@ -10,7 +10,7 @@ services:
       - 10000-10100:10000-10100/udp
     environment:
       - NODE_ENV=production
-      - SFU_PORT=${SFU_PORT}
+      - PORT=${PORT}
       - SFU_WS_PORT=${SFU_WS_PORT}
       - JWT_SECRET=${JWT_SECRET}
       - MAIN_SERVER_URL=${MAIN_SERVER_URL}

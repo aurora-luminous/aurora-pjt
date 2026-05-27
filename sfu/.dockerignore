@@ -1,0 +1,56 @@
+# Dependencies & build output (rebuilt inside the image)
+node_modules
+dist
+build
+coverage
+.nyc_output
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Logs & caches
+logs
+*.log
+npm-debug.log*
+.npm
+.temp
+.tmp
+
+# Git & VCS
+.git
+.gitignore
+.gitattributes
+
+# Tests (not needed for production image)
+test
+**/*.spec.ts
+**/*.e2e-spec.ts
+
+# Lint / format / editor
+eslint.config.mjs
+.prettierrc*
+.prettierignore
+.editorconfig
+.vscode
+.idea
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker / compose (optional metadata in context)
+docker-compose*.yml
+docker-compose*.yaml
+*.md
+
+# Runtime pid files
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Node diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json

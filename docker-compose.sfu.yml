@@ -1,0 +1,43 @@
+services:
+  mediasoup:
+    build:
+      context: ./sfu
+      dockerfile: Dockerfile
+    image: ${SFU_IMAGE_REPO}:${TAG}
+    ports:
+      - 3001:3001
+      - 3002:3002
+      - 10000-10100:10000-10100/udp
+    environment:
+      - NODE_ENV=production
+      - SFU_PORT=${SFU_PORT}
+      - SFU_WS_PORT=${SFU_WS_PORT}
+      - JWT_SECRET=${JWT_SECRET}
+      - MAIN_SERVER_URL=${MAIN_SERVER_URL}
+      - MEDIASOUP_RTC_MIN_PORT=10000
+      - MEDIASOUP_RTC_MAX_PORT=10100
+      - MEDIASOUP_LISTEN_IPS=${MEDIASOUP_LISTEN_IPS}
+      - MEDIASOUP_ANNOUNCED_IP=${MEDIASOUP_ANNOUNCED_IP}
+    networks:
+      - aurora-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /home/ubuntu/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - /var/www/certbot:/var/www/certbot
+      - /etc/letsencrypt:/etc/letsencrypt
+    depends_on:
+      - mediasoup
+    networks:
+      - aurora-network
+    restart: unless-stopped
+
+networks:
+  aurora-network:
+    name: aurora-sfu-network
+    driver: bridge

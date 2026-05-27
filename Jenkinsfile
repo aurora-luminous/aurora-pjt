@@ -148,14 +148,14 @@ INTERNAL_SECRET=${env.INTERNAL_SECRET}
 
                     def composeCmd = "docker compose -p ${env.COMPOSE_PROJECT_NAME} -f ${env.ACTIVE_COMPOSE_FILE} --env-file .env --env-file .ci.env"
 
-                    sshagent(credentials: [env.DEPLOY_SSH_CRED]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: env.DEPLOY_SSH_CRED, keyFileVariable: 'SSH_KEY')]) {
                         sh """
-                            ssh -o StrictHostKeyChecking=no ${env.DEPLOY_SSH_USER}@${env.DEPLOY_HOST} 'mkdir -p ${env.OPERATING_DIR}'
+                            ssh -i ${env.SSH_KEY} -o StrictHostKeyChecking=no ${env.DEPLOY_SSH_USER}@${env.DEPLOY_HOST} 'mkdir -p ${env.OPERATING_DIR}'
 
-                            scp -o StrictHostKeyChecking=no .ci.env ${env.DEPLOY_SSH_USER}@${env.DEPLOY_HOST}:${env.OPERATING_DIR}/.ci.env
-                            scp -o StrictHostKeyChecking=no ${env.ACTIVE_COMPOSE_FILE} ${env.DEPLOY_SSH_USER}@${env.DEPLOY_HOST}:${env.OPERATING_DIR}/${env.ACTIVE_COMPOSE_FILE}
+                            scp -i ${env.SSH_KEY} -o StrictHostKeyChecking=no .ci.env ${env.DEPLOY_SSH_USER}@${env.DEPLOY_HOST}:${env.OPERATING_DIR}/.ci.env
+                            scp -i ${env.SSH_KEY} -o StrictHostKeyChecking=no ${env.ACTIVE_COMPOSE_FILE} ${env.DEPLOY_SSH_USER}@${env.DEPLOY_HOST}:${env.OPERATING_DIR}/${env.ACTIVE_COMPOSE_FILE}
 
-                            ssh -o StrictHostKeyChecking=no ${env.DEPLOY_SSH_USER}@${env.DEPLOY_HOST} \\
+                            ssh -i ${env.SSH_KEY} -o StrictHostKeyChecking=no ${env.DEPLOY_SSH_USER}@${env.DEPLOY_HOST} \\
                               "set -e && cd ${env.OPERATING_DIR} && \\
                                ${composeCmd} up -d ${infraServices} && \\
                                ${composeCmd} pull ${serviceName} && \\
@@ -186,12 +186,12 @@ INTERNAL_SECRET=${env.INTERNAL_SECRET}
                     echo "🔍 ${target.name} 헬스 체크 (${env.DEPLOY_HOST})"
 
                     def healthy = false
-                    sshagent(credentials: [env.DEPLOY_SSH_CRED]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: env.DEPLOY_SSH_CRED, keyFileVariable: 'SSH_KEY')]) {
                         for (int i = 1; i <= maxRetry; i++) {
                             def status = sh(
                                 returnStdout: true,
                                 script: """
-                                    ssh -o StrictHostKeyChecking=no ${env.DEPLOY_SSH_USER}@${env.DEPLOY_HOST} \\
+                                    ssh -i ${env.SSH_KEY} -o StrictHostKeyChecking=no ${env.DEPLOY_SSH_USER}@${env.DEPLOY_HOST} \\
                                       "curl -sL -o /dev/null -w '%{http_code}' ${target.url} || echo '000'"
                                 """.trim()
                             ).trim()

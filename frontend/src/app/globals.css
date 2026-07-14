@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --color-aurora-dark: #2d3741;
+  --color-aurora-primary: #8b5cf6;
+  --color-aurora-secondary: #ec4899;
+  --color-aurora-form: #202020;
+  --color-aurora-blue-dark: #2e4565;
+  --color-aurora-blue-light: #44616f;
+  --color-chatting-background: #f0f0f0;
+  --color-aurora-main: #222831;
+  --color-aurora-sidebar-header: #272829;
+  --color-aurora-voice: #000000;
+  --font-family-sans: "Pretendard Variable", Pretendard, -apple-system,
+    BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI",
+    "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+}
+
+/* Aurora gradient utilities */
+.bg-aurora-gradient {
+  background: linear-gradient(
+    135deg,
+    #fce7f3 0%,
+    #e879f9 25%,
+    #c084fc 50%,
+    #a855f7 75%,
+    #7c3aed 100%
+  );
+}
+
+.bg-aurora-blue-gradient {
+  background: linear-gradient(to right, #2e4565 0%, #44616f 100%);
+}
+
+.bg-aurora-blue-gradient-vertical {
+  background: linear-gradient(to bottom, #2e4565 0%, #44616f 100%);
+}
+
+.bg-aurora-blue-gradient-diagonal {
+  background: linear-gradient(135deg, #2e4565 0%, #44616f 100%);
+}

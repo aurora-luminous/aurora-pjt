@@ -1,0 +1,670 @@
+package com.luminous.aurora.chat.service;
+
+import com.luminous.aurora.auth.entity.Users;
+import com.luminous.aurora.auth.repository.UserRepository;
+import com.luminous.aurora.channel.entity.Channel;
+import com.luminous.aurora.channel.repository.ChannelRepository;
+import com.luminous.aurora.chat.dto.MessageListResponse;
+import com.luminous.aurora.chat.dto.MessageRequest;
+import com.luminous.aurora.chat.dto.MessageResponse;
+import com.luminous.aurora.chat.dto.MessagesOnlyResponse;
+import com.luminous.aurora.chat.entity.Message;
+import com.luminous.aurora.chat.repository.MessageRepository;
+import com.luminous.aurora.common.error.exception.ForbiddenException;
+import com.luminous.aurora.common.error.exception.NotFoundException;
+import com.luminous.aurora.dmroom.entity.DmRoom;
+import com.luminous.aurora.dmroom.repository.DmRoomRepository;
+import com.luminous.aurora.internal.dto.ChannelUnreadResponse;
+import com.luminous.aurora.member.entity.ChannelMember;
+import com.luminous.aurora.member.entity.DmMember;
+import com.luminous.aurora.member.repository.ChannelMemberRepository;
+import com.luminous.aurora.member.repository.DmMemberRepository;
+import com.luminous.aurora.member.service.MemberService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ChatServiceImpl implements ChatService {
+
+    private final MessageRepository messageRepository;
+    private final UserRepository userRepository;
+    private final MemberService memberService;
+    private final ChannelRepository channelRepository;
+    private final DmRoomRepository dmRoomRepository;
+    private final ChannelMemberRepository channelMemberRepository;
+    private final DmMemberRepository dmMemberRepository;
+
+    /**
+     * 채널 메시지를 DB에 저장
+     *
+     * @param request - 메시지 내용 (content, messageType)
+     * @param channelPk - 대상 채널 PK (WebSocket PathVariable에서 전달)
+     * @param userPk 메시지를 보낸 사용자 PK
+     * <p>
+     * 호출되는 곳:
+     * - ChatWebSocketController.sendChannelMessage()
+     * <p>
+     * 처리 순서:
+     * 1. 채널 접근 권한 검증
+     * 2. Channel, Users 엔티티 조회
+     * 3. Message 엔티티 생성 및 DB 저장
+     */
+    @Override
+    @Transactional
+    public Message saveChannelMessage(MessageRequest request, Integer channelPk, Integer userPk) {
+        validateChannelAccess(channelPk, userPk);
+
+        Channel channel = channelRepository.findById(channelPk)
+                .orElseThrow(() -> new NotFoundException("채널을 찾을 수 없습니다."));
+
+        Users user = userRepository.findById(userPk)
+                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
+
+        Message message = Message.builder()
+                .channelPk(channel)
+                .userPk(user)
+                .content(request.getContent())
+                .messageType(request.getMessageType() != null ? request.getMessageType() : "TEXT")
+                .build();
+
+        Message savedMessage = messageRepository.save(message);
+
+        return savedMessage;
+
+    }
+
+    /**
+     * DM 메시지를 DB에 저장
+     *
+     * @param request - 메시지 내용 (content, messageType)
+     * @param dmRoomPk - 대상 DM방 PK (WebSocket PathVariable에서 전달)
+     * @param userPk 메시지를 보낸 사용자 PK
+     * <p>
+     * 호출되는 곳:
+     * - ChatWebSocketController.sendDmMessage()
+     * <p>
+     * 처리 순서
+     * 1. DM방 접근 권한 검증
+     * 2. DmRoom, Users 엔티티 조회
+     * 3. Message 엔티티 생성 및 DB 저장
+     */
+    @Override
+    @Transactional
+    public Message saveDmMessage(MessageRequest request, Integer dmRoomPk, Integer userPk) {
+        validateDmRoomAccess(dmRoomPk, userPk);
+
+        DmRoom dmRoom = dmRoomRepository.findById(dmRoomPk)
+                .orElseThrow(() -> new NotFoundException("DM 방을 찾을 수 없습니다."));
+
+        Users user = userRepository
+                .findById(userPk)
+                .orElseThrow(() -> new NotFoundException("사용자를 찾을 수 없습니다."));
+
+        Message message = Message.builder()
+                .dmRoomPk(dmRoom)
+                .userPk(user)
+                .content(request.getContent())
+                .messageType(request.getMessageType() != null ? request.getMessageType() : "TEXT")
+                .build();
+
+        Message savedMessage = messageRepository.save(message);
+        log.info("DM 메시지 저장: dmRoomPk = {}, userPk = {}", dmRoomPk, userPk);
+
+        return savedMessage;
+    }
+
+    /**
+     * 채널의 최신 메시지 40개 조회 (처음 채널 입장 시)
+     *
+     * @param channelPk - 조회할 채널 PK
+     * @param userPk 조회하는 사용자 PK
+     * @return MessageListResponse - lastReadMessagePk + 메시지 목록
+     * <p>
+     * 호출되는 곳:
+     * - ChatController (REST API) → GET /api/jv/chat/channel/{channelPk}/messages
+     * <p>
+     * 처리 순서:
+     * 1. 채널 접근 권한 검증
+     * 2. MessageRepository에서 최신 40개 조회
+     * 3. Message → MessageResponse DTO 변환
+     * <p>
+     * 사용 시점: 사용자가 채널에 처음 들어갈 때
+     */
+    @Override
+    public MessageListResponse getLatestMessage(Integer channelPk, Integer userPk) {
+        validateChannelAccess(channelPk, userPk);
+
+        List<Message> messages = messageRepository.findLatestMessagesByChannelPk(channelPk);
+        List<MessageResponse> messageResponses = messages.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
+
+        Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
+
+        return MessageListResponse.builder()
+                .lastReadMessagePk(lastReadMessagePk)
+                .messages(messageResponses)
+                .build();
+    }
+
+    /**
+     * 채널의 이전 메시지 40개 조회 (스크롤 위로 올릴 때)
+     *
+     * @param channelPk - 조회할 채널 PK
+     * @param lastMessageTime - 현재 화면에서 가장 오래된 메시지의 시간
+     * @param userPk 조회하는 사용자 PK
+     * @return MessagesOnlyResponse - 메시지 목록만 (최대 40개, 무한 스크롤에는 lastRead 불필요)
+     * <p>
+     * 호출되는 곳:
+     * - ChatController (REST API) → GET /api/jv/chat/channel/{channelPk}/messages/older
+     * <p>
+     * 처리 순서:
+     * 1. 채널 접근 권한 검증
+     * 2. lastMessageTime 이전의 메시지 40개 조회
+     * 3. Message → MessageResponse DTO 변환
+     * <p>
+     * 사용 시점: 사용자가 채팅창을 위로 스크롤할 때 (무한 스크롤)
+     */
+    @Override
+    public MessagesOnlyResponse getOlderMessage(Integer channelPk, LocalDateTime lastMessageTime, Integer userPk) {
+        validateChannelAccess(channelPk, userPk);
+
+        List<Message> messages = messageRepository.findOlderMessagesByChannelPk(channelPk, lastMessageTime);
+        List<MessageResponse> messageResponses = messages.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
+
+        return MessagesOnlyResponse.builder()
+                .messages(messageResponses)
+                .build();
+    }
+
+    /**
+     * 채널의 특정 메시지 기준 주변 메시지 조회 (안읽은 메시지 중간에 들어오기 + 검색 메시지 주변메시지에 쓸듯)
+     * <p>
+     * 기준 messagePk 보다 작은 Pk 최대 20개 + 기준 1개 + 큰 20개를 합쳐
+     * 시간(pk) 오름차순으로 반환한다(최대 41개)
+     *
+     * @param channelPk 조회할 채널 Pk
+     * @param messagePk 기준이 되는 메시지 Pk (해당 채널 소속이어야 함)
+     * @param userPk 조회하는 사용자 PK
+     * @return MessageListResponse - LastReadMessagePk + 메시지 목록
+     * <p>
+     * 호출 되는 곳
+     * - ChatController (REST API) -> GET /api/jv/chat/channel/{channelPk}/messages/around
+     * <p>
+     * 처리 순서
+     * 1. 채널 접근 권한 검증
+     * 2. 기준 메시지가 해당 채널에 존재하는지 확인
+     * 3. 기준보다 이전/이후 메시지 각각 조회 후 오름차순으로 병합
+     * 4. Message -> MessageResponse 변환
+     */
+    @Override
+    public MessageListResponse getAroundMessage(Integer channelPk, Long messagePk, Integer userPk) {
+        validateChannelAccess(channelPk, userPk);
+
+        Message anchor = messageRepository.findByMessagePkAndChannelPk_ChannelPk(messagePk, channelPk)
+                .orElseThrow(() -> new NotFoundException("기준메시지가 해당 채널에 없음"));
+
+        List<Message> older = messageRepository.findChannelMessagesStrictlyOlderThan(channelPk, messagePk);
+        java.util.Collections.reverse(older);
+
+        List<Message> newer = messageRepository.findChannelMessagesStrictlyNewerThan(channelPk, messagePk);
+
+        ArrayList<Message> combined = new ArrayList<>(older.size() + 1 + newer.size());
+
+        combined.addAll(older);
+        combined.add(anchor);
+        combined.addAll(newer);
+
+        Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
+
+        List<MessageResponse> messageResponse = combined.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
+
+        return MessageListResponse.builder()
+                .lastReadMessagePk(lastReadMessagePk)
+                .messages(messageResponse)
+                .build();
+    }
+
+    /**
+     * 채널에서 특정 메시지 이후(더 새로운) 메시지 조회
+     * <p>
+     * afterMessagePk보다 큰 message_pk를 가진 메시지를 오름차순으로 최대 40개 반환한다.
+     * 기준 메시지(afterMessagePk)는 결과에 포함하지 않는다.
+     *
+     * @param channelPk - 조회할 채널 PK
+     * @param afterMessagePk - 커서로 쓰는 메시지 PK (해당 채널에 존재해야 함)
+     * @param userPk 조회하는 사용자 PK
+     * @return MessageListResponse - lastReadMessagePk + 메시지 목록
+     * <p>
+     * 호출되는 곳:
+     * - ChatController (REST API) → GET /api/jv/chat/channel/{channelPk}/messages/newer
+     * <p>
+     * 처리 순서:
+     * 1. 채널 접근 권한 검증
+     * 2. 커서 메시지가 해당 채널에 존재하는지 확인
+     * 3. 이후 메시지 최대 40개 조회
+     * 4. Message → MessageResponse 변환
+     */
+    @Override
+    public MessageListResponse getNewerMessage(Integer channelPk, Long afterMessagePk, Integer userPk) {
+        validateChannelAccess(channelPk, userPk);
+
+        messageRepository.findByMessagePkAndChannelPk_ChannelPk(afterMessagePk, channelPk)
+                .orElseThrow(() -> new NotFoundException("기준 메시지가 해당 채널에 없음"));
+
+        List<Message> messages = messageRepository.findChannelMessagesNewerThanAfterPk(channelPk, afterMessagePk);
+        List<MessageResponse> messageResponses = messages.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
+
+        Long lastReadMessagePk = getChannelLastReadMessagePk(channelPk, userPk);
+
+        return MessageListResponse.builder()
+                .lastReadMessagePk(lastReadMessagePk)
+                .messages(messageResponses)
+                .build();
+    }
+
+
+    /**
+     * DM방의 최신 메시지 40개 조회 (처음 DM방 입장 시)
+     *
+     * @param dmRoomPk - 조회할 DM방 PK
+     * @param userPk 조회하는 사용자 PK
+     * @return MessageListResponse - lastReadMessagePk + 메시지 목록
+     * <p>
+     * 호출되는 곳:
+     * - ChatController (REST API) → GET /api/jv/chat/dm/{dmRoomPk}/messages
+     * <p>
+     * 사용 시점: 사용자가 DM방에 처음 들어갈 때
+     */
+    @Override
+    public MessageListResponse getLatestDmMessage(Integer dmRoomPk, Integer userPk) {
+        validateDmRoomAccess(dmRoomPk, userPk);
+
+        List<Message> messages = messageRepository.findLatestMessagesByDmRoomPk(dmRoomPk);
+        List<MessageResponse> messageResponses = messages.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
+
+        Long lastReadMessagePk = getDmLastReadMessagePk(dmRoomPk, userPk);
+
+        return MessageListResponse
+                .builder()
+                .lastReadMessagePk(lastReadMessagePk)
+                .messages(messageResponses)
+                .build();
+    }
+
+    /**
+     * DM방의 이전 메시지 40개 조회 (스크롤 위로 올릴 때)
+     *
+     * @param dmRoomPk - 조회할 DM방 PK
+     * @param lastMessageTime - 현재 화면에서 가장 오래된 메시지의 시간
+     * @param userPk 조회하는 사용자 PK
+     * @return MessagesOnlyResponse - 메시지 목록만 (최대 40개, 무한 스크롤에는 lastRead 불필요)
+     * <p>
+     * 호출되는 곳:
+     * - ChatController (REST API) → GET /api/jv/chat/dm/{dmRoomPk}/messages/older
+     * <p>
+     * 사용 시점: 사용자가 DM 채팅창을 위로 스크롤할 때
+     */
+    @Override
+    public MessagesOnlyResponse getOlderDmMessage(Integer dmRoomPk, LocalDateTime lastMessageTime, Integer userPk) {
+        validateDmRoomAccess(dmRoomPk, userPk);
+
+        List<Message> messages = messageRepository.findOlderMessagesByDmRoomPk(dmRoomPk, lastMessageTime);
+        List<MessageResponse> messageResponses = messages.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
+
+        return MessagesOnlyResponse.builder()
+                .messages(messageResponses)
+                .build();
+    }
+
+    /**
+     * DM방의 특정 메시지 기준 주변 메시지 조회 (딥링크·검색 결과 포커스 등)
+     * <p>
+     * 기준 messagePk보다 작은 PK 최대 20개 + 기준 1개 + 큰 PK 최대 20개를 합쳐
+     * PK 오름차순으로 반환한다. (최대 41개)
+     *
+     * @param dmRoomPk - 조회할 DM방 PK
+     * @param messagePk - 기준이 되는 메시지 PK (해당 DM방 소속이어야 함)
+     * @param userPk 조회하는 사용자 PK
+     * @return MessageListResponse - lastReadMessagePk + 메시지 목록
+     * <p>
+     * 호출되는 곳:
+     * - ChatController (REST API) → GET /api/jv/chat/dm/{dmRoomPk}/messages/around
+     * <p>
+     * 처리 순서:
+     * 1. DM방 접근 권한 검증
+     * 2. 기준 메시지가 해당 DM방에 존재하는지 확인
+     * 3. 기준보다 이전/이후 메시지 각각 조회 후 오름차순으로 병합
+     * 4. Message → MessageResponse 변환
+     */
+    @Override
+    public MessageListResponse getAroundDmMessage(Integer dmRoomPk, Long messagePk, Integer userPk) {
+        validateDmRoomAccess(dmRoomPk, userPk);
+
+        Message anchor = messageRepository.findByMessagePkAndDmRoomPk_DmRoomPk(messagePk, dmRoomPk)
+                .orElseThrow(() -> new NotFoundException("기준 메시지가 해당 DM 방에 없습니다."));
+
+        List<Message> older = messageRepository.findDmMessagesStrictlyOlderThan(dmRoomPk, messagePk);
+        java.util.Collections.reverse(older);
+
+        List<Message> newer = messageRepository.findDmMessagesStrictlyNewerThan(dmRoomPk, messagePk);
+
+        ArrayList<Message> combined = new ArrayList<>(older.size() + 1 + newer.size());
+        combined.addAll(older);
+        combined.add(anchor);
+        combined.addAll(newer);
+
+        List<MessageResponse> messageResponses = combined.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
+
+        Long lastReadMessagePk = getDmLastReadMessagePk(dmRoomPk, userPk);
+
+        return MessageListResponse.builder()
+                .lastReadMessagePk(lastReadMessagePk)
+                .messages(messageResponses)
+                .build();
+    }
+
+    /**
+     * DM방에서 특정 메시지 이후(더 새로운) 메시지 조회
+     * <p>
+     * afterMessagePk보다 큰 message_pk를 가진 메시지를 오름차순으로 최대 40개 반환한다.
+     * 기준 메시지(afterMessagePk)는 결과에 포함하지 않는다.
+     *
+     * @param dmRoomPk - 조회할 DM방 PK
+     * @param afterMessagePk - 커서로 쓰는 메시지 PK (해당 DM방에 존재해야 함)
+     * @param userPk 조회하는 사용자 PK
+     * @return MessageListResponse - lastReadMessagePk + 메시지 목록
+     * <p>
+     * 호출되는 곳:
+     * - ChatController (REST API) → GET /api/jv/chat/dm/{dmRoomPk}/messages/newer
+     * <p>
+     * 처리 순서:
+     * 1. DM방 접근 권한 검증
+     * 2. 커서 메시지가 해당 DM방에 존재하는지 확인
+     * 3. 이후 메시지 최대 40개 조회
+     * 4. Message → MessageResponse 변환
+     */
+    @Override
+    public MessageListResponse getNewerDmMessage(Integer dmRoomPk, Long afterMessagePk, Integer userPk) {
+        validateDmRoomAccess(dmRoomPk, userPk);
+
+        messageRepository.findByMessagePkAndDmRoomPk_DmRoomPk(afterMessagePk, dmRoomPk)
+                .orElseThrow(() -> new NotFoundException("기준 메시지가 해당 DM 방에 없습니다."));
+
+        List<Message> messages = messageRepository.findDmMessagesNewerThanAfterPk(dmRoomPk, afterMessagePk);
+        List<MessageResponse> messageResponses = messages.stream()
+                .map(this::convertToMessageResponse)
+                .toList();
+
+        Long lastReadMessagePk = getDmLastReadMessagePk(dmRoomPk, userPk);
+
+        return MessageListResponse.builder()
+                .lastReadMessagePk(lastReadMessagePk)
+                .messages(messageResponses)
+                .build();
+    }
+
+    /**
+     * 여러 채널의 안 읽은 메시지 존재 여부 일괄 조회
+     *
+     * @param channelPks - 조회할 채널 PK 목록
+     * @param userPk - 조회 대상 사용자 PK
+     * @return List<ChannelUnreadResponse> - 채널별 hasUnread 목록
+     * <p>
+     * 호출되는 곳:
+     * - InternalController → POST /api/jv/internal/channels/unread
+     * <p>
+     * 처리 순서 (채널별 반복):
+     * 1. ChannelMember 조회 (channelPk + userPk)
+     * 2. 멤버가 아니면 → hasUnread = false
+     * 3. lastReadMessage가 null (한 번도 읽지 않음)
+     * → 채널에 메시지가 1개라도 있으면 true, 없으면 false
+     * 4. lastReadMessage가 있으면 → 이후 메시지 존재 여부 확인 (내가 보낸 것 제외)
+     * <p>
+     * 용도: Express에서 채널 목록 조회 시
+     * Spring에 일괄 요청하여 unread 상태를 합쳐서 프론트에 내려주기 위함
+     * <p>
+     * 응답 예시:
+     * [
+     * { "channelPk": 1, "hasUnread": true },
+     * { "channelPk": 3, "hasUnread": false }
+     * ]
+     */
+    @Override
+    public List<ChannelUnreadResponse> getChannelsUnreadStatus(List<Integer> channelPks, Integer userPk) {
+        return channelPks.stream().map(channelPk -> {
+            Optional<ChannelMember> memberOpt = channelMemberRepository.findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk);
+
+            if (memberOpt.isEmpty()) {
+                // 멤버가 아니면 → unread 없음 (볼 권한 자체가 없으니)
+                return ChannelUnreadResponse.builder()
+                        .channelPk(channelPk)
+                        .hasUnread(false)
+                        .build();
+            }
+
+            ChannelMember member = memberOpt.get();
+            boolean hasUnread;
+
+            if (member.getLastReadMessage() == null) {
+                // 한 번도 읽은 적 없음 → 채널에 메시지가 1개라도 있으면 unread
+                hasUnread = messageRepository.existsByChannelPk_ChannelPk(channelPk);
+            } else {
+                // 읽은 적 있음 → lastReadMessage 이후에 다른 사람이 보낸 메시지가 있는지 확인
+
+                hasUnread = messageRepository.existsUnreadMessages(
+                        channelPk,
+                        member.getLastReadMessage().getMessagePk(),
+                        userPk);
+            }
+
+            return ChannelUnreadResponse.builder()
+                    .channelPk(channelPk)
+                    .hasUnread(hasUnread)
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
+    /**
+     * -------------------------------------------------------------------------------------
+     * 안읽음 메시지 처리용 함수
+     * -------------------------------------------------------------------------------------
+     */
+
+    /**
+     * 채널 메시지 읽음 처리
+     *
+     * @param channelPk - 읽음 처리할 채널 PK
+     * @param messagePk - 마지막으로 읽은 메시지 PK
+     * @param userPk 요청 사용자 PK
+     * <p>
+     * 호출되는 곳:
+     * - ChatWebSocketController → /app/chat/channel/{channelPk}/read
+     * <p>
+     * 처리 순서:
+     * 1. 채널 접근 권한 검증
+     * 2. ChannelMember 엔티티 조회 (channelPk + userPk)
+     * 3. 해당 messagePk의 Message 엔티티 조회
+     * 4. ChannelMember.lastReadMessage 업데이트 및 저장
+     * <p>
+     * 용도: 프론트에서 사용자가 채널 메시지를 읽었을 때,
+     * 마지막으로 읽은 메시지 PK를 전송하여 읽음 위치를 기록
+     * <p>
+     * 연관 기능:
+     * - 채널 목록에서 안 읽은 메시지 존재 여부(hasUnread) 판단 시 사용
+     */
+    @Override
+    @Transactional
+    public void markChannelAsRead(Integer channelPk, Long messagePk, Integer userPk) {
+        validateChannelAccess(channelPk, userPk);
+
+        ChannelMember channelMember = channelMemberRepository.findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk)
+                .orElseThrow(() -> new NotFoundException("채널 멤버를 찾을 수 없습니다."));
+
+        Message message = messageRepository.findById(messagePk)
+                .orElseThrow(() -> new NotFoundException("메시지를 찾을 수 없습니다."));
+
+        channelMember.setLastReadMessage(message);
+        channelMemberRepository.save(channelMember);
+
+        log.info("채널 읽음 처리: channelPk={}, userPk={}, messagePk={}", channelPk, userPk, messagePk);
+    }
+
+    /**
+     * DM 메시지 읽음 처리
+     *
+     * @param dmRoomPk - 읽음 처리할 DM방 PK
+     * @param messagePk - 마지막으로 읽은 메시지 PK
+     * @param userPk 요청 사용자 PK
+     * <p>
+     * 호출되는 곳:
+     * - ChatWebSocketController → /app/chat/dm/{dmRoomPk}/read
+     * <p>
+     * 처리 순서:
+     * 1. DM방 접근 권한 검증
+     * 2. DmMember 엔티티 조회 (dmRoomPk + userPk)
+     * 3. 해당 messagePk의 Message 엔티티 조회
+     * 4. DmMember.lastReadMessage 업데이트 및 저장
+     * <p>
+     * 용도: 프론트에서 사용자가 DM 메시지를 읽었을 때,
+     * 마지막으로 읽은 메시지 PK를 전송하여 읽음 위치를 기록
+     * <p>
+     * 연관 기능:
+     * - DM 목록 조회 시 unreadCount 계산에 사용
+     * (UserStateServiceImpl.getDmRoomsWithStatus → countUnreadMessages)
+     */
+    @Override
+    @Transactional
+    public void markDmAsRead(Integer dmRoomPk, Long messagePk, Integer userPk) {
+        validateDmRoomAccess(dmRoomPk, userPk);
+
+        DmMember dmMember = dmMemberRepository.findByDmRoom_DmRoomPkAndUser_UserPk(dmRoomPk, userPk)
+                .orElseThrow(() -> new NotFoundException("DM 멤버를 찾을 수 없습니다."));
+
+        Message message = messageRepository.findById(messagePk)
+                .orElseThrow(() -> new NotFoundException("메시지를 찾을 수 없습니다."));
+
+        dmMember.setLastReadMessage(message);
+        dmMemberRepository.save(dmMember);
+
+        log.info("DM 읽음 처리 : dmRoomPK ={}, userPk={}, messagePk={}", dmRoomPk, userPk, messagePk);
+    }
+
+    /**
+     * ------------------------------------------------------------------------------------------------
+     * DTO 변환용 함수
+     * ------------------------------------------------------------------------------------------------
+     */
+
+
+    /**
+     * Message 엔티티 → MessageResponse DTO 변환
+     * <p>
+     * REST API 응답과 WebSocket 브로드캐스트 모두에서 사용하는 통합 변환 메서드.
+     * 기존에는 REST용(convertToMessageResponse)과 WebSocket용(convertToChatMessage)이
+     * 분리되어 있었으나, 두 DTO의 필드가 동일하여 MessageResponse로 통합함.
+     *
+     * @param message - DB에서 조회하거나 저장된 Message 엔티티
+     * @return MessageResponse - 클라이언트에게 전달할 메시지 DTO
+     * <p>
+     * 호출되는 곳:
+     * - ChatController (REST API) → 채널/DM 메시지 조회 시
+     * - ChatWebSocketController  → 채널/DM 메시지 전송 시 브로드캐스트용
+     */
+    @Override
+    public MessageResponse convertToMessageResponse(Message message) {
+        Users user = message.getUserPk();
+
+        return MessageResponse.builder()
+                .messagePk(message.getMessagePk())
+                .userEmail(user.getUserEmail())
+                .userName(user.getUserName())
+                .userProfileImage(user.getProfileImagePath())
+                .content(message.getContent())
+                .createdAt(message.getCreatedAt())
+                .messageType(message.getMessageType())
+                .build();
+    }
+
+
+    /**
+     * 채널에서 현재 사용자의 lastReadMessagePk 조회
+     *
+     * @return Long - 마지막으로 읽은 메시지 PK (읽은 적 없으면 null)
+     */
+    private Long getChannelLastReadMessagePk(Integer channelPk, Integer userPk) {
+        return channelMemberRepository.findByChannel_ChannelPkAndUser_UserPk(channelPk, userPk)
+                .map(ChannelMember::getLastReadMessage)
+                .map(Message::getMessagePk)
+                .orElse(null);
+    }
+
+    /**
+     * DM방에서 현재 사용자의 lastReadMessagePk 조회
+     *
+     * @return Long - 마지막으로 읽은 메시지 PK (읽은 적 없으면 null)
+     */
+    private Long getDmLastReadMessagePk(Integer dmRoomPk, Integer userPk) {
+        return dmMemberRepository.findByDmRoom_DmRoomPkAndUser_UserPk(dmRoomPk, userPk)
+                .map(DmMember::getLastReadMessage)
+                .map(Message::getMessagePk)
+                .orElse(null);
+    }
+
+
+    /**
+     * 채널 접근 권한 검증
+     *
+     * @param channelPk - 접근하려는 채널 PK
+     * @param userPk - 접근하려는 사용자 PK
+     * @throws ForbiddenException - 권한 없으면 403 에러
+     * <p>
+     * 검증 방법:
+     * - ChannelMember 테이블에 (channelPk, userPk) 조합이 있는지 확인
+     */
+    private void validateChannelAccess(Integer channelPk, Integer userPk) {
+        if (!memberService.hasChannelAccess(channelPk, userPk)) {
+            throw new ForbiddenException("해당 채널에 접근할 권한이 없습니다.");
+        }
+    }
+
+    /**
+     * DM방 접근 권한 검증
+     *
+     * @param dmRoomPk - 접근하려는 DM방 PK
+     * @param userPk - 접근하려는 사용자 PK
+     * @throws ForbiddenException - 권한 없으면 403 에러
+     * <p>
+     * 검증 방법:
+     * - DmMember 테이블에 (dmRoomPk, userPk) 조합이 있는지 확인
+     */
+    private void validateDmRoomAccess(Integer dmRoomPk, Integer userPk) {
+        if (!memberService.hasDmRoomAccess(dmRoomPk, userPk)) {
+            throw new ForbiddenException("해당 DM방에 접근할 권한이 없습니다.");
+        }
+    }
+
+
+}
